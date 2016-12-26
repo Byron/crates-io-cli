@@ -95,7 +95,7 @@ fn main() {
     let temp_dir_str = temp_dir.to_string_lossy();
     let human_output = format!("{}", OutputKind::human);
     let app = App::new("crates.io interface")
-        .version("1.0")
+        .version("1.0.0")
         .author("Sebastian Thiel <byronimo@gmail.com>")
         .about("Interact with the https://crates.io index via the command-line")
         .arg(Arg::with_name("repository")
