@@ -7,3 +7,7 @@ if $exe >/dev/null; then
   echo "Invocation without any subcommand is a failure, but prints usage"
   exit 1
 fi
+
+if ! $exe --repository $existing_crates_clone recent-changes >/dev/null; then
+  echo "Expecting recent-changes on existing repo to work"
+fi
