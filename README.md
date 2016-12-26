@@ -1,4 +1,4 @@
-[![Build Status linux+osx](https://travis-ci.org/Byron/crates-io-cli-rs.svg?branch=master)](https://travis-ci.org/Byron/crates-io-cli-rs)
+[![Build Status](https://travis-ci.org/Byron/crates-io-cli-rs.svg?branch=master)](https://travis-ci.org/Byron/crates-io-cli-rs)
 
 A command-line interface to interact with [crates.io](https://crates.io/)
 

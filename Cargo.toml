@@ -11,3 +11,6 @@ version = "0.1.0"
 [dependencies]
 clap = "2.19.2"
 crates-index-diff = "1"
+
+[[bin]]
+name = "crates"
