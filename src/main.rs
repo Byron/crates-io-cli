@@ -1,11 +1,15 @@
 extern crate crates_index_diff;
+#[macro_use]
 extern crate clap;
+extern crate rustc_serialize;
 
 use std::path::PathBuf;
 use std::env;
 use std::error::Error;
-use std::io::Write;
+use std::io::{self, Write};
 use std::fmt::{self, Formatter, Display};
+use rustc_serialize::Encodable;
+use rustc_serialize::json;
 
 use clap::{Arg, SubCommand, App};
 use crates_index_diff::{CrateVersion, Index};
@@ -17,6 +21,15 @@ changed crates at all.
 Please note that the first query is likely to yield more than 40000 results!
 The first invocation may be slow as it might have to clone the crates.io index.
 "##;
+
+arg_enum!{
+    #[allow(non_camel_case_types)]
+    #[derive(Debug)]
+    pub enum OutputKind {
+        human,
+        json
+    }
+}
 
 struct ForHumans<'a>(&'a CrateVersion);
 
@@ -47,6 +60,7 @@ fn ok_or_exit<T, E>(result: Result<T, E>) -> T
 fn main() {
     let temp_dir = default_repository_dir();
     let temp_dir_str = temp_dir.to_string_lossy();
+    let human_output = format!("{}", OutputKind::human);
     let app = App::new("crates.io interface")
         .version("1.0")
         .author("Sebastian Thiel <byronimo@gmail.com>")
@@ -61,18 +75,51 @@ fn main() {
             .takes_value(true))
         .subcommand(SubCommand::with_name("recent-changes")
             .about("show all recently changed crates")
+            .arg(Arg::with_name("format")
+                .short("o")
+                .long("output")
+                .required(false)
+                .takes_value(true)
+                .default_value(&human_output)
+                .possible_values(&OutputKind::variants())
+                .help("The type of output to produce."))
             .after_help(CHANGES_SUBCOMMAND_DESCRIPTION));
 
     let matches = app.get_matches();
     let repo_path = matches.value_of("repository").expect("defaut to be set");
 
     match matches.subcommand() {
-        ("recent-changes", Some(_)) => {
+        ("recent-changes", Some(args)) => {
             let index = ok_or_exit(Index::from_path_or_cloned(repo_path));
-            let stdout = std::io::stdout();
+            let output_kind: OutputKind =
+                args.value_of("format").expect("default to be set").parse().expect("clap to work");
+            let stdout = io::stdout();
             let mut channel = stdout.lock();
-            for version in ok_or_exit(index.fetch_changes()) {
-                writeln!(channel, "{}", ForHumans(&version)).ok();
+            let changes = ok_or_exit(index.fetch_changes());
+
+            match output_kind {
+                OutputKind::human => {
+                    for version in changes {
+                        writeln!(channel, "{}", ForHumans(&version)).ok();
+                    }
+                }
+                OutputKind::json => {
+                    let mut buf = String::with_capacity(256);
+                    for version in changes {
+                        buf.clear();
+                        // for some reason, Write is not implemented for StdoutLock, and generally
+                        // the encoder does not work in conjunction with it.
+                        // this is why this is so inefficient.
+                        let res = {
+                            let mut encoder = json::Encoder::new(&mut buf);
+                            version.encode(&mut encoder)
+                        };
+
+                        if res.is_ok() {
+                            writeln!(channel, "{}", buf).ok();
+                        }
+                    }
+                }
             }
         }
         _ => {

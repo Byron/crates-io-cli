@@ -8,9 +8,10 @@ name = "crates-io-cli"
 repository = "https://github.com/Byron/crates-io-cli-rs"
 version = "0.1.0"
 
+[[bin]]
+name = "crates"
+
 [dependencies]
 clap = "2.19.2"
 crates-index-diff = "1"
-
-[[bin]]
-name = "crates"
+rustc-serialize = "0.3.22"
