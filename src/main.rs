@@ -90,6 +90,7 @@ fn main() {
 
     match matches.subcommand() {
         ("recent-changes", Some(args)) => {
+            ok_or_exit(std::fs::create_dir_all(repo_path));
             let index = ok_or_exit(Index::from_path_or_cloned(repo_path));
             let output_kind: OutputKind =
                 args.value_of("format").expect("default to be set").parse().expect("clap to work");
