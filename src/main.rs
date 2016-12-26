@@ -57,6 +57,41 @@ fn ok_or_exit<T, E>(result: Result<T, E>) -> T
     }
 }
 
+fn handle_recent_changes(repo_path: &str, args: &clap::ArgMatches) {
+    ok_or_exit(std::fs::create_dir_all(repo_path));
+    let index = ok_or_exit(Index::from_path_or_cloned(repo_path));
+    let output_kind: OutputKind =
+        args.value_of("format").expect("default to be set").parse().expect("clap to work");
+    let stdout = io::stdout();
+    let mut channel = stdout.lock();
+    let changes = ok_or_exit(index.fetch_changes());
+
+    match output_kind {
+        OutputKind::human => {
+            for version in changes {
+                writeln!(channel, "{}", ForHumans(&version)).ok();
+            }
+        }
+        OutputKind::json => {
+            let mut buf = String::with_capacity(256);
+            for version in changes {
+                buf.clear();
+                // for some reason, Write is not implemented for StdoutLock, and generally
+                // the encoder does not work in conjunction with it.
+                // this is why this is so inefficient.
+                let res = {
+                    let mut encoder = json::Encoder::new(&mut buf);
+                    version.encode(&mut encoder)
+                };
+
+                if res.is_ok() {
+                    writeln!(channel, "{}", buf).ok();
+                }
+            }
+        }
+    }
+}
+
 fn main() {
     let temp_dir = default_repository_dir();
     let temp_dir_str = temp_dir.to_string_lossy();
@@ -89,40 +124,7 @@ fn main() {
     let repo_path = matches.value_of("repository").expect("defaut to be set");
 
     match matches.subcommand() {
-        ("recent-changes", Some(args)) => {
-            ok_or_exit(std::fs::create_dir_all(repo_path));
-            let index = ok_or_exit(Index::from_path_or_cloned(repo_path));
-            let output_kind: OutputKind =
-                args.value_of("format").expect("default to be set").parse().expect("clap to work");
-            let stdout = io::stdout();
-            let mut channel = stdout.lock();
-            let changes = ok_or_exit(index.fetch_changes());
-
-            match output_kind {
-                OutputKind::human => {
-                    for version in changes {
-                        writeln!(channel, "{}", ForHumans(&version)).ok();
-                    }
-                }
-                OutputKind::json => {
-                    let mut buf = String::with_capacity(256);
-                    for version in changes {
-                        buf.clear();
-                        // for some reason, Write is not implemented for StdoutLock, and generally
-                        // the encoder does not work in conjunction with it.
-                        // this is why this is so inefficient.
-                        let res = {
-                            let mut encoder = json::Encoder::new(&mut buf);
-                            version.encode(&mut encoder)
-                        };
-
-                        if res.is_ok() {
-                            writeln!(channel, "{}", buf).ok();
-                        }
-                    }
-                }
-            }
-        }
+        ("recent-changes", Some(args)) => handle_recent_changes(repo_path, args),
         _ => {
             print!("{}\n", matches.usage());
             std::process::exit(1);
