@@ -1,0 +1,7 @@
+.DS_Store
+*.rs.bk
+target/
+Cargo.lock
+.idea/
+tests/fixtures/index-bare/
+tests/fixtures/index/

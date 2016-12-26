@@ -1,0 +1,13 @@
+[package]
+authors = ["Sebastian Thiel <byronimo@gmail.com>"]
+description = "Interact with crates.io from the command-line"
+documentation = "https://docs.rs/crates-io-cli"
+keywords = ["crates", "index", "diff", "cli"]
+license = "MIT"
+name = "crates-io-cli"
+repository = "https://github.com/Byron/crates-io-cli-rs"
+version = "0.1.0"
+
+[dependencies]
+clap = "2.19.2"
+crates-index-diff = "1"
