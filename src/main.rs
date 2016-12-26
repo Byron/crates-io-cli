@@ -76,15 +76,13 @@ fn handle_recent_changes(repo_path: &str, args: &clap::ArgMatches) {
             let mut buf = String::with_capacity(256);
             for version in changes {
                 buf.clear();
-                // for some reason, Write is not implemented for StdoutLock, and generally
-                // the encoder does not work in conjunction with it.
-                // this is why this is so inefficient.
-                let res = {
-                    let mut encoder = json::Encoder::new(&mut buf);
-                    version.encode(&mut encoder)
-                };
-
-                if res.is_ok() {
+                // unfortunately io::Write cannot be used directly, the encoder needs fmt::Write.
+                // To allow us reusing the buffer, we need to restrict its lifetime.
+                if {
+                        let mut encoder = json::Encoder::new(&mut buf);
+                        version.encode(&mut encoder)
+                    }
+                    .is_ok() {
                     writeln!(channel, "{}", buf).ok();
                 }
             }
