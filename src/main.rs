@@ -2,14 +2,21 @@ extern crate crates_index_diff;
 #[macro_use]
 extern crate clap;
 extern crate rustc_serialize;
+extern crate tokio_core;
+extern crate futures;
+extern crate futures_cpupool;
 
+use futures_cpupool::CpuPool;
+use futures::Future;
 use std::path::PathBuf;
 use std::env;
+use std::time::Duration;
 use std::error::Error;
 use std::io::{self, Write};
 use std::fmt::{self, Formatter, Display};
 use rustc_serialize::Encodable;
 use rustc_serialize::json;
+use tokio_core::reactor::{Timeout, Core};
 
 use clap::{Arg, SubCommand, App};
 use crates_index_diff::{CrateVersion, Index};
@@ -58,36 +65,69 @@ fn ok_or_exit<T, E>(result: Result<T, E>) -> T
 }
 
 fn handle_recent_changes(repo_path: &str, args: &clap::ArgMatches) {
-    ok_or_exit(std::fs::create_dir_all(repo_path));
-    let index = ok_or_exit(Index::from_path_or_cloned(repo_path));
+    let mut reactor = ok_or_exit(Core::new());
+    let handle: tokio_core::reactor::Handle = reactor.handle();
+    let timeout: Timeout = ok_or_exit(Timeout::new(Duration::from_millis(100), &handle));
+    let pool = CpuPool::new(1);
+
     let output_kind: OutputKind =
         args.value_of("format").expect("default to be set").parse().expect("clap to work");
-    let stdout = io::stdout();
-    let mut channel = stdout.lock();
-    let changes = ok_or_exit(index.fetch_changes());
+    let owned_repo_path = repo_path.to_owned();
 
-    match output_kind {
-        OutputKind::human => {
-            for version in changes {
-                writeln!(channel, "{}", ForHumans(&version)).ok();
+    let computation = pool.spawn_fn(move || {
+        println!("computation begin");
+        ok_or_exit(std::fs::create_dir_all(&owned_repo_path));
+        let index = ok_or_exit(Index::from_path_or_cloned(owned_repo_path));
+        let stdout = io::stdout();
+        let mut channel = stdout.lock();
+        let changes = ok_or_exit(index.fetch_changes());
+
+        match output_kind {
+            OutputKind::human => {
+                for version in changes {
+                    writeln!(channel, "{}", ForHumans(&version)).ok();
+                }
             }
-        }
-        OutputKind::json => {
-            let mut buf = String::with_capacity(256);
-            for version in changes {
-                buf.clear();
-                // unfortunately io::Write cannot be used directly, the encoder needs fmt::Write.
-                // To allow us reusing the buffer, we need to restrict its lifetime.
-                if {
-                        let mut encoder = json::Encoder::new(&mut buf);
-                        version.encode(&mut encoder)
+            OutputKind::json => {
+                let mut buf = String::with_capacity(256);
+                for version in changes {
+                    buf.clear();
+                    // unfortunately io::Write cannot be used directly, the encoder needs fmt::Write
+                    // To allow us reusing the buffer, we need to restrict its lifetime.
+                    if {
+                            let mut encoder = json::Encoder::new(&mut buf);
+                            version.encode(&mut encoder)
+                        }
+                        .is_ok() {
+                        writeln!(channel, "{}", buf).ok();
                     }
-                    .is_ok() {
-                    writeln!(channel, "{}", buf).ok();
                 }
             }
         }
-    }
+        println!("computation end");
+        Ok(Ok(()))
+    });
+    let owned_repo_path = repo_path.to_owned();
+    let timeout = timeout.and_then(move |_| {
+        writeln!(std::io::stderr(),
+                 "Please wait while we check out the crates.io index for the first time into \
+                  '{path}'",
+                 path = owned_repo_path)
+            .ok();
+        Ok(Err(()))
+    });
+    let handle = reactor.handle();
+    let computation = computation.select(timeout).then(|res| {
+        match res {
+            Ok((Ok(_), _)) => Ok(()),
+            Ok((Err(_), computation)) => {
+                handle.spawn(computation.then(|_| Ok(())));
+                Ok(())
+            }
+            Err((e, _drop_timeout)) => Err(e),
+        }
+    });
+    ok_or_exit(reactor.run(computation));
 }
 
 fn main() {
@@ -119,7 +159,7 @@ fn main() {
             .after_help(CHANGES_SUBCOMMAND_DESCRIPTION));
 
     let matches = app.get_matches();
-    let repo_path = matches.value_of("repository").expect("defaut to be set");
+    let repo_path = matches.value_of("repository").expect("default to be set");
 
     match matches.subcommand() {
         ("recent-changes", Some(args)) => handle_recent_changes(repo_path, args),
