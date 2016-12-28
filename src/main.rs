@@ -108,7 +108,7 @@ fn handle_recent_changes(repo_path: &str, args: &clap::ArgMatches) {
     let owned_repo_path = repo_path.to_owned();
     let timeout = timeout.and_then(move |_| {
         writeln!(std::io::stderr(),
-                 "Please wait while we check out the crates.io index for the first time into \
+                 "Please wait while we check out or fetch the crates.io index at \
                   '{path}'",
                  path = owned_repo_path)
             .ok();
