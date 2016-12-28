@@ -67,7 +67,7 @@ fn ok_or_exit<T, E>(result: Result<T, E>) -> T
 fn handle_recent_changes(repo_path: &str, args: &clap::ArgMatches) {
     let mut reactor = ok_or_exit(Core::new());
     let handle: tokio_core::reactor::Handle = reactor.handle();
-    let timeout: Timeout = ok_or_exit(Timeout::new(Duration::from_millis(100), &handle));
+    let timeout: Timeout = ok_or_exit(Timeout::new(Duration::from_millis(1000), &handle));
     let pool = CpuPool::new(1);
 
     let output_kind: OutputKind =
@@ -75,7 +75,6 @@ fn handle_recent_changes(repo_path: &str, args: &clap::ArgMatches) {
     let owned_repo_path = repo_path.to_owned();
 
     let computation = pool.spawn_fn(move || {
-        println!("computation begin");
         ok_or_exit(std::fs::create_dir_all(&owned_repo_path));
         let index = ok_or_exit(Index::from_path_or_cloned(owned_repo_path));
         let stdout = io::stdout();
@@ -104,7 +103,6 @@ fn handle_recent_changes(repo_path: &str, args: &clap::ArgMatches) {
                 }
             }
         }
-        println!("computation end");
         Ok(Ok(()))
     });
     let owned_repo_path = repo_path.to_owned();
@@ -116,14 +114,10 @@ fn handle_recent_changes(repo_path: &str, args: &clap::ArgMatches) {
             .ok();
         Ok(Err(()))
     });
-    let handle = reactor.handle();
     let computation = computation.select(timeout).then(|res| {
         match res {
             Ok((Ok(_), _)) => Ok(()),
-            Ok((Err(_), computation)) => {
-                handle.spawn(computation.then(|_| Ok(())));
-                Ok(())
-            }
+            Ok((Err(_), computation)) => computation.wait().map(|_| ()),
             Err((e, _drop_timeout)) => Err(e),
         }
     });
