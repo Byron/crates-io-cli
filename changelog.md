@@ -1,3 +1,13 @@
+<a name="v1.1.1"></a>
+### v1.1.1 (2016-12-28)
+
+
+#### Improvements
+
+* **cli:**  more descriptive timeout message ([d44f874f](https://github.com/Byron/crates-io-cli-rs/commit/d44f874fd0d413afd2e45d3f1682be5711078f7f))
+
+
+
 <a name="v1.1.0"></a>
 ## v1.1.0 (2016-12-28)
 
