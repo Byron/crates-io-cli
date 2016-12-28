@@ -67,7 +67,7 @@ fn ok_or_exit<T, E>(result: Result<T, E>) -> T
 fn handle_recent_changes(repo_path: &str, args: &clap::ArgMatches) {
     let mut reactor = ok_or_exit(Core::new());
     let handle: tokio_core::reactor::Handle = reactor.handle();
-    let timeout: Timeout = ok_or_exit(Timeout::new(Duration::from_millis(1000), &handle));
+    let timeout: Timeout = ok_or_exit(Timeout::new(Duration::from_secs(3), &handle));
     let pool = CpuPool::new(1);
 
     let output_kind: OutputKind =
