@@ -1,18 +1,24 @@
-extern crate tokio_timer;
+extern crate curl;
 extern crate termion;
 extern crate futures;
 extern crate futures_cpupool;
+extern crate tokio_core;
+extern crate tokio_curl;
 
 use self::futures_cpupool::CpuPool;
 
 use clap;
-use std;
+use std::thread;
+use std::sync::mpsc::channel;
+use self::curl::easy::Easy;
 use self::termion::event::Key;
 use self::termion::raw::IntoRawMode;
 use self::termion::input::TermRead;
 use self::termion::clear;
 use self::termion::cursor;
+use self::tokio_core::reactor::Core;
 use self::futures::Future;
+use self::tokio_curl::Session;
 use std::io::{self, Write};
 
 use utils::ok_or_exit;
@@ -24,7 +30,8 @@ pub fn handle_interactive_search(_args: &clap::ArgMatches) {
     let mut term = String::new();
     let pool = CpuPool::new(1);
     let mut most_recent_search = None;
-    let interruptable_timer = tokio_timer::Timer::default();
+    let reactor = ok_or_exit(Core::new());
+    let session = Session::new(reactor.handle());
 
     for k in stdin.keys() {
         match ok_or_exit(k) {
@@ -52,7 +59,17 @@ pub fn handle_interactive_search(_args: &clap::ArgMatches) {
                           cursor::Goto(1, 2),
                           clear::CurrentLine,
                           term_owned));
-        let waiter = interruptable_timer.sleep(std::time::Duration::from_secs(2))
+        let mut req = Easy::new();
+        req.get(true).unwrap();
+        req.url("https://www.rust-lang.org").unwrap();
+        req.write_function(|data| {
+            write!(io::stdout(), "{}{}",
+            cursor::Hide,
+            cursor::Goto(1, 2)).unwrap();
+            io::stdout().write_all(data).unwrap();
+            Ok(data.len())
+        }).unwrap();
+        let req = session.perform(req)
             .and_then(move |_| {
                 ok_or_exit(write!(io::stdout(),
                                   "{}{}{}    {} done !",
@@ -63,7 +80,7 @@ pub fn handle_interactive_search(_args: &clap::ArgMatches) {
                 io::stdout().flush().ok();
                 Ok(())
             });
-        most_recent_search = Some(pool.spawn(waiter));
+        most_recent_search = Some(pool.spawn(req));
         stdout.flush().ok();
     }
     drop(most_recent_search);
