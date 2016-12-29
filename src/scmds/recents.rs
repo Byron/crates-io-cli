@@ -37,7 +37,7 @@ pub fn handle_recent_changes(repo_path: &str, args: &clap::ArgMatches) {
     let pool = CpuPool::new(1);
 
     let output_kind: OutputKind =
-    args.value_of("format").expect("default to be set").parse().expect("clap to work");
+        args.value_of("format").expect("default to be set").parse().expect("clap to work");
     let owned_repo_path = repo_path.to_owned();
 
     let computation = pool.spawn_fn(move || {
@@ -60,9 +60,9 @@ pub fn handle_recent_changes(repo_path: &str, args: &clap::ArgMatches) {
                     // unfortunately io::Write cannot be used directly, the encoder needs fmt::Write
                     // To allow us reusing the buffer, we need to restrict its lifetime.
                     if {
-                        let mut encoder = json::Encoder::new(&mut buf);
-                        version.encode(&mut encoder)
-                    }
+                            let mut encoder = json::Encoder::new(&mut buf);
+                            version.encode(&mut encoder)
+                        }
                         .is_ok() {
                         writeln!(channel, "{}", buf).ok();
                     }

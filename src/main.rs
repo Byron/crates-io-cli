@@ -5,11 +5,12 @@ extern crate rustc_serialize;
 extern crate tokio_core;
 extern crate futures;
 extern crate futures_cpupool;
+extern crate termion;
 
 mod utils;
 mod scmds;
 
-use scmds::{handle_recent_changes, OutputKind};
+use scmds::{handle_interactive_search, handle_recent_changes, OutputKind};
 use std::env;
 use std::path::PathBuf;
 use clap::{Arg, SubCommand, App};
@@ -47,6 +48,7 @@ fn main() {
             .takes_value(true))
         .subcommand(SubCommand::with_name("recent-changes")
             .about("show all recently changed crates")
+            .display_order(1)
             .arg(Arg::with_name("format")
                 .short("o")
                 .long("output")
@@ -55,13 +57,18 @@ fn main() {
                 .default_value(&human_output)
                 .possible_values(&OutputKind::variants())
                 .help("The type of output to produce."))
-            .after_help(CHANGES_SUBCOMMAND_DESCRIPTION));
+            .after_help(CHANGES_SUBCOMMAND_DESCRIPTION))
+        .subcommand(SubCommand::with_name("search")
+            .display_order(2)
+            .about("search crates interactively"));
+
 
     let matches = app.get_matches();
     let repo_path = matches.value_of("repository").expect("default to be set");
 
     match matches.subcommand() {
         ("recent-changes", Some(args)) => handle_recent_changes(repo_path, args),
+        ("search", Some(args)) => handle_interactive_search(args),
         _ => {
             print!("{}\n", matches.usage());
             std::process::exit(1);
