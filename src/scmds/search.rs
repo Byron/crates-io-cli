@@ -6,7 +6,6 @@ extern crate tokio_curl;
 
 use clap;
 use std::thread;
-use std::sync::mpsc::channel;
 use self::curl::easy::Easy;
 use self::termion::event::Key;
 use self::termion::raw::IntoRawMode;
@@ -26,9 +25,9 @@ pub fn handle_interactive_search(_args: &clap::ArgMatches) {
     let mut stdout = ok_or_exit(io::stdout().into_raw_mode());
     ok_or_exit(write!(stdout, "{}{}", cursor::Goto(1, 1), clear::All));
     let mut term = String::new();
-    let (mut sender, receiver) = mpsc::channel(4);
-    thread::spawn(|| {
-        let reactor = ok_or_exit(Core::new());
+    let (sender, receiver) = mpsc::channel(4);
+    let t = thread::spawn(|| {
+        let mut reactor = ok_or_exit(Core::new());
         let session = Session::new(reactor.handle());
         let search_terms = receiver.and_then(|term| {
                 ok_or_exit(write!(io::stdout(),
@@ -42,25 +41,28 @@ pub fn handle_interactive_search(_args: &clap::ArgMatches) {
                 req.url("https://www.rust-lang.org").unwrap();
                 req.write_function(|data| {
                         write!(io::stdout(), "{}{}", cursor::Hide, cursor::Goto(1, 2)).unwrap();
-                        io::stdout().write_all(data).unwrap();
                         Ok(data.len())
                     })
                     .unwrap();
-                session.perform(req)
+                session.perform(req).map_err(|_| ()).map(|r| (r, term))
             })
-            .for_each(|response| {
+            .for_each(|(mut response, term)| {
                 ok_or_exit(write!(io::stdout(),
-                                  "{}{}{}    {} done !",
+                                  "{}{}{}    {} - {} done !",
                                   cursor::Hide,
                                   cursor::Goto(1, 2),
                                   clear::CurrentLine,
+                                  response.response_code().unwrap(),
                                   term));
                 io::stdout().flush().ok();
                 Ok(())
             });
-        reactor.run(search_terms);
+        println!("Running reactor");
+        reactor.run(search_terms).ok();
+        println!("done running reactor - shutting down");
     });
 
+//    let mut ongoing_search = None;
     for k in stdin.keys() {
         match ok_or_exit(k) {
             Key::Char(c) => {
@@ -81,6 +83,10 @@ pub fn handle_interactive_search(_args: &clap::ArgMatches) {
                           clear::CurrentLine,
                           term));
         stdout.flush().ok();
-        sender.send(term.clone());
+//        ongoing_search = Some(sender.clone().send(term.clone()));
+        sender.clone().send(term.clone()).wait().ok();
     }
+//    drop(ongoing_search);
+    drop(sender);
+    t.join().unwrap();
 }
