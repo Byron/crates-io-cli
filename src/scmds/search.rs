@@ -41,9 +41,17 @@ pub fn handle_interactive_search(_args: &clap::ArgMatches) {
                                   term));
                 let mut req = Easy::new();
                 req.get(true).unwrap();
-                req.url("https://www.rust-lang.org").unwrap();
+                let todo_urlencode = format!("https://crates.\
+                                              io/api/v1/crates?page=1&per_page=10&q={}&sort=",
+                                             term);
+                req.url(&todo_urlencode).unwrap();
                 req.write_function(|data| {
-                        write!(io::stdout(), "{}{}", cursor::Hide, cursor::Goto(1, 2)).unwrap();
+                        write!(io::stdout(),
+                               "{}{} {} bytes received",
+                               cursor::Hide,
+                               cursor::Goto(1, 3),
+                               data.len())
+                            .unwrap();
                         Ok(data.len())
                     })
                     .unwrap();
