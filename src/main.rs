@@ -1,5 +1,6 @@
 #[macro_use]
 extern crate clap;
+extern crate rustc_serialize;
 
 mod utils;
 mod scmds;
