@@ -1,11 +1,5 @@
-extern crate crates_index_diff;
 #[macro_use]
 extern crate clap;
-extern crate rustc_serialize;
-extern crate tokio_core;
-extern crate futures;
-extern crate futures_cpupool;
-extern crate termion;
 
 mod utils;
 mod scmds;

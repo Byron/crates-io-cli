@@ -1,7 +1,9 @@
+extern crate termion;
+
 use clap;
-use termion::event::Key;
-use termion::raw::IntoRawMode;
-use termion::input::TermRead;
+use self::termion::event::Key;
+use self::termion::raw::IntoRawMode;
+use self::termion::input::TermRead;
 use std::io::{self, Write};
 
 use utils::ok_or_exit;
