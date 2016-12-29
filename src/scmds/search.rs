@@ -1,3 +1,4 @@
+extern crate tokio_timer;
 extern crate termion;
 extern crate futures;
 extern crate futures_cpupool;
@@ -11,6 +12,7 @@ use self::termion::raw::IntoRawMode;
 use self::termion::input::TermRead;
 use self::termion::clear;
 use self::termion::cursor;
+use self::futures::Future;
 use std::io::{self, Write};
 
 use utils::ok_or_exit;
@@ -37,13 +39,15 @@ pub fn handle_interactive_search(_args: &clap::ArgMatches) {
         }
         ok_or_exit(write!(stdout, "{}{}{}{}", cursor::Show, cursor::Goto(1, 1), clear::CurrentLine,  term));
         let term_owned = term.clone();
-        most_recent_search = Some(pool.spawn_fn(move || {
-            ok_or_exit(write!(io::stdout(), "{}{}{}searching {}", cursor::Hide, cursor::Goto(1, 2), clear::CurrentLine,  term_owned));
-            std::thread::sleep(std::time::Duration::from_secs(2));
+        ok_or_exit(write!(io::stdout(), "{}{}{}searching {}", cursor::Hide, cursor::Goto(1, 2), clear::CurrentLine,  term_owned));
+        let interruptable_timer = tokio_timer::Timer::default();
+        let waiter = interruptable_timer.sleep(std::time::Duration::from_secs(2));
+        let waiter = waiter.and_then(move |_| {
             ok_or_exit(write!(io::stdout(), "{}{}{}    {} done !", cursor::Hide, cursor::Goto(1, 2), clear::CurrentLine, term_owned));
             io::stdout().flush().ok();
-            Ok::<_, ()>(())
-        }));
+            Ok(())
+        });
+        most_recent_search = Some(pool.spawn(waiter));
         stdout.flush().ok();
     }
     drop(most_recent_search);
