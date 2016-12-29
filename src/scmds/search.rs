@@ -3,9 +3,11 @@ extern crate termion;
 extern crate futures;
 extern crate tokio_core;
 extern crate tokio_curl;
+extern crate futures_cpupool;
 
 use clap;
 use std::thread;
+use self::futures_cpupool::CpuPool;
 use self::curl::easy::Easy;
 use self::termion::event::Key;
 use self::termion::raw::IntoRawMode;
@@ -26,6 +28,7 @@ pub fn handle_interactive_search(_args: &clap::ArgMatches) {
     ok_or_exit(write!(stdout, "{}{}", cursor::Goto(1, 1), clear::All));
     let mut term = String::new();
     let (sender, receiver) = mpsc::channel(4);
+    let pool = CpuPool::new(1);
     let t = thread::spawn(|| {
         let mut reactor = ok_or_exit(Core::new());
         let session = Session::new(reactor.handle());
@@ -62,7 +65,7 @@ pub fn handle_interactive_search(_args: &clap::ArgMatches) {
         println!("done running reactor - shutting down");
     });
 
-//    let mut ongoing_search = None;
+    let mut ongoing_search = None;
     for k in stdin.keys() {
         match ok_or_exit(k) {
             Key::Char(c) => {
@@ -83,10 +86,9 @@ pub fn handle_interactive_search(_args: &clap::ArgMatches) {
                           clear::CurrentLine,
                           term));
         stdout.flush().ok();
-//        ongoing_search = Some(sender.clone().send(term.clone()));
-        sender.clone().send(term.clone()).wait().ok();
+        ongoing_search = Some(pool.spawn(sender.clone().send(term.clone())));
     }
-//    drop(ongoing_search);
+    drop(ongoing_search);
     drop(sender);
     t.join().unwrap();
 }
