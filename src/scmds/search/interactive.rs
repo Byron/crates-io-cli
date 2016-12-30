@@ -85,8 +85,17 @@ impl<'a> Display for Indexed<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let dim = self.0.meta.dimension.clone().unwrap_or_default();
         let center = ((dim.width / 2) - 2) as u16;
+        write!(f,
+               "{hide}{align}",
+               hide = cursor::Hide,
+               align = cursor::Right(center))?;
         for i in (0..self.0.crates.len()).take(dim.height as usize) {
-            write!(f, "{}#{}#{}", cursor::Right(center), i + 1, cursor::Down(1))?
+            let rendered = format!("-#{:3} #-", i + 1);
+            write!(f,
+                   "{}{left}{down}",
+                   rendered,
+                   left = cursor::Left(rendered.len() as u16),
+                   down = cursor::Down(1))?
         }
         Ok(())
     }
@@ -153,6 +162,8 @@ pub fn handle_interactive_search(_args: &clap::ArgMatches) {
                     DrawIndices => {
                         match current_result {
                             Some(ref search) => {
+                                info(&"(<ESC> to quit, Ctrl+o to cancel, <enter> to confirm) \
+                                       Type the number of the crate to open.");
                                 write!(io::stdout(),
                                        "{goto}{}",
                                        Indexed(search),
