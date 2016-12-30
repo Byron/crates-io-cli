@@ -307,6 +307,7 @@ pub fn handle_interactive_search(_args: &clap::ArgMatches) {
                 if state.term.is_empty() {
                     Clear
                 } else {
+                    state.mode = Searching(false);
                     Search(last, state.term.clone())
                 }
             }
