@@ -7,11 +7,11 @@ A command-line interface to interact with [crates.io](https://crates.io/)
 # Features
 
 * **search cratse.io interactively**
- * see search results coming in while you type
-* **list changes**
- * See what changed on crates.io.
-* **multiple output modes**
- * Output for either *humans* or *machines* as *json*.
+  [![asciicast](https://asciinema.org/a/40smybc7cmzeawrvttnh44es0.png)](https://asciinema.org/a/40smybc7cmzeawrvttnh44es0)
+* **list recently changes crates**
+  [![asciicast](https://asciinema.org/a/51qczytg4mh3aglhgczza0sot.png)](https://asciinema.org/a/51qczytg4mh3aglhgczza0sot)
+* **output modes for humans and machines**
+  [![asciicast](https://asciinema.org/a/0x0famma168b7xj663971gdsp.png)](https://asciinema.org/a/0x0famma168b7xj663971gdsp)
 
 # Installation
 
