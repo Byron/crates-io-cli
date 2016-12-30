@@ -86,6 +86,10 @@ fn desired_string_widths(items: &[Crate], max_width: u16) -> (usize, usize, usiz
             } else {
                 w
             };
+            if total_width < max_width {
+                prio_widths[i] = w.saturating_add(max_width - total_width);
+                break;
+            }
         }
         prio_widths
     };
