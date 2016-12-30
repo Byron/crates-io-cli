@@ -1,20 +1,15 @@
-extern crate crates_index_diff;
-extern crate rustc_serialize;
-extern crate tokio_core;
-extern crate futures;
-extern crate futures_cpupool;
-
-use self::futures_cpupool::CpuPool;
-use self::futures::Future;
+use futures_cpupool::CpuPool;
+use futures::Future;
 use std::time::Duration;
 use std::io::{self, Write};
 use std::fmt::{self, Formatter, Display};
-use self::rustc_serialize::{json, Encodable};
-use self::tokio_core::reactor::{Timeout, Core};
+use rustc_serialize::{json, Encodable};
+use tokio_core::reactor::{Timeout, Core};
 
 use clap;
 use std;
-use self::crates_index_diff::{CrateVersion, Index};
+use tokio_core;
+use crates_index_diff::{CrateVersion, Index};
 use utils::ok_or_exit;
 
 arg_enum!{
