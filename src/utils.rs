@@ -3,7 +3,7 @@ use std::default::Default;
 
 use std;
 
-#[derive(RustcDecodable)]
+#[derive(RustcDecodable, Clone)]
 pub struct Dimension {
     pub width: u16,
     pub height: u16,

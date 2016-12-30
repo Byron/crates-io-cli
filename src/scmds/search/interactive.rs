@@ -79,6 +79,19 @@ impl State {
     }
 }
 
+struct Indexed<'a>(&'a SearchResult);
+
+impl<'a> Display for Indexed<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let dim = self.0.meta.dimension.clone().unwrap_or_default();
+        let center = ((dim.width / 2) - 2) as u16;
+        for i in (0..self.0.crates.len()).take(dim.height as usize) {
+            write!(f, "{}#{}#{}", cursor::Right(center), i + 1, cursor::Down(1))?
+        }
+        Ok(())
+    }
+}
+
 pub fn handle_interactive_search(_args: &clap::ArgMatches) {
     let stdin = io::stdin();
     let mut stdout = ok_or_exit(io::stdout().into_raw_mode());
@@ -138,7 +151,18 @@ pub fn handle_interactive_search(_args: &clap::ArgMatches) {
             .for_each(|(search, cmd)| {
                 match cmd {
                     DrawIndices => {
-                        info(&"TBD: draw indices");
+                        match current_result {
+                            Some(ref search) => {
+                                write!(io::stdout(),
+                                       "{goto}{}",
+                                       Indexed(search),
+                                       goto = CONTENT_LINE)
+                                    .ok();
+                            }
+                            None => {
+                                info(&"There is nothing to open - conduct a search first.");
+                            }
+                        }
                     }
                     Open(number) => {
                         info(&format!("TBD: try to open a number: {}", number));
