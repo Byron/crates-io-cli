@@ -56,6 +56,10 @@ impl<'a> Display for CrateRow<'a> {
     }
 }
 
+pub fn desired_table_widths(items: &[Crate], dim: &Dimension) -> (usize, usize, usize, usize) {
+    desired_string_widths(items, dim.width - CRATE_ROW_OVERHEAD)
+}
+
 fn desired_string_widths(items: &[Crate], max_width: u16) -> (usize, usize, usize, usize) {
     let (nw, dw, vw, dlw) = items.iter()
         .fold((0, 0, 0, 0), |(mut nw, mut dw, mut vw, mut dlw), c| {
@@ -123,7 +127,7 @@ impl SearchResult {
 impl Display for SearchResult {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let dim = self.meta.dimension.as_ref().expect("dimension to be set");
-        let max_width = desired_string_widths(&self.crates, dim.width - CRATE_ROW_OVERHEAD);
+        let max_width = desired_table_widths(&self.crates, &dim);
         for krate in self.crates
             .iter()
             .cloned()

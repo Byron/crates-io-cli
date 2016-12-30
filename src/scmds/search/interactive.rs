@@ -1,4 +1,4 @@
-use super::structs::SearchResult;
+use super::structs::{desired_table_widths, SearchResult};
 use utils::Dimension;
 use clap;
 use open;
@@ -85,7 +85,9 @@ struct Indexed<'a>(&'a SearchResult);
 impl<'a> Display for Indexed<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let dim = self.0.meta.dimension.clone().unwrap_or_default();
-        let center = ((dim.width / 2) - 2) as u16;
+
+        let (nw, ..) = desired_table_widths(&self.0.crates, &dim);
+        let center = (nw + 1) as u16;
         write!(f,
                "{hide}{align}",
                hide = cursor::Hide,
