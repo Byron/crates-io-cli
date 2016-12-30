@@ -1,4 +1,4 @@
-use super::structs::SearchResult;
+use super::structs::{Dimension, SearchResult};
 use clap;
 use std::str;
 use std::sync::{Mutex, Arc};
@@ -21,7 +21,6 @@ use utils::ok_or_exit;
 
 const INFO_LINE: cursor::Goto = cursor::Goto(1, 2);
 const CONTENT_LINE: cursor::Goto = cursor::Goto(1, 3);
-const PAGE_SIZE: usize = 20;
 
 pub fn handle_interactive_search(_args: &clap::ArgMatches) {
     let stdin = io::stdin();
@@ -39,9 +38,10 @@ pub fn handle_interactive_search(_args: &clap::ArgMatches) {
         let session = Session::new(reactor.handle());
         let search_terms = receiver.and_then(|term| {
                 let mut req = Easy::new();
+                let dim = Dimension::default();
                 ok_or_exit(req.get(true));
                 let url = format!("https://crates.io/api/v1/crates?page=1&per_page={}&q={}&sort=",
-                                  PAGE_SIZE,
+                                  dim.height,
                                   req.url_encode(String::as_bytes(&term)));
                 ok_or_exit(req.url(&url));
                 let buf = Arc::new(Mutex::new(Vec::new()));
@@ -57,7 +57,7 @@ pub fn handle_interactive_search(_args: &clap::ArgMatches) {
                         ()
                     })
                     .map(move |r| {
-                        let result = SearchResult::from_data(&buf.lock().unwrap(), PAGE_SIZE);
+                        let result = SearchResult::from_data(&buf.lock().unwrap(), dim);
                         (r, result)
                     })
             })
@@ -65,7 +65,7 @@ pub fn handle_interactive_search(_args: &clap::ArgMatches) {
                 let search: SearchResult = ok_or_exit(search);
                 info(&format!("{} results in total, showing {} max",
                               search.meta.total,
-                              search.meta.page_size.as_ref().unwrap()));
+                              search.meta.dimension.as_ref().expect("dimension to be set").height));
                 if search.crates.is_empty() {
                     let last = usage();
                     write!(io::stdout(),
@@ -107,7 +107,7 @@ pub fn handle_interactive_search(_args: &clap::ArgMatches) {
             usage();
             write!(stdout,
                    "{goto}{}",
-                   SearchResult::with_page_size(PAGE_SIZE),
+                   SearchResult::with_dimension(),
                    goto = CONTENT_LINE)
                 .ok();
             stdout.flush().ok();

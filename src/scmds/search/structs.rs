@@ -15,10 +15,26 @@ fn sanitize(input: &str) -> String {
         .collect()
 }
 
+#[derive(RustcDecodable)]
+pub struct Dimension {
+    pub width: u16,
+    pub height: u16
+}
+
+impl Default for Dimension {
+    fn default() -> Dimension {
+        let (mw, mh) = terminal_size().unwrap_or((80, 20));
+        Dimension {
+            width: mw,
+            height: mh
+        }
+    }
+}
+
 #[derive(RustcDecodable, Default)]
 pub struct Meta {
     pub total: u32,
-    pub page_size: Option<usize>,
+    pub dimension: Option<Dimension>,
 }
 
 #[derive(RustcDecodable, Debug, Clone, Default)]
@@ -51,18 +67,18 @@ pub struct SearchResult {
 }
 
 impl SearchResult {
-    pub fn with_page_size(page_size: usize) -> SearchResult {
+    pub fn with_dimension() -> SearchResult {
         SearchResult {
-            meta: Meta { page_size: Some(page_size), ..Default::default() },
+            meta: Meta { dimension: Some(Dimension::default()), ..Default::default() },
             ..Default::default()
         }
     }
-    pub fn from_data(buf: &[u8], page_size: usize) -> Result<SearchResult, json::DecoderError> {
+    pub fn from_data(buf: &[u8], dim: Dimension) -> Result<SearchResult, json::DecoderError> {
         str::from_utf8(buf)
             .map_err(|e| json::DecoderError::ApplicationError(format!("{}", e)))
             .and_then(json::decode)
             .map(|mut v: SearchResult| {
-                v.meta.page_size = Some(page_size);
+                v.meta.dimension = Some(dim);
                 v
             })
     }
@@ -70,20 +86,20 @@ impl SearchResult {
 
 impl Display for SearchResult {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let (mw, _mh) = terminal_size().map(|(w, h)| (w as usize, h as usize)).unwrap_or((80, 20));
+        let dim = self.meta.dimension.as_ref().expect("dimension to be set");
         for krate in self.crates
             .iter()
             .cloned()
             .chain(iter::repeat(Crate::default()))
-            .take(self.meta.page_size.as_ref().cloned().unwrap()) {
+            .take(dim.height as usize) {
             let krate = format!("{}", krate);
             write!(f,
                    "{clear}{:.max$}{down}{left}",
                    krate,
                    clear = clear::CurrentLine,
                    down = cursor::Down(1),
-                   left = cursor::Left(cmp::max(krate.len(), mw as usize) as u16),
-                   max = mw)?;
+                   left = cursor::Left(cmp::max(krate.len(), dim.width as usize) as u16),
+                   max = dim.width as usize)?;
         }
         Ok(())
     }
