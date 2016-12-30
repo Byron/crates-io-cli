@@ -1,3 +1,5 @@
+use utils::Dimension;
+
 use std::fmt::{self, Display};
 use std::default::Default;
 use std::iter;
@@ -5,7 +7,6 @@ use std::str;
 use std::cmp;
 
 use rustc_serialize::json;
-use termion::terminal_size;
 use termion::clear;
 use termion::cursor;
 
@@ -13,29 +14,6 @@ fn sanitize(input: &str) -> String {
     input.chars()
         .map(|c| if c == '\n' { ' ' } else { c })
         .collect()
-}
-
-#[derive(RustcDecodable)]
-pub struct Dimension {
-    pub width: u16,
-    pub height: u16
-}
-
-impl Dimension {
-    pub fn loose_heigth(mut self, h: u16) -> Dimension {
-        self.height -= h;
-        self
-    }
-}
-
-impl Default for Dimension {
-    fn default() -> Dimension {
-        let (mw, mh) = terminal_size().unwrap_or((80, 20));
-        Dimension {
-            width: mw,
-            height: mh
-        }
-    }
 }
 
 #[derive(RustcDecodable, Default)]

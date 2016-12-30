@@ -1,4 +1,5 @@
-use super::structs::{Dimension, SearchResult};
+use super::structs::SearchResult;
+use utils::Dimension;
 use clap;
 use std::str;
 use std::sync::{Mutex, Arc};
