@@ -1,3 +1,13 @@
+<a name="v1.3.0"></a>
+## v1.3.0 (2016-12-30)
+
+
+#### Improvements
+
+* **search and open**
+ * Open crates on cates.io 
+
+
 <a name="v1.2.0"></a>
 ## v1.2.0 (2016-12-30)
 

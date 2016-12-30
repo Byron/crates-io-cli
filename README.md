@@ -6,8 +6,10 @@ A command-line interface to interact with [crates.io](https://crates.io/)
 
 ### Features
 
-* **search cratse.io interactively**
+* **search crates.io interactively and open in browser**
   [![asciicast](https://asciinema.org/a/40smybc7cmzeawrvttnh44es0.png)](https://asciinema.org/a/40smybc7cmzeawrvttnh44es0)
+  
+  [![asciicast](https://asciinema.org/a/99zkxo4gastj25qrp0zb0no4x.png)](https://asciinema.org/a/99zkxo4gastj25qrp0zb0no4x)
 * **list recently changes crates**
   [![asciicast](https://asciinema.org/a/51qczytg4mh3aglhgczza0sot.png)](https://asciinema.org/a/51qczytg4mh3aglhgczza0sot)
 * **output modes for humans and machines**
@@ -35,7 +37,3 @@ You can learn what it can do by using the `--help` flag:
 ```bash
 crates --help
 ```
-
-### TODO
-
-* [ ] Allow to open the crate and version on crates.io

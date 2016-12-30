@@ -1,0 +1,218 @@
+{
+  "version": 1,
+  "width": 94,
+  "height": 10,
+  "duration": 11.222906,
+  "command": null,
+  "title": "crates search and open",
+  "env": {
+    "TERM": "xterm-256color",
+    "SHELL": "/bin/zsh"
+  },
+  "stdout": [
+    [
+      0.073482,
+      "\u001b]7;file://rustbook/Users/byron\u0007"
+    ],
+    [
+      0.408149,
+      "\u001b[1m\u001b[7m%\u001b[27m\u001b[1m\u001b[0m                                                                                             \r \r"
+    ],
+    [
+      0.081169,
+      "\u001b]7;file://rustbook/Users/byron\u0007"
+    ],
+    [
+      0.020956,
+      "\r\u001b[0m\u001b[27m\u001b[24m\u001b[J\u001b[01;32m➜  \u001b[36m~\u001b[00m \u001b[K"
+    ],
+    [
+      0.000169,
+      "\u001b[?1h\u001b="
+    ],
+    [
+      3.4e-05,
+      "\u001b[?2004h"
+    ],
+    [
+      1.0,
+      "c"
+    ],
+    [
+      0.165652,
+      "\bcr"
+    ],
+    [
+      0.10401,
+      "a"
+    ],
+    [
+      0.071958,
+      "t"
+    ],
+    [
+      0.075982,
+      "e"
+    ],
+    [
+      0.048583,
+      "s"
+    ],
+    [
+      0.111159,
+      " "
+    ],
+    [
+      0.334282,
+      "s"
+    ],
+    [
+      0.064176,
+      "e"
+    ],
+    [
+      0.107783,
+      "a"
+    ],
+    [
+      0.084134,
+      "r"
+    ],
+    [
+      0.082985,
+      "c"
+    ],
+    [
+      0.190106,
+      "h"
+    ],
+    [
+      0.463232,
+      "\u001b[?1l\u001b>"
+    ],
+    [
+      5.6e-05,
+      "\u001b[?2004l\r\r\n"
+    ],
+    [
+      0.021261,
+      "\u001b[1;1H\u001b[2J\u001b[?25h\u001b[1;1H\u001b[2K search: \u001b[?25l\u001b[2;1H\u001b[2K(<ESC> to quit, <enter> to clear, Ctrl+o to open) Please enter your search term."
+    ],
+    [
+      1.0,
+      "\u001b[?25h\u001b[1;1H\u001b[2K search: t"
+    ],
+    [
+      0.000249,
+      "\u001b[?25l\u001b[2;1H\u001b[2Ksearching ..."
+    ],
+    [
+      0.068714,
+      "\u001b[?25h\u001b[1;1H\u001b[2K search: to"
+    ],
+    [
+      0.135743,
+      "\u001b[?25h\u001b[1;1H\u001b[2K search: tok"
+    ],
+    [
+      0.14737,
+      "\u001b[?25h\u001b[1;1H\u001b[2K search: toki"
+    ],
+    [
+      0.036457,
+      "\u001b[?25h\u001b[1;1H\u001b[2K search: tokio"
+    ],
+    [
+      0.213572,
+      "\u001b[?25l\u001b[2;1H\u001b[2K0 results in total, showing 8 max\u001b[?25l\u001b[2;1H\u001b[2K(<ESC> to quit, <enter> to clear, Ctrl+o to open) Please enter your search term.\u001b[2;80H - 0 results found\u001b[?25l\u001b[2;1H\u001b[2Ksearching ..."
+    ],
+    [
+      0.141817,
+      "\u001b[?25l\u001b[2;1H\u001b[2K0 results in total, showing 8 max\u001b[?25l\u001b[2;1H\u001b[2K(<ESC> to quit, <enter> to clear, Ctrl+o to open) Please enter your search term.\u001b[2;80H - 0 results found"
+    ],
+    [
+      6.7e-05,
+      "\u001b[?25l\u001b[2;1H\u001b[2Ksearching ..."
+    ],
+    [
+      0.140317,
+      "\u001b[?25l\u001b[2;1H\u001b[2K3 results in total, showing 8 max\u001b[3;1H\u001b[2Knc_rustlex         | Lexical analysers generator for Rust, written in Rust (cra |  564 | 0.3.1\u001b[1B\u001b[152D\u001b[2Krumblebars-rustlex | Lexical analysers generator for Rust, written in Rust (cra |  620 | 0.3.2\u001b[1B\u001b[152D\u001b[2Krustlex            | Lexical analysers generator for Rust, written in Rust      | 2128 | 0.3.3\u001b[1B\u001b[152D\u001b[2K\u001b[J\u001b[1B\u001b[94D\u001b[2K\u001b[J\u001b[1B\u001b[94D\u001b[2K\u001b[J\u001b[1B\u001b[94D\u001b[2K\u001b[J\u001b[1B\u001b[94D\u001b[2K\u001b[J\u001b[1B\u001b[94D"
+    ],
+    [
+      5e-05,
+      "\u001b[?25l\u001b[2;1H\u001b[2Ksearching ..."
+    ],
+    [
+      0.137512,
+      "\u001b[?25l\u001b[2;1H\u001b[2K0 results in total, showing 8 max\u001b[?25l\u001b[2;1H\u001b[2K(<ESC> to quit, <enter> to clear, Ctrl+o to open) Please enter your search term.\u001b[2;80H - 0 results found\u001b[?25l\u001b[2;1H\u001b[2Ksearching ..."
+    ],
+    [
+      0.149755,
+      "\u001b[?25l\u001b[2;1H\u001b[2K33 results in total, showing 8 max"
+    ],
+    [
+      0.000122,
+      "\u001b[3;1H\u001b[2Ktokio                | A fast, async, IO framework                             |   365 | 0.0.0\u001b[1B\u001b[149D\u001b[2Kfutures              | An implementation of futures and streams featuring zero | 25274 | 0.1.7\u001b[1B\u001b[149D\u001b[2Ktokio-http2          | HTTP/2 and HPACK library to be used in client and serve |    18 | 0.1.2\u001b[1B\u001b[149D\u001b[2Ktokio-dns-unofficial | Unofficial extension to tokio-core to provide asynchron |    23 | 0.1.1\u001b[1B\u001b[149D\u001b[2Ktokio-pool           | TokioPool is a library designed to help you multithread |     6 | 0.1.0\u001b[1B\u001b[149D\u001b[2Ktokio-graphql        | GraphQL implementation built on top of tokio-http2, top |    14 | 0.1.0\u001b[1B\u001b[149D\u001b[2Kns-dns-tokio         |     Name service implementation for abstract-ns that us |   137 | 0.1.0\u001b[1B\u001b[149D\u001b[2Ktokio-inotify        | Stream-based access to filesystem events.               |   151 | 0.3.0\u001b[1B\u001b[149D"
+    ],
+    [
+      0.909301,
+      "\u001b[?25h\u001b[1;1H\u001b[2K open by number: "
+    ],
+    [
+      5.6e-05,
+      "\u001b[?25l\u001b[2;1H\u001b[2K(<ESC> to quit, Ctrl+o to cancel, <enter> to confirm) Type the number of the crate to open.\u001b[3;1H\u001b[?25l\u001b[21C|#  0 #|\u001b[8D\u001b[1B|#  1 #|\u001b[8D\u001b[1B|#  2 #|\u001b[8D\u001b[1B|#  3 #|\u001b[8D\u001b[1B|#  4 #|\u001b[8D\u001b[1B|#  5 #|\u001b[8D\u001b[1B|#  6 #|\u001b[8D\u001b[1B|#  7 #|\u001b[8D\u001b[1B"
+    ],
+    [
+      1.0,
+      "\u001b[?25h\u001b[1;1H\u001b[2K search: tokio"
+    ],
+    [
+      0.000145,
+      "\u001b[3;1H\u001b[2Ktokio                | A fast, async, IO framework                             |   365 | 0.0.0\u001b[1B\u001b[149D\u001b[2Kfutures              | An implementation of futures and streams featuring zero | 25274 | 0.1.7\u001b[1B\u001b[149D\u001b[2Ktokio-http2          | HTTP/2 and HPACK library to be used in client and serve |    18 | 0.1.2\u001b[1B\u001b[149D\u001b[2Ktokio-dns-unofficial | Unofficial extension to tokio-core to provide asynchron |    23 | 0.1.1\u001b[1B\u001b[149D\u001b[2Ktokio-pool           | TokioPool is a library designed to help you multithread |     6 | 0.1.0\u001b[1B\u001b[149D\u001b[2Ktokio-graphql        | GraphQL implementation built on top of tokio-http2, top |    14 | 0.1.0\u001b[1B\u001b[149D\u001b[2Kns-dns-tokio         |     Name service implementation for abstract-ns that us |   137 | 0.1.0\u001b[1B\u001b[149D\u001b[2Ktokio-inotify        | Stream-based access to filesystem events.               |   151 | 0.3.0\u001b[1B\u001b[149D"
+    ],
+    [
+      1.0,
+      "\u001b[?25h\u001b[1;1H\u001b[2K open by number: \u001b[?25l\u001b[2;1H\u001b[2K(<ESC> to quit, Ctrl+o to cancel, <enter> to confirm) Type the number of the crate to open."
+    ],
+    [
+      3.9e-05,
+      "\u001b[3;1H\u001b[?25l\u001b[21C|#  0 #|\u001b[8D\u001b[1B|#  1 #|\u001b[8D\u001b[1B|#  2 #|\u001b[8D\u001b[1B|#  3 #|\u001b[8D\u001b[1B|#  4 #|\u001b[8D\u001b[1B|#  5 #|\u001b[8D\u001b[1B|#  6 #|\u001b[8D\u001b[1B|#  7 #|\u001b[8D\u001b[1B"
+    ],
+    [
+      0.487881,
+      "\u001b[?25h\u001b[1;1H\u001b[2K search: tokio"
+    ],
+    [
+      0.000143,
+      "\u001b[3;1H\u001b[2Ktokio                | A fast, async, IO framework                             |   365 | 0.0.0\u001b[1B\u001b[149D\u001b[2Kfutures              | An implementation of futures and streams featuring zero | 25274 | 0.1.7\u001b[1B\u001b[149D\u001b[2Ktokio-http2          | HTTP/2 and HPACK library to be used in client and serve |    18 | 0.1.2\u001b[1B\u001b[149D\u001b[2Ktokio-dns-unofficial | Unofficial extension to tokio-core to provide asynchron |    23 | 0.1.1\u001b[1B\u001b[149D\u001b[2Ktokio-pool           | TokioPool is a library designed to help you multithread |     6 | 0.1.0\u001b[1B\u001b[149D\u001b[2Ktokio-graphql        | GraphQL implementation built on top of tokio-http2, top |    14 | 0.1.0\u001b[1B\u001b[149D\u001b[2Kns-dns-tokio         |     Name service implementation for abstract-ns that us |   137 | 0.1.0\u001b[1B\u001b[149D\u001b[2Ktokio-inotify        | Stream-based access to filesystem events.               |   151 | 0.3.0\u001b[1B\u001b[149D"
+    ],
+    [
+      1.0,
+      "Thread shutting down\n"
+    ],
+    [
+      0.000946,
+      "\u001b[1;1H\u001b[?25h\u001b[2J"
+    ],
+    [
+      0.002092,
+      "\u001b[1m\u001b[7m%\u001b[27m\u001b[1m\u001b[0m                                                                                             \r \r"
+    ],
+    [
+      0.082321,
+      "\u001b]7;file://rustbook/Users/byron\u0007"
+    ],
+    [
+      0.020588,
+      "\r\u001b[0m\u001b[27m\u001b[24m\u001b[J\u001b[01;32m➜  \u001b[36m~\u001b[00m \u001b[K"
+    ],
+    [
+      3.6e-05,
+      "\u001b[?1h\u001b=\u001b[?2004h"
+    ],
+    [
+      1.0,
+      "\u001b[?2004l\r\r\n"
+    ]
+  ]
+}
