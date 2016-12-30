@@ -158,6 +158,7 @@ pub fn handle_interactive_search(_args: &clap::ArgMatches) {
                 }
             })
             .for_each(|(search, cmd)| {
+                let mut res = Ok(());
                 match cmd {
                     DrawIndices => {
                         match current_result {
@@ -185,11 +186,13 @@ pub fn handle_interactive_search(_args: &clap::ArgMatches) {
                                                           v = c1.max_version);
                                         if let Err(e) = open::that(url) {
                                             info(&e);
+                                            res = Err(());
                                         }
                                     } else {
                                         info(&format!("Hit <enter> to open crate #{} or keep \
                                                        typing ...",
                                                       number));
+                                        res = Err(());
                                     }
                                 }
                             }
@@ -228,7 +231,7 @@ pub fn handle_interactive_search(_args: &clap::ArgMatches) {
                     }
                 }
                 io::stdout().flush().ok();
-                Ok(())
+                res
             });
         reactor.run(commands).ok();
     });
@@ -304,7 +307,17 @@ pub fn handle_interactive_search(_args: &clap::ArgMatches) {
             }
             Opening => DrawIndices,
         };
-        ongoing_command = Some(pool.spawn(sender.clone().send(cmd)));
+        let handle = pool.spawn(sender.clone().send(cmd.clone()));
+        match cmd {
+           Open(_) => {
+               if let Ok(_) = handle.wait() {
+                   state.number.clear();
+                   state.mode = Searching;
+                   promptf(&state, &mut stdout);
+               }
+           }
+            _ => {ongoing_command = Some(handle);}
+        };
     }
     drop(ongoing_command);
     drop(sender);
