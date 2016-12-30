@@ -36,7 +36,13 @@ const INFO_LINE: cursor::Goto = cursor::Goto(1, 2);
 const CONTENT_LINE: cursor::Goto = cursor::Goto(1, 3);
 const PAGE_SIZE: usize = 20;
 
-#[derive(RustcDecodable)]
+fn sanitize(input: &str) -> String {
+    input.chars()
+        .map(|c| if c == '\n' { ' ' } else { c })
+        .collect()
+}
+
+#[derive(RustcDecodable, Default)]
 struct Meta {
     total: u32,
     page_size: Option<usize>,
@@ -58,20 +64,26 @@ impl Display for Crate {
             write!(f,
                    "{name} | {desc:.80} | {downloads} | {version}",
                    name = self.name,
-                   desc = self.description,
+                   desc = sanitize(&self.description),
                    downloads = self.downloads,
                    version = self.max_version)
         }
     }
 }
 
-#[derive(RustcDecodable)]
+#[derive(RustcDecodable, Default)]
 struct SearchResult {
     crates: Vec<Crate>,
     meta: Meta,
 }
 
 impl SearchResult {
+    fn with_page_size(page_size: usize) -> SearchResult {
+        SearchResult {
+            meta: Meta { page_size: Some(page_size), ..Default::default() },
+            ..Default::default()
+        }
+    }
     fn from_data(buf: &[u8], page_size: usize) -> Result<SearchResult, json::DecoderError> {
         str::from_utf8(buf)
             .map_err(|e| json::DecoderError::ApplicationError(format!("{}", e)))
@@ -108,11 +120,11 @@ pub fn handle_interactive_search(_args: &clap::ArgMatches) {
     let stdin = io::stdin();
     let mut stdout = ok_or_exit(io::stdout().into_raw_mode());
     ok_or_exit(write!(stdout, "{}{}", cursor::Goto(1, 1), clear::All));
-    prompt("", &mut stdout);
+    promptf("", &mut stdout);
     usage();
 
     let mut term = String::new();
-    let (sender, receiver) = mpsc::channel(4);
+    let (sender, receiver) = mpsc::channel(10);
     let pool = CpuPool::new(1);
 
     let t = thread::spawn(|| {
@@ -145,15 +157,12 @@ pub fn handle_interactive_search(_args: &clap::ArgMatches) {
             })
             .for_each(|(_response, search)| {
                 let search: SearchResult = ok_or_exit(search);
-                write!(io::stdout(),
-                       "{hide}{goto}{clear}{} results in total, showing {} max",
-                       search.meta.total,
-                       search.meta.page_size.as_ref().unwrap(),
-                       hide = cursor::Hide,
-                       goto = INFO_LINE,
-                       clear = clear::CurrentLine)
-                    .ok();
-                if !search.crates.is_empty() {
+                info(&format!("{} results in total, showing {} max",
+                              search.meta.total,
+                              search.meta.page_size.as_ref().unwrap()));
+                if search.crates.is_empty() {
+                    usage();
+                } else {
                     write!(io::stdout(), "{goto}{}", search, goto = CONTENT_LINE).ok();
                 }
                 io::stdout().flush().ok();
@@ -183,9 +192,15 @@ pub fn handle_interactive_search(_args: &clap::ArgMatches) {
             }
         }
 
-        prompt(&term, &mut stdout);
+        promptf(&term, &mut stdout);
         if term.is_empty() {
             usage();
+            write!(stdout,
+                   "{goto}{}",
+                   SearchResult::with_page_size(PAGE_SIZE),
+                   goto = CONTENT_LINE)
+                .ok();
+            stdout.flush().ok();
         } else {
             ongoing_search = Some(pool.spawn(sender.clone().send(term.clone())));
         }
@@ -193,6 +208,11 @@ pub fn handle_interactive_search(_args: &clap::ArgMatches) {
     drop(ongoing_search);
     drop(sender);
     t.join().unwrap();
+    reset_terminal();
+
+    fn reset_terminal() {
+        write!(io::stdout(), "{}{}", cursor::Show, clear::All).ok();
+    }
 
     fn usage() {
         info(&"(<ESC> to abort, <enter> to clear) Please enter your search term.");
@@ -209,7 +229,7 @@ pub fn handle_interactive_search(_args: &clap::ArgMatches) {
         io::stdout().flush().ok();
     }
 
-    fn prompt(term: &str, stdout: &mut io::Stdout) {
+    fn promptf(term: &str, stdout: &mut io::Stdout) {
         write!(stdout,
                "{show}{goto}{clear}crates.io: {}",
                term,
