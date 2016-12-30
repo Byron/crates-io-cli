@@ -36,8 +36,8 @@ const PAGE_SIZE: usize = 20;
 
 fn sanitize(input: &str) -> String {
     input.chars()
-        .map(|c| if c == '\n' { ' ' } else { c })
-        .collect()
+         .map(|c| if c == '\n' { ' ' } else { c })
+         .collect()
 }
 
 #[derive(RustcDecodable, Default)]
@@ -129,46 +129,46 @@ pub fn handle_interactive_search(_args: &clap::ArgMatches) {
         let mut reactor = ok_or_exit(Core::new());
         let session = Session::new(reactor.handle());
         let search_terms = receiver.and_then(|term| {
-                let mut req = Easy::new();
-                ok_or_exit(req.get(true));
-                let url = format!("https://crates.io/api/v1/crates?page=1&per_page={}&q={}&sort=",
-                                  PAGE_SIZE,
-                                  req.url_encode(String::as_bytes(&term)));
-                ok_or_exit(req.url(&url));
-                let buf = Arc::new(Mutex::new(Vec::new()));
-                let buf_handle = buf.clone();
-                ok_or_exit(req.write_function(move |data| {
-                    buf_handle.lock().unwrap().extend_from_slice(data);
-                    Ok(data.len())
-                }));
-                info(&"searching ...");
-                session.perform(req)
-                    .map_err(|e| {
-                        info(&e);
-                        ()
-                    })
-                    .map(move |r| {
-                        let result = SearchResult::from_data(&buf.lock().unwrap(), PAGE_SIZE);
-                        (r, result)
-                    })
-            })
-            .for_each(|(_response, search)| {
-                let search: SearchResult = ok_or_exit(search);
-                info(&format!("{} results in total, showing {} max",
-                              search.meta.total,
-                              search.meta.page_size.as_ref().unwrap()));
-                if search.crates.is_empty() {
-                    let last = usage();
-                    write!(io::stdout(),
-                           "{gotolast} - 0 results found",
-                           gotolast = cursor::Goto(last as u16, INFO_LINE.1))
-                        .ok();
-                } else {
-                    write!(io::stdout(), "{goto}{}", search, goto = CONTENT_LINE).ok();
-                }
-                io::stdout().flush().ok();
-                Ok(())
-            });
+            let mut req = Easy::new();
+            ok_or_exit(req.get(true));
+            let url = format!("https://crates.io/api/v1/crates?page=1&per_page={}&q={}&sort=",
+                              PAGE_SIZE,
+                              req.url_encode(String::as_bytes(&term)));
+            ok_or_exit(req.url(&url));
+            let buf = Arc::new(Mutex::new(Vec::new()));
+            let buf_handle = buf.clone();
+            ok_or_exit(req.write_function(move |data| {
+                buf_handle.lock().unwrap().extend_from_slice(data);
+                Ok(data.len())
+            }));
+            info(&"searching ...");
+            session.perform(req)
+                   .map_err(|e| {
+                       info(&e);
+                       ()
+                   })
+                   .map(move |r| {
+                       let result = SearchResult::from_data(&buf.lock().unwrap(), PAGE_SIZE);
+                       (r, result)
+                   })
+        })
+                                   .for_each(|(_response, search)| {
+                                       let search: SearchResult = ok_or_exit(search);
+                                       info(&format!("{} results in total, showing {} max",
+                                                     search.meta.total,
+                                                     search.meta.page_size.as_ref().unwrap()));
+                                       if search.crates.is_empty() {
+                                           let last = usage();
+                                           write!(io::stdout(),
+                                                  "{gotolast} - 0 results found",
+                                                  gotolast = cursor::Goto(last as u16, INFO_LINE.1))
+                                               .ok();
+                                       } else {
+                                           write!(io::stdout(), "{goto}{}", search, goto = CONTENT_LINE).ok();
+                                       }
+                                       io::stdout().flush().ok();
+                                       Ok(())
+                                   });
         reactor.run(search_terms).ok();
     });
 
