@@ -1,6 +1,7 @@
 use super::structs::SearchResult;
 use utils::Dimension;
 use clap;
+use open;
 use std::str;
 use std::sync::{Mutex, Arc};
 use std::thread;
@@ -90,7 +91,7 @@ impl<'a> Display for Indexed<'a> {
                hide = cursor::Hide,
                align = cursor::Right(center))?;
         for i in (0..self.0.crates.len()).take(dim.height as usize) {
-            let rendered = format!("-#{:3} #-", i + 1);
+            let rendered = format!("-#{:3} #-", i);
             write!(f,
                    "{}{left}{down}",
                    rendered,
@@ -118,8 +119,7 @@ pub fn handle_interactive_search(_args: &clap::ArgMatches) {
 
         let commands = receiver.and_then(|cmd: Command| {
                 match cmd.clone() {
-                    Open(_) | DrawIndices => futures::finished((None, cmd)).boxed(),
-                    Clear => futures::finished((None, cmd)).boxed(),
+                    Clear | Open(_) | DrawIndices => futures::finished((None, cmd)).boxed(),
                     Search(term) => {
                         let mut req = Easy::new();
                         let dim = dimension();
@@ -176,7 +176,27 @@ pub fn handle_interactive_search(_args: &clap::ArgMatches) {
                         }
                     }
                     Open(number) => {
-                        info(&format!("TBD: try to open a number: {}", number));
+                        match current_result {
+                            Some(ref search) => {
+                                if let Some(c1) = search.crates.get(number) {
+                                    if search.crates.get(number * 10).is_none() {
+                                        let url = format!("https://crates.io/crates/{n}/{v}",
+                                                          n = c1.name,
+                                                          v = c1.max_version);
+                                        if let Err(e) = open::that(url) {
+                                            info(&e);
+                                        }
+                                    } else {
+                                        info(&format!("Hit <enter> to open crate #{} or keep \
+                                                       typing ...",
+                                                      number));
+                                    }
+                                }
+                            }
+                            None => {
+                                info(&"There is nothing to open - conduct a search first");
+                            }
+                        }
                     }
                     Clear => {
                         usage();
@@ -328,5 +348,4 @@ fn promptf(state: &State, stdout: &mut io::Stdout) {
            clear = clear::CurrentLine)
         .ok();
     stdout.flush().ok();
-
 }

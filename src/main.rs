@@ -11,6 +11,7 @@ extern crate tokio_core;
 extern crate tokio_curl;
 #[cfg(unix)]
 extern crate termion;
+extern crate open;
 
 
 mod utils;

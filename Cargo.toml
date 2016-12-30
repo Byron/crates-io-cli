@@ -16,10 +16,19 @@ crates-index-diff = "3"
 curl = "0.4.2"
 futures = "0.1.7"
 futures-cpupool = "0.1.2"
-prettytable-rs = {version = "0.6", default-features = false, features = ["win_crlf"]}
+open = "1.1.1"
 rustc-serialize = "0.3.22"
 tokio-core = "0.1.2"
 tokio-curl = "0.1.7"
 
-[target.'cfg(unix)'.dependencies]
+[dependencies.prettytable-rs]
+default-features = false
+features = ["win_crlf"]
+version = "0.6"
+
+[target]
+
+[target."cfg(unix)"]
+
+[target."cfg(unix)".dependencies]
 termion = "1.1.4"
