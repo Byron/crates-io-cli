@@ -180,7 +180,9 @@ pub fn handle_interactive_search(_args: &clap::ArgMatches) {
                             Some(ref search) => {
                                 match search.crates.get(number) {
                                     Some(c1) => {
-                                        if search.crates.get(number * 10).is_none() || force {
+                                        if number == 0 ||
+                                           search.crates.get(number * 10).is_none() ||
+                                           force {
                                             let url = format!("https://crates.io/crates/{n}/{v}",
                                                               n = c1.name,
                                                               v = c1.max_version);
@@ -206,13 +208,11 @@ pub fn handle_interactive_search(_args: &clap::ArgMatches) {
                     }
                     Clear => {
                         usage();
-                        write!(io::stdout(),
-                               "{goto}{}",
-                               SearchResult::with_dimension(dimension()),
-                               goto = CONTENT_LINE)
-                            .ok();
+                        let empty_search = SearchResult::with_dimension(dimension());
+                        write!(io::stdout(), "{goto}{}", empty_search, goto = CONTENT_LINE).ok();
+                        current_result = Some(empty_search);
                     }
-                    Search(_term) => {
+                    Search(_) => {
                         let search = search.expect("search result must be present");
                         info(&format!("{} results in total, showing {} max",
                                       search.meta.total,
