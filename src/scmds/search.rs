@@ -4,13 +4,11 @@ extern crate futures;
 extern crate tokio_core;
 extern crate tokio_curl;
 extern crate futures_cpupool;
-extern crate url;
 
 use clap;
 use std::cmp;
 use std::str;
 use std::sync::{Mutex, Arc};
-use self::url::percent_encoding::{DEFAULT_ENCODE_SET, percent_encode};
 use rustc_serialize::json;
 use std::thread;
 use self::futures_cpupool::CpuPool;
@@ -135,8 +133,7 @@ pub fn handle_interactive_search(_args: &clap::ArgMatches) {
                 ok_or_exit(req.get(true));
                 let url = format!("https://crates.io/api/v1/crates?page=1&per_page={}&q={}&sort=",
                                   PAGE_SIZE,
-                                  percent_encode(String::as_bytes(&term), DEFAULT_ENCODE_SET)
-                                      .collect::<String>());
+                                  req.url_encode(String::as_bytes(&term)));
                 ok_or_exit(req.url(&url));
                 let buf = Arc::new(Mutex::new(Vec::new()));
                 let buf_handle = buf.clone();
@@ -161,7 +158,11 @@ pub fn handle_interactive_search(_args: &clap::ArgMatches) {
                               search.meta.total,
                               search.meta.page_size.as_ref().unwrap()));
                 if search.crates.is_empty() {
-                    usage();
+                    let last = usage();
+                    write!(io::stdout(),
+                           "{gotolast} - 0 results found",
+                           gotolast = cursor::Goto(last as u16, INFO_LINE.1))
+                        .ok();
                 } else {
                     write!(io::stdout(), "{goto}{}", search, goto = CONTENT_LINE).ok();
                 }
@@ -214,19 +215,21 @@ pub fn handle_interactive_search(_args: &clap::ArgMatches) {
         write!(io::stdout(), "{}{}", cursor::Show, clear::All).ok();
     }
 
-    fn usage() {
-        info(&"(<ESC> to abort, <enter> to clear) Please enter your search term.");
+    fn usage() -> usize {
+        info(&"(<ESC> to abort, <enter> to clear) Please enter your search term.")
     }
 
-    fn info(item: &Display) {
+    fn info(item: &Display) -> usize {
+        let buf = format!("{}", item);
         write!(io::stdout(),
                "{hide}{goto}{clear}{}",
-               item,
+               buf,
                hide = cursor::Hide,
                goto = INFO_LINE,
                clear = clear::CurrentLine)
             .ok();
         io::stdout().flush().ok();
+        buf.len()
     }
 
     fn promptf(term: &str, stdout: &mut io::Stdout) {
