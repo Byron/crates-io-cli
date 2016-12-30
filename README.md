@@ -33,5 +33,5 @@ To install Rust on windows, you can follow the instrutions on [rustup.rs](https:
 You can learn what it can do by using the `--help` flag:
 
 ```bash
-crate --help
+crates --help
 ```
