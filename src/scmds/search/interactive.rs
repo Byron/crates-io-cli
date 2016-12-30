@@ -31,7 +31,7 @@ fn dimension() -> Dimension {
 
 #[derive(Clone)]
 enum Command {
-    Search(String),
+    Search(bool, String),
     Open(bool, usize),
     DrawIndices,
     Clear,
@@ -39,7 +39,7 @@ enum Command {
 
 #[derive(Clone, Copy)]
 enum Mode {
-    Searching,
+    Searching(bool),
     Opening(bool),
 }
 
@@ -48,7 +48,7 @@ impl Display for Mode {
         write!(f,
                "{}",
                match *self {
-                   Searching => "search",
+                   Searching(_) => "search",
                    Opening(_) => "open by number",
                })
     }
@@ -56,7 +56,7 @@ impl Display for Mode {
 
 impl Default for Mode {
     fn default() -> Self {
-        Searching
+        Searching(false)
     }
 }
 
@@ -74,7 +74,7 @@ struct State {
 impl State {
     fn prompt(&self) -> &str {
         match self.mode {
-            Searching => &self.term,
+            Searching(_) => &self.term,
             Opening(_) => &self.number,
         }
     }
@@ -91,7 +91,7 @@ impl<'a> Display for Indexed<'a> {
                hide = cursor::Hide,
                align = cursor::Right(center))?;
         for i in (0..self.0.crates.len()).take(dim.height as usize) {
-            let rendered = format!("-#{:3} #-", i);
+            let rendered = format!("|#{:3} #|", i);
             write!(f,
                    "{}{left}{down}",
                    rendered,
@@ -120,7 +120,10 @@ pub fn handle_interactive_search(_args: &clap::ArgMatches) {
         let commands = receiver.and_then(|cmd: Command| {
                 match cmd.clone() {
                     Clear | Open(_, _) | DrawIndices => futures::finished((None, cmd)).boxed(),
-                    Search(term) => {
+                    Search(show_last, term) => {
+                        if show_last {
+                            return futures::finished((None, cmd)).boxed();
+                        }
                         let mut req = Easy::new();
                         let dim = dimension();
                         ok_or_exit(req.get(true));
@@ -212,24 +215,30 @@ pub fn handle_interactive_search(_args: &clap::ArgMatches) {
                         write!(io::stdout(), "{goto}{}", empty_search, goto = CONTENT_LINE).ok();
                         current_result = Some(empty_search);
                     }
-                    Search(_) => {
-                        let search = search.expect("search result must be present");
-                        info(&format!("{} results in total, showing {} max",
-                                      search.meta.total,
-                                      search.meta
-                                          .dimension
-                                          .as_ref()
-                                          .expect("dimension to be set")
-                                          .height));
-                        if search.crates.is_empty() {
-                            let last = usage();
-                            write!(io::stdout(),
-                                   "{gotolast} - 0 results found",
-                                   gotolast = cursor::Goto(last as u16, INFO_LINE.1))
-                                .ok();
+                    Search(show_last, _) => {
+                        if show_last {
+                            if let Some(search) = current_result.as_ref() {
+                                write!(io::stdout(), "{goto}{}", search, goto = CONTENT_LINE).ok();
+                            }
                         } else {
-                            write!(io::stdout(), "{goto}{}", search, goto = CONTENT_LINE).ok();
-                            current_result = Some(search);
+                            let search = search.expect("search result must be present");
+                            info(&format!("{} results in total, showing {} max",
+                                          search.meta.total,
+                                          search.meta
+                                              .dimension
+                                              .as_ref()
+                                              .expect("dimension to be set")
+                                              .height));
+                            if search.crates.is_empty() {
+                                let last = usage();
+                                write!(io::stdout(),
+                                       "{gotolast} - 0 results found",
+                                       gotolast = cursor::Goto(last as u16, INFO_LINE.1))
+                                    .ok();
+                            } else {
+                                write!(io::stdout(), "{goto}{}", search, goto = CONTENT_LINE).ok();
+                                current_result = Some(search);
+                            }
                         }
                     }
                 }
@@ -247,7 +256,7 @@ pub fn handle_interactive_search(_args: &clap::ArgMatches) {
         match ok_or_exit(k) {
             Key::Char('\n') => {
                 match state.mode {
-                    Searching => state.term.clear(),
+                    Searching(_) => state.term.clear(),
                     Opening(_) => {
                         state.mode = Opening(true);
                     }
@@ -255,7 +264,7 @@ pub fn handle_interactive_search(_args: &clap::ArgMatches) {
             }
             Key::Char(c) => {
                 match state.mode {
-                    Searching => state.term.push(c),
+                    Searching(_) => state.term.push(c),
                     Opening(_) => {
                         match c {
                             '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' => {
@@ -270,17 +279,17 @@ pub fn handle_interactive_search(_args: &clap::ArgMatches) {
             }
             Key::Backspace => {
                 match state.mode {
-                        Searching => &mut state.term,
+                        Searching(_) => &mut state.term,
                         Opening(_) => &mut state.number,
                     }
                     .pop();
             }
             Key::Ctrl('o') => {
                 state.mode = match state.mode {
-                    Searching => Opening(false),
+                    Searching(_) => Opening(false),
                     Opening(_) => {
                         state.number.clear();
-                        Searching
+                        Searching(true)
                     }
                 };
             }
@@ -294,11 +303,11 @@ pub fn handle_interactive_search(_args: &clap::ArgMatches) {
         }
         promptf(&state, &mut stdout);
         let cmd = match state.mode {
-            Searching => {
+            Searching(last) => {
                 if state.term.is_empty() {
                     Clear
                 } else {
-                    Search(state.term.clone())
+                    Search(last, state.term.clone())
                 }
             }
             Opening(force) if state.number.len() > 0 => {
