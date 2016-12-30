@@ -2,7 +2,6 @@ use std::error::Error;
 use std::default::Default;
 
 use std;
-use termion::terminal_size;
 
 #[derive(RustcDecodable)]
 pub struct Dimension {
@@ -19,11 +18,25 @@ impl Dimension {
 
 impl Default for Dimension {
     fn default() -> Dimension {
-        let (mw, mh) = terminal_size().unwrap_or((80, 20));
-        Dimension {
-            width: mw,
-            height: mh,
+        #[cfg(windows)]
+        fn imp() -> Dimension {
+            Dimension {
+                width: 80,
+                height: 20,
+            }
         }
+
+        #[cfg(unix)]
+        fn imp() -> Dimension {
+            use termion::terminal_size;
+            let (mw, mh) = terminal_size().unwrap_or((80, 20));
+            Dimension {
+                width: mw,
+                height: mh,
+            }
+        }
+
+        imp()
     }
 }
 
