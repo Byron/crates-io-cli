@@ -16,7 +16,7 @@ use futures::{self, Sink, Stream, Future};
 use futures::sync::mpsc;
 use tokio_curl::Session;
 use std::io::{self, Write};
-use std::fmt::Display;
+use std::fmt::{self, Display};
 
 use utils::ok_or_exit;
 
@@ -37,6 +37,18 @@ enum Command {
 #[derive(Clone, Copy)]
 enum Mode {
     Searching,
+    Opening,
+}
+
+impl Display for Mode {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f,
+               "{}",
+               match *self {
+                   Searching => "search",
+                   Opening => "open by number",
+               })
+    }
 }
 
 impl Default for Mode {
@@ -45,20 +57,32 @@ impl Default for Mode {
     }
 }
 
+
 use self::Command::*;
 use self::Mode::*;
 
 #[derive(Default)]
 struct State {
+    number: String,
     term: String,
     mode: Mode,
+}
+
+impl State {
+    fn prompt(&self) -> &str {
+        match self.mode {
+            Searching => &self.term,
+            Opening => &self.number,
+        }
+    }
 }
 
 pub fn handle_interactive_search(_args: &clap::ArgMatches) {
     let stdin = io::stdin();
     let mut stdout = ok_or_exit(io::stdout().into_raw_mode());
     ok_or_exit(write!(stdout, "{}{}", cursor::Goto(1, 1), clear::All));
-    promptf("", &mut stdout);
+    let mut state = State::default();
+    promptf(&state, &mut stdout);
     usage();
 
     let (sender, receiver) = mpsc::channel(10);
@@ -143,39 +167,50 @@ pub fn handle_interactive_search(_args: &clap::ArgMatches) {
     });
 
     let mut ongoing_command = None;
-    let mut state = State::default();
     let pool = CpuPool::new(1);
 
     for k in stdin.keys() {
-        match state.mode {
-            Searching => {
-                match ok_or_exit(k) {
-                    Key::Char('\n') => {
-                        state.term.clear();
-                    }
-                    Key::Char(c) => {
-                        state.term.push(c);
-                    }
-                    Key::Backspace => {
-                        state.term.pop();
-                    }
-                    Key::Esc => {
-                        break;
-                    }
-                    key @ _ => {
-                        info(&format!("unsupported key sequence: {:?}", key));
-                        continue;
+        match ok_or_exit(k) {
+            Key::Char('\n') => {
+                match state.mode {
+                    Searching => state.term.clear(),
+                    Opening => {
+                        state.number.clear();
+                        state.mode = Searching;
                     }
                 }
-                promptf(&state.term, &mut stdout);
-                let cmd = if state.term.is_empty() {
-                    Clear
-                } else {
-                    Search(state.term.clone())
+            }
+            Key::Char(c) => {
+                state.term.push(c);
+            }
+            Key::Backspace => {
+                match state.mode {
+                        Searching => &mut state.term,
+                        Opening => &mut state.number,
+                    }
+                    .pop();
+            }
+            Key::Ctrl('o') => {
+                state.mode = match state.mode {
+                    Searching => Opening,
+                    Opening => Searching,
                 };
-                ongoing_command = Some(pool.spawn(sender.clone().send(cmd)));
+            }
+            Key::Esc => {
+                break;
+            }
+            key @ _ => {
+                info(&format!("unsupported key sequence: {:?}", key));
+                continue;
             }
         }
+        promptf(&state, &mut stdout);
+        let cmd = if state.term.is_empty() {
+            Clear
+        } else {
+            Search(state.term.clone())
+        };
+        ongoing_command = Some(pool.spawn(sender.clone().send(cmd)));
     }
     drop(ongoing_command);
     drop(sender);
@@ -209,10 +244,11 @@ fn info(item: &Display) -> usize {
     buf.len()
 }
 
-fn promptf(term: &str, stdout: &mut io::Stdout) {
+fn promptf(state: &State, stdout: &mut io::Stdout) {
     write!(stdout,
-           "{show}{goto}{clear}crates.io: {}",
-           term,
+           "{show}{goto}{clear} {mode}: {}",
+           state.prompt(),
+           mode = state.mode,
            show = cursor::Show,
            goto = cursor::Goto(1, 1),
            clear = clear::CurrentLine)
