@@ -4,7 +4,7 @@
 
 A command-line interface to interact with [crates.io](https://crates.io/)
 
-# Features
+### Features
 
 * **search cratse.io interactively**
   [![asciicast](https://asciinema.org/a/40smybc7cmzeawrvttnh44es0.png)](https://asciinema.org/a/40smybc7cmzeawrvttnh44es0)
@@ -13,7 +13,7 @@ A command-line interface to interact with [crates.io](https://crates.io/)
 * **output modes for humans and machines**
   [![asciicast](https://asciinema.org/a/0x0famma168b7xj663971gdsp.png)](https://asciinema.org/a/0x0famma168b7xj663971gdsp)
 
-# Installation
+### Installation
 
 If you have Rust on your system:
 ```bash
@@ -28,10 +28,14 @@ the CLI at once:
 
 To install Rust on windows, you can follow the instrutions on [rustup.rs](https://rustup.rs).
 
-# Usage
+### Usage
 
 You can learn what it can do by using the `--help` flag:
 
 ```bash
 crates --help
 ```
+
+### TODO
+
+* [ ] Allow to open the crate and version on crates.io
