@@ -18,5 +18,5 @@ mod imp {
 }
 
 #[cfg(windows)]
-pub use imp::handle_interactive_search;
+pub use self::imp::handle_interactive_search;
 
