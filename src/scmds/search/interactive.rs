@@ -32,7 +32,7 @@ fn dimension() -> Dimension {
 #[derive(Clone)]
 enum Command {
     Search(String),
-    Open(usize),
+    Open(bool, usize),
     DrawIndices,
     Clear,
 }
@@ -40,7 +40,7 @@ enum Command {
 #[derive(Clone, Copy)]
 enum Mode {
     Searching,
-    Opening,
+    Opening(bool),
 }
 
 impl Display for Mode {
@@ -49,7 +49,7 @@ impl Display for Mode {
                "{}",
                match *self {
                    Searching => "search",
-                   Opening => "open by number",
+                   Opening(_) => "open by number",
                })
     }
 }
@@ -75,7 +75,7 @@ impl State {
     fn prompt(&self) -> &str {
         match self.mode {
             Searching => &self.term,
-            Opening => &self.number,
+            Opening(_) => &self.number,
         }
     }
 }
@@ -119,7 +119,7 @@ pub fn handle_interactive_search(_args: &clap::ArgMatches) {
 
         let commands = receiver.and_then(|cmd: Command| {
                 match cmd.clone() {
-                    Clear | Open(_) | DrawIndices => futures::finished((None, cmd)).boxed(),
+                    Clear | Open(_, _) | DrawIndices => futures::finished((None, cmd)).boxed(),
                     Search(term) => {
                         let mut req = Easy::new();
                         let dim = dimension();
@@ -175,20 +175,26 @@ pub fn handle_interactive_search(_args: &clap::ArgMatches) {
                             }
                         }
                     }
-                    Open(number) => {
+                    Open(force, number) => {
                         match current_result {
                             Some(ref search) => {
-                                if let Some(c1) = search.crates.get(number) {
-                                    if search.crates.get(number * 10).is_none() {
-                                        let url = format!("https://crates.io/crates/{n}/{v}",
-                                                          n = c1.name,
-                                                          v = c1.max_version);
-                                        if let Err(e) = open::that(url) {
-                                            info(&e);
+                                match search.crates.get(number) {
+                                    Some(c1) => {
+                                        if search.crates.get(number * 10).is_none() || force {
+                                            let url = format!("https://crates.io/crates/{n}/{v}",
+                                                              n = c1.name,
+                                                              v = c1.max_version);
+                                            if let Err(e) = open::that(url) {
+                                                info(&e);
+                                            }
+                                        } else {
+                                            info(&format!("Hit <enter> to open crate #{} or \
+                                                           keep typing ...",
+                                                          number));
                                         }
-                                    } else {
-                                        info(&format!("Hit <enter> to open crate #{} or keep \
-                                                       typing ...",
+                                    }
+                                    None => {
+                                        info(&format!("No crate #{}! Try using <backspace> ...",
                                                       number));
                                     }
                                 }
@@ -242,16 +248,15 @@ pub fn handle_interactive_search(_args: &clap::ArgMatches) {
             Key::Char('\n') => {
                 match state.mode {
                     Searching => state.term.clear(),
-                    Opening => {
-                        state.number.clear();
-                        state.mode = Searching;
+                    Opening(_) => {
+                        state.mode = Opening(true);
                     }
                 }
             }
             Key::Char(c) => {
                 match state.mode {
                     Searching => state.term.push(c),
-                    Opening => {
+                    Opening(_) => {
                         match c {
                             '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' => {
                                 state.number.push(c)
@@ -266,14 +271,17 @@ pub fn handle_interactive_search(_args: &clap::ArgMatches) {
             Key::Backspace => {
                 match state.mode {
                         Searching => &mut state.term,
-                        Opening => &mut state.number,
+                        Opening(_) => &mut state.number,
                     }
                     .pop();
             }
             Key::Ctrl('o') => {
                 state.mode = match state.mode {
-                    Searching => Opening,
-                    Opening => Searching,
+                    Searching => Opening(false),
+                    Opening(_) => {
+                        state.number.clear();
+                        Searching
+                    }
                 };
             }
             Key::Esc => {
@@ -293,17 +301,18 @@ pub fn handle_interactive_search(_args: &clap::ArgMatches) {
                     Search(state.term.clone())
                 }
             }
-            Opening if state.number.len() > 0 => {
-                Open(match state.number.parse() {
-                    Ok(n) => n,
-                    Err(e) => {
-                        info(&e);
-                        state.number.clear();
-                        continue;
-                    }
-                })
+            Opening(force) if state.number.len() > 0 => {
+                Open(force,
+                     match state.number.parse() {
+                         Ok(n) => n,
+                         Err(e) => {
+                             info(&e);
+                             state.number.clear();
+                             continue;
+                         }
+                     })
             }
-            Opening => DrawIndices,
+            Opening(_) => DrawIndices,
         };
         ongoing_command = Some(pool.spawn(sender.clone().send(cmd.clone())));
     }
