@@ -1,3 +1,16 @@
+<a name="v1.2.0"></a>
+## v1.2.0 (2016-12-30)
+
+#### Features
+
+* **search:**
+  *  use `crates search` for an interactive search on crates.io
+
+#### Improvements
+
+* **UX:**  wait for 3 seconds before showing timeout message ([8a2837b9](https://github.com/Byron/crates-io-cli-rs/commit/8a2837b9c829811201d6a15a5f11b3ba973cb735))
+* **changes:**  display a nice table ([ca792c0b](https://github.com/Byron/crates-io-cli-rs/commit/ca792c0bc6dd86758d3d905a6ffca5f60fd59c68))
+
 <a name="v1.1.1"></a>
 ### v1.1.1 (2016-12-28)
 
