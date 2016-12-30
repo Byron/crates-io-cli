@@ -39,8 +39,8 @@ enum Command {
 
 #[derive(Clone, Copy)]
 enum Mode {
-    Searching(bool),
-    Opening(bool),
+    Searching,
+    Opening,
 }
 
 impl Display for Mode {
@@ -48,15 +48,15 @@ impl Display for Mode {
         write!(f,
                "{}",
                match *self {
-                   Searching(_) => "search",
-                   Opening(_) => "open by number",
+                   Searching => "search",
+                   Opening => "open by number",
                })
     }
 }
 
 impl Default for Mode {
     fn default() -> Self {
-        Searching(false)
+        Searching
     }
 }
 
@@ -74,8 +74,8 @@ struct State {
 impl State {
     fn prompt(&self) -> &str {
         match self.mode {
-            Searching(_) => &self.term,
-            Opening(_) => &self.number,
+            Searching => &self.term,
+            Opening => &self.number,
         }
     }
 }
@@ -253,19 +253,21 @@ pub fn handle_interactive_search(_args: &clap::ArgMatches) {
     let pool = CpuPool::new(1);
 
     for k in stdin.keys() {
+        let (mut force_open, mut show_last_search) = (false, false);
         match ok_or_exit(k) {
             Key::Char('\n') => {
                 match state.mode {
-                    Searching(_) => state.term.clear(),
-                    Opening(_) => {
-                        state.mode = Opening(true);
+                    Searching => state.term.clear(),
+                    Opening => {
+                        force_open = true;
+                        state.mode = Opening;
                     }
                 }
             }
             Key::Char(c) => {
                 match state.mode {
-                    Searching(_) => state.term.push(c),
-                    Opening(_) => {
+                    Searching => state.term.push(c),
+                    Opening => {
                         match c {
                             '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' => {
                                 state.number.push(c)
@@ -279,17 +281,18 @@ pub fn handle_interactive_search(_args: &clap::ArgMatches) {
             }
             Key::Backspace => {
                 match state.mode {
-                        Searching(_) => &mut state.term,
-                        Opening(_) => &mut state.number,
+                        Searching => &mut state.term,
+                        Opening => &mut state.number,
                     }
                     .pop();
             }
             Key::Ctrl('o') => {
                 state.mode = match state.mode {
-                    Searching(_) => Opening(false),
-                    Opening(_) => {
+                    Searching => Opening,
+                    Opening => {
                         state.number.clear();
-                        Searching(true)
+                        show_last_search = true;
+                        Searching
                     }
                 };
             }
@@ -303,16 +306,15 @@ pub fn handle_interactive_search(_args: &clap::ArgMatches) {
         }
         promptf(&state, &mut stdout);
         let cmd = match state.mode {
-            Searching(last) => {
+            Searching => {
                 if state.term.is_empty() {
                     Clear
                 } else {
-                    state.mode = Searching(false);
-                    Search(last, state.term.clone())
+                    Search(show_last_search, state.term.clone())
                 }
             }
-            Opening(force) if state.number.len() > 0 => {
-                Open(force,
+            Opening if state.number.len() > 0 => {
+                Open(force_open,
                      match state.number.parse() {
                          Ok(n) => n,
                          Err(e) => {
@@ -322,7 +324,7 @@ pub fn handle_interactive_search(_args: &clap::ArgMatches) {
                          }
                      })
             }
-            Opening(_) => DrawIndices,
+            Opening => DrawIndices,
         };
         ongoing_command = Some(pool.spawn(sender.clone().send(cmd.clone())));
     }
