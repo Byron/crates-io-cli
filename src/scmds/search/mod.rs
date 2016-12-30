@@ -19,4 +19,3 @@ mod imp {
 
 #[cfg(windows)]
 pub use self::imp::handle_interactive_search;
-
