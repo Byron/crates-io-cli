@@ -181,7 +181,13 @@ pub fn handle_interactive_search(_args: &clap::ArgMatches) {
                 }
             }
             Key::Char(c) => {
-                state.term.push(c);
+                match state.mode {
+                    Searching => state.term.push(c),
+                    Opening => match c {
+                        '0'|'1'|'2'|'3'|'4'|'5'|'6'|'7'|'8'|'9' => state.number.push(c),
+                        _ => {info(&format!("Please enter digits from 0-9"));},
+                    }
+                }
             }
             Key::Backspace => {
                 match state.mode {
