@@ -31,6 +31,8 @@ fn dimension() -> Dimension {
 #[derive(Clone)]
 enum Command {
     Search(String),
+    Open(usize),
+    DrawIndices,
     Clear,
 }
 
@@ -94,9 +96,8 @@ pub fn handle_interactive_search(_args: &clap::ArgMatches) {
 
         let commands = receiver.and_then(|cmd: Command| {
                 match cmd.clone() {
-                    Clear => {
-                        futures::finished((SearchResult::with_dimension(dimension()), cmd)).boxed()
-                    }
+                    Open(_) | DrawIndices => futures::finished((None, cmd)).boxed(),
+                    Clear => futures::finished((None, cmd)).boxed(),
                     Search(term) => {
                         let mut req = Easy::new();
                         let dim = dimension();
@@ -128,7 +129,7 @@ pub fn handle_interactive_search(_args: &clap::ArgMatches) {
                                             .ok();
                                         e
                                     });
-                                (ok_or_exit(result), cmd)
+                                (Some(ok_or_exit(result)), cmd)
                             })
                             .boxed()
                     }
@@ -136,11 +137,22 @@ pub fn handle_interactive_search(_args: &clap::ArgMatches) {
             })
             .for_each(|(search, cmd)| {
                 match cmd {
+                    DrawIndices => {
+                        info(&"TBD: draw indices");
+                    }
+                    Open(number) => {
+                        info(&format!("TBD: try to open a number: {}", number));
+                    }
                     Clear => {
                         usage();
-                        write!(io::stdout(), "{goto}{}", search, goto = CONTENT_LINE).ok();
+                        write!(io::stdout(),
+                               "{goto}{}",
+                               SearchResult::with_dimension(dimension()),
+                               goto = CONTENT_LINE)
+                            .ok();
                     }
                     Search(_term) => {
+                        let search = search.expect("search result must be present");
                         info(&format!("{} results in total, showing {} max",
                                       search.meta.total,
                                       search.meta
@@ -183,9 +195,15 @@ pub fn handle_interactive_search(_args: &clap::ArgMatches) {
             Key::Char(c) => {
                 match state.mode {
                     Searching => state.term.push(c),
-                    Opening => match c {
-                        '0'|'1'|'2'|'3'|'4'|'5'|'6'|'7'|'8'|'9' => state.number.push(c),
-                        _ => {info(&format!("Please enter digits from 0-9"));},
+                    Opening => {
+                        match c {
+                            '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' => {
+                                state.number.push(c)
+                            }
+                            _ => {
+                                info(&format!("Please enter digits from 0-9"));
+                            }
+                        }
                     }
                 }
             }
@@ -211,10 +229,25 @@ pub fn handle_interactive_search(_args: &clap::ArgMatches) {
             }
         }
         promptf(&state, &mut stdout);
-        let cmd = if state.term.is_empty() {
-            Clear
-        } else {
-            Search(state.term.clone())
+        let cmd = match state.mode {
+            Searching => {
+                if state.term.is_empty() {
+                    Clear
+                } else {
+                    Search(state.term.clone())
+                }
+            }
+            Opening if state.number.len() > 0 => {
+                Open(match state.number.parse() {
+                    Ok(n) => n,
+                    Err(e) => {
+                        info(&e);
+                        state.number.clear();
+                        continue;
+                    }
+                })
+            }
+            Opening => DrawIndices,
         };
         ongoing_command = Some(pool.spawn(sender.clone().send(cmd)));
     }
