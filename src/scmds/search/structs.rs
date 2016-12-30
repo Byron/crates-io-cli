@@ -21,6 +21,13 @@ pub struct Dimension {
     pub height: u16
 }
 
+impl Dimension {
+    pub fn loose_heigth(mut self, h: u16) -> Dimension {
+        self.height -= h;
+        self
+    }
+}
+
 impl Default for Dimension {
     fn default() -> Dimension {
         let (mw, mh) = terminal_size().unwrap_or((80, 20));
@@ -67,9 +74,9 @@ pub struct SearchResult {
 }
 
 impl SearchResult {
-    pub fn with_dimension() -> SearchResult {
+    pub fn with_dimension(dim: Dimension) -> SearchResult {
         SearchResult {
-            meta: Meta { dimension: Some(Dimension::default()), ..Default::default() },
+            meta: Meta { dimension: Some(dim), ..Default::default() },
             ..Default::default()
         }
     }

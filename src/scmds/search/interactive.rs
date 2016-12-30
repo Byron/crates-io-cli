@@ -21,6 +21,11 @@ use utils::ok_or_exit;
 
 const INFO_LINE: cursor::Goto = cursor::Goto(1, 2);
 const CONTENT_LINE: cursor::Goto = cursor::Goto(1, 3);
+const NON_CONTENT_LINES: u16 = 2;
+
+fn dimension() -> Dimension {
+    Dimension::default().loose_heigth(NON_CONTENT_LINES)
+}
 
 pub fn handle_interactive_search(_args: &clap::ArgMatches) {
     let stdin = io::stdin();
@@ -38,7 +43,7 @@ pub fn handle_interactive_search(_args: &clap::ArgMatches) {
         let session = Session::new(reactor.handle());
         let search_terms = receiver.and_then(|term| {
                 let mut req = Easy::new();
-                let dim = Dimension::default();
+                let dim = dimension();
                 ok_or_exit(req.get(true));
                 let url = format!("https://crates.io/api/v1/crates?page=1&per_page={}&q={}&sort=",
                                   dim.height,
@@ -107,7 +112,7 @@ pub fn handle_interactive_search(_args: &clap::ArgMatches) {
             usage();
             write!(stdout,
                    "{goto}{}",
-                   SearchResult::with_dimension(),
+                   SearchResult::with_dimension(dimension()),
                    goto = CONTENT_LINE)
                 .ok();
             stdout.flush().ok();
@@ -121,7 +126,7 @@ pub fn handle_interactive_search(_args: &clap::ArgMatches) {
     reset_terminal();
 
     fn reset_terminal() {
-        write!(io::stdout(), "{}{}", cursor::Show, clear::All).ok();
+        write!(io::stdout(), "{}{}{}", cursor::Goto(1, 1), cursor::Show, clear::All).ok();
     }
 
     fn usage() -> usize {
