@@ -11,8 +11,8 @@ use termion::cursor;
 
 fn sanitize(input: &str) -> String {
     input.chars()
-         .map(|c| if c == '\n' { ' ' } else { c })
-         .collect()
+        .map(|c| if c == '\n' { ' ' } else { c })
+        .collect()
 }
 
 #[derive(RustcDecodable, Default)]
@@ -88,4 +88,3 @@ impl Display for SearchResult {
         Ok(())
     }
 }
-
