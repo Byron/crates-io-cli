@@ -7,7 +7,7 @@ use termion::terminal_size;
 #[derive(RustcDecodable)]
 pub struct Dimension {
     pub width: u16,
-    pub height: u16
+    pub height: u16,
 }
 
 impl Dimension {
@@ -22,7 +22,7 @@ impl Default for Dimension {
         let (mw, mh) = terminal_size().unwrap_or((80, 20));
         Dimension {
             width: mw,
-            height: mh
+            height: mh,
         }
     }
 }

@@ -127,7 +127,12 @@ pub fn handle_interactive_search(_args: &clap::ArgMatches) {
     reset_terminal();
 
     fn reset_terminal() {
-        write!(io::stdout(), "{}{}{}", cursor::Goto(1, 1), cursor::Show, clear::All).ok();
+        write!(io::stdout(),
+               "{}{}{}",
+               cursor::Goto(1, 1),
+               cursor::Show,
+               clear::All)
+            .ok();
     }
 
     fn usage() -> usize {

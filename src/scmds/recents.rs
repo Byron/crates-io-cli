@@ -2,14 +2,15 @@ use futures_cpupool::CpuPool;
 use futures::Future;
 use std::time::Duration;
 use std::io::{self, Write};
-use std::fmt::{self, Formatter, Display};
 use rustc_serialize::{json, Encodable};
 use tokio_core::reactor::{Timeout, Core};
 
 use clap;
+use prettytable::format;
+use prettytable::Table;
 use std;
 use tokio_core;
-use crates_index_diff::{CrateVersion, Index};
+use crates_index_diff::Index;
 use utils::ok_or_exit;
 
 arg_enum!{
@@ -18,14 +19,6 @@ arg_enum!{
     pub enum OutputKind {
         human,
         json
-    }
-}
-
-struct ForHumans<'a>(&'a CrateVersion);
-
-impl<'a> Display for ForHumans<'a> {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        write!(f, "{} {} {}", self.0.name, self.0.version, self.0.kind)
     }
 }
 
@@ -48,8 +41,17 @@ pub fn handle_recent_changes(repo_path: &str, args: &clap::ArgMatches) {
 
         match output_kind {
             OutputKind::human => {
-                for version in changes {
-                    writeln!(channel, "{}", ForHumans(&version)).ok();
+                if !changes.is_empty() {
+                    let table = {
+                        let mut t = Table::new();
+                        t.set_titles(row![b -> "Name", b -> "Version", b -> "Kind"]);
+                        t.set_format(*format::consts::FORMAT_NO_LINESEP_WITH_TITLE);
+                        changes.iter().fold(t, |mut t, c| {
+                            t.add_row(row![c.name, c.version, c.kind]);
+                            t
+                        })
+                    };
+                    table.print_tty(false);
                 }
             }
             OutputKind::json => {

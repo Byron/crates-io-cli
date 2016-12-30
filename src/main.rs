@@ -1,5 +1,7 @@
 #[macro_use]
 extern crate clap;
+#[macro_use]
+extern crate prettytable;
 extern crate rustc_serialize;
 extern crate crates_index_diff;
 extern crate futures;
