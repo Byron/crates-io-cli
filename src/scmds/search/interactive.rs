@@ -1,6 +1,7 @@
 use super::structs::SearchResult;
 use utils::Dimension;
 use clap;
+use rustc_serialize::json;
 use std::str;
 use std::sync::{Mutex, Arc};
 use std::thread;
@@ -63,7 +64,11 @@ pub fn handle_interactive_search(_args: &clap::ArgMatches) {
                         ()
                     })
                     .map(move |r| {
-                        let result = SearchResult::from_data(&buf.lock().unwrap(), dim);
+                        let buf_slice = buf.lock().unwrap();
+                        let result = SearchResult::from_data(&buf_slice, dim).map_err(|e| {
+                            write!(io::stderr(), "{}\n", String::from_utf8_lossy(&buf_slice));
+                            e
+                        });
                         (r, result)
                     })
             })
@@ -136,7 +141,7 @@ pub fn handle_interactive_search(_args: &clap::ArgMatches) {
     }
 
     fn usage() -> usize {
-        info(&"(<ESC> to abort, <enter> to clear) Please enter your search term.")
+        info(&"(<ESC> to quit, <enter> to clear) Please enter your search term.")
     }
 
     fn info(item: &Display) -> usize {

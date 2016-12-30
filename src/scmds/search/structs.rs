@@ -24,7 +24,7 @@ pub struct Meta {
 
 #[derive(RustcDecodable, Debug, Clone, Default)]
 pub struct Crate {
-    pub description: String,
+    pub description: Option<String>,
     pub downloads: u32,
     pub max_version: String,
     pub name: String,
@@ -38,7 +38,8 @@ impl Display for Crate {
             write!(f,
                    "{name} | {desc:.80} | {downloads} | {version}",
                    name = self.name,
-                   desc = sanitize(&self.description),
+                   desc =
+                       self.description.as_ref().map(|d| sanitize(d)).unwrap_or_else(String::new),
                    downloads = self.downloads,
                    version = self.max_version)
         }
