@@ -108,14 +108,23 @@ enum ReducerDo {
     ShowLast,
     Show(SearchResult),
     DrawIndices,
+    Open { force: bool, number: usize },
 }
 
-fn setup_future(cmd: Command, session: &Session) -> BoxFuture<(Option<SearchResult>, Command), ()> {
-    match cmd.clone() {
-        Clear | Open(_, _) | DrawIndices => futures::finished((None, cmd)).boxed(),
+fn setup_future(cmd: Command, session: &Session) -> BoxFuture<ReducerDo, ()> {
+    match cmd {
+        Clear => futures::finished(ReducerDo::Clear).boxed(),
+        Open(force, number) => {
+            futures::finished(ReducerDo::Open {
+                    force: force,
+                    number: number,
+                })
+                .boxed()
+        }
+        DrawIndices => futures::finished(ReducerDo::DrawIndices).boxed(),
         Search(show_last, term) => {
             if show_last {
-                return futures::finished((None, cmd)).boxed();
+                return futures::finished(ReducerDo::ShowLast).boxed();
             }
             let mut req = Easy::new();
             let dim = dimension();
@@ -143,17 +152,17 @@ fn setup_future(cmd: Command, session: &Session) -> BoxFuture<(Option<SearchResu
                         write!(io::stderr(), "{}\n", String::from_utf8_lossy(&buf_slice)).ok();
                         e
                     });
-                    (Some(ok_or_exit(result)), cmd)
+                    ReducerDo::Show(ok_or_exit(result))
                 })
                 .boxed()
         }
     }
 }
 
-fn handle_future_result(search: Option<SearchResult>,
-                        cmd: Command,
+fn handle_future_result(cmd: ReducerDo,
                         current_result: &mut Option<SearchResult>)
                         -> Result<(), ()> {
+    use self::ReducerDo::*;
     match cmd {
         DrawIndices => {
             match *current_result {
@@ -171,7 +180,7 @@ fn handle_future_result(search: Option<SearchResult>,
                 }
             }
         }
-        Open(force, number) => {
+        Open { force, number } => {
             match *current_result {
                 Some(ref search) => {
                     match search.crates.get(number) {
@@ -205,36 +214,33 @@ fn handle_future_result(search: Option<SearchResult>,
             write!(io::stdout(), "{goto}{}", empty_search, goto = CONTENT_LINE).ok();
             mem::replace(current_result, Some(empty_search));
         }
-        Search(show_last, _) => {
-            if show_last {
-                if let Some(search) = current_result.as_ref() {
-                    write!(io::stdout(), "{goto}{}", search, goto = CONTENT_LINE).ok();
-                }
+        ShowLast => {
+            if let Some(search) = current_result.as_ref() {
+                write!(io::stdout(), "{goto}{}", search, goto = CONTENT_LINE).ok();
+            }
+        }
+        Show(result) => {
+            info(&format!("{} results in total, showing {} max",
+                          result.meta.total,
+                          result.meta
+                              .dimension
+                              .as_ref()
+                              .expect("dimension to be set")
+                              .height));
+            if result.crates.is_empty() {
+                let last = usage();
+                write!(io::stdout(),
+                       "{gotolast} - 0 results found",
+                       gotolast = cursor::Goto(last as u16, INFO_LINE.1))
+                    .ok();
             } else {
-                let search = search.expect("search result must be present");
-                info(&format!("{} results in total, showing {} max",
-                              search.meta.total,
-                              search.meta
-                                  .dimension
-                                  .as_ref()
-                                  .expect("dimension to be set")
-                                  .height));
-                if search.crates.is_empty() {
-                    let last = usage();
-                    write!(io::stdout(),
-                           "{gotolast} - 0 results found",
-                           gotolast = cursor::Goto(last as u16, INFO_LINE.1))
-                        .ok();
-                } else {
-                    write!(io::stdout(), "{goto}{}", search, goto = CONTENT_LINE).ok();
-                    mem::replace(current_result, Some(search));
-                }
+                write!(io::stdout(), "{goto}{}", result, goto = CONTENT_LINE).ok();
+                mem::replace(current_result, Some(result));
             }
         }
     }
     io::stdout().flush().ok();
     Ok(())
-
 }
 
 pub fn handle_interactive_search(_args: &clap::ArgMatches) {
@@ -253,7 +259,7 @@ pub fn handle_interactive_search(_args: &clap::ArgMatches) {
         let mut current_result = None;
 
         let commands = receiver.and_then(|cmd: Command| setup_future(cmd, &session))
-            .for_each(|(search, cmd)| handle_future_result(search, cmd, &mut current_result));
+            .for_each(|cmd| handle_future_result(cmd, &mut current_result));
         reactor.run(commands).ok();
         println!("Thread shutting down");
     });
