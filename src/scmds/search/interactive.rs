@@ -1,7 +1,7 @@
 use super::structs::{desired_table_widths, SearchResult};
 use clap;
 use open;
-use std::{str, mem};
+use std::str;
 use std::sync::{Mutex, Arc};
 use std::io::{self, Write};
 use std::fmt::{self, Display};
@@ -160,66 +160,58 @@ fn setup_future(cmd: Command, session: &Session) -> BoxFuture<ReducerDo, ()> {
 }
 
 fn handle_future_result(cmd: ReducerDo,
-                        current_result: &mut Option<SearchResult>)
-                        -> Result<(), ()> {
+                        current_result: Option<&SearchResult>)
+                        -> Option<SearchResult> {
     use self::ReducerDo::*;
-    match cmd {
-        DrawIndices => {
-            match *current_result {
-                Some(ref search) => {
-                    info(&"(<ESC> to quit, Ctrl+o to cancel, <enter> to confirm) \
-                                       Type the number of the crate to open.");
-                    write!(io::stdout(),
-                           "{goto}{}",
-                           Indexed(search),
-                           goto = CONTENT_LINE)
-                        .ok();
-                }
-                None => {
-                    info(&"There is nothing to open - conduct a search first.");
-                }
-            }
+    let mut res = None;
+    match (cmd, current_result) {
+        (DrawIndices, None) => {
+            info(&"There is nothing to open - conduct a search first.");
         }
-        Open { force, number } => {
-            match *current_result {
-                Some(ref search) => {
-                    match search.crates.get(number) {
-                        Some(c1) => {
-                            if number == 0 || search.crates.get(number * 10).is_none() || force {
-                                let url = format!("https://crates.io/crates/{n}/{v}",
-                                                  n = c1.name,
-                                                  v = c1.max_version);
-                                if let Err(e) = open::that(url) {
-                                    info(&e);
-                                }
-                            } else {
-                                info(&format!("Hit <enter> to open crate #{} or \
-                                                           keep typing ...",
-                                              number));
-                            }
+        (DrawIndices, Some(ref search)) => {
+            info(&"(<ESC> to quit, Ctrl+o to cancel, <enter> to confirm) Type the number of the \
+                   crate to open.");
+            write!(io::stdout(),
+                   "{goto}{}",
+                   Indexed(search),
+                   goto = CONTENT_LINE)
+                .ok();
+        }
+        (Open { .. }, None) => {
+            info(&"There is nothing to open - conduct a search first");
+        }
+        (Open { force, number }, Some(ref search)) => {
+            match search.crates.get(number) {
+                Some(c1) => {
+                    if number == 0 || search.crates.get(number * 10).is_none() || force {
+                        let url = format!("https://crates.io/crates/{n}/{v}",
+                                          n = c1.name,
+                                          v = c1.max_version);
+                        if let Err(e) = open::that(url) {
+                            info(&e);
                         }
-                        None => {
-                            info(&format!("No crate #{}! Try using <backspace> ...", number));
-                        }
+                    } else {
+                        info(&format!("Hit <enter> to open crate #{} or keep typing ...", number));
                     }
                 }
                 None => {
-                    info(&"There is nothing to open - conduct a search first");
+                    info(&format!("No crate #{}! Try using <backspace> ...", number));
                 }
             }
         }
-        Clear => {
+        (Clear, _) => {
             usage();
             let empty_search = SearchResult::with_dimension(dimension());
             write!(io::stdout(), "{goto}{}", empty_search, goto = CONTENT_LINE).ok();
-            mem::replace(current_result, Some(empty_search));
+            res = Some(empty_search);
         }
-        ShowLast => {
-            if let Some(search) = current_result.as_ref() {
-                write!(io::stdout(), "{goto}{}", search, goto = CONTENT_LINE).ok();
-            }
+        (ShowLast, None) => {
+            info(&"There is no previous result - conduct a search first.");
         }
-        Show(result) => {
+        (ShowLast, Some(ref search)) => {
+            write!(io::stdout(), "{goto}{}", search, goto = CONTENT_LINE).ok();
+        }
+        (Show(result), _) => {
             info(&format!("{} results in total, showing {} max",
                           result.meta.total,
                           result.meta
@@ -235,12 +227,12 @@ fn handle_future_result(cmd: ReducerDo,
                     .ok();
             } else {
                 write!(io::stdout(), "{goto}{}", result, goto = CONTENT_LINE).ok();
-                mem::replace(current_result, Some(result));
+                res = Some(result);
             }
         }
     }
     io::stdout().flush().ok();
-    Ok(())
+    res
 }
 
 pub fn handle_interactive_search(_args: &clap::ArgMatches) {
@@ -259,7 +251,12 @@ pub fn handle_interactive_search(_args: &clap::ArgMatches) {
         let mut current_result = None;
 
         let commands = receiver.and_then(|cmd: Command| setup_future(cmd, &session))
-            .for_each(|cmd| handle_future_result(cmd, &mut current_result));
+            .for_each(|cmd| {
+                if let Some(next_result) = handle_future_result(cmd, current_result.as_ref()) {
+                    current_result = Some(next_result);
+                }
+                Ok(())
+            });
         reactor.run(commands).ok();
         println!("Thread shutting down");
     });
