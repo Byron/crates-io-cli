@@ -14,12 +14,12 @@ use termion::raw::IntoRawMode;
 use termion::input::TermRead;
 use termion::{cursor, clear};
 use tokio_core::reactor::{Timeout, Handle, Core};
-use futures::{self, Poll, Sink, Stream, Future};
+use futures::{self, Sink, Stream, Future};
 use futures::future::BoxFuture;
 use futures::sync::mpsc;
 use tokio_curl::Session;
 
-use utils::{ok_or_exit, Dimension};
+use utils::{DropOutdated, DroppedOrError, ok_or_exit, Dimension};
 
 const INFO_LINE: cursor::Goto = cursor::Goto(1, 2);
 const CONTENT_LINE: cursor::Goto = cursor::Goto(1, 3);
@@ -112,50 +112,6 @@ enum ReducerDo {
     Show(SearchResult),
     DrawIndices,
     Open { force: bool, number: usize },
-}
-
-#[must_use = "futures do nothing unless polled"]
-struct DropOutdated<A>
-    where A: Future
-{
-    inner: Option<A>,
-    version: usize,
-    current_version: Arc<AtomicUsize>,
-}
-
-enum DroppedOrError<T> {
-    Dropped,
-    Err(T),
-}
-
-impl<A> Future for DropOutdated<A>
-    where A: Future
-{
-    type Item = A::Item;
-    type Error = DroppedOrError<A::Error>;
-
-    fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
-        let v = self.current_version.load(Ordering::Relaxed);
-        if v != self.version {
-            drop(self.inner.take());
-        }
-        match self.inner {
-            Some(ref mut f) => f.poll().map_err(|e| DroppedOrError::Err(e)),
-            None => Err(DroppedOrError::Dropped),
-        }
-    }
-}
-
-impl<A> DropOutdated<A>
-    where A: Future
-{
-    fn with_version(f: A, version: Arc<AtomicUsize>) -> DropOutdated<A> {
-        DropOutdated {
-            inner: Some(f),
-            version: version.load(Ordering::Relaxed),
-            current_version: version,
-        }
-    }
 }
 
 fn setup_future(cmd: Command,
