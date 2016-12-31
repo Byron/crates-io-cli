@@ -321,7 +321,6 @@ pub fn handle_interactive_search(_args: &clap::ArgMatches) {
         println!("Thread shutting down");
     });
 
-    let mut ongoing_command = None;
     let pool = CpuPool::new(1);
 
     for k in stdin.keys() {
@@ -403,9 +402,8 @@ pub fn handle_interactive_search(_args: &clap::ArgMatches) {
             }
             Opening => DrawIndices,
         };
-        ongoing_command = Some(pool.spawn(sender.clone().send(cmd.clone())));
+        pool.spawn(sender.clone().send(cmd.clone())).wait();
     }
-    drop(ongoing_command);
     drop(sender);
     t.join().unwrap();
     reset_terminal();
