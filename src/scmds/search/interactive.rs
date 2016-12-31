@@ -154,6 +154,7 @@ fn setup_future(cmd: Command, session: &Session) -> BoxFuture<ReducerDo, ()> {
                     });
                     ReducerDo::Show(ok_or_exit(result))
                 })
+                .or_else(|_| Ok(ReducerDo::ShowLast))
                 .boxed()
         }
     }
