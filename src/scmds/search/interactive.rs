@@ -106,6 +106,7 @@ impl<'a> Display for Indexed<'a> {
 }
 
 enum ReducerDo {
+    Nothing,
     Clear,
     ShowLast,
     Show(SearchResult),
@@ -205,10 +206,10 @@ fn setup_future(cmd: Command,
                     });
                     ReducerDo::Show(ok_or_exit(result))
                 })
-                .or_else(|_| Ok(ReducerDo::ShowLast));
+                .or_else(|_| Ok(ReducerDo::Nothing));
             DropOutdated::with_version(req, version.clone())
                 .or_else(|e| match e {
-                    DroppedOrError::Dropped => Ok(ReducerDo::ShowLast),
+                    DroppedOrError::Dropped => Ok(ReducerDo::Nothing),
                     DroppedOrError::Err(e) => Err(e),
                 })
                 .boxed()
@@ -222,6 +223,7 @@ fn handle_future_result(cmd: ReducerDo,
     use self::ReducerDo::*;
     let mut res = None;
     match (cmd, current_result) {
+        (Nothing, _) => {}
         (DrawIndices, None) => {
             info(&"There is nothing to open - conduct a search first.");
         }
