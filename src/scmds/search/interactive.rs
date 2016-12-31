@@ -2,6 +2,7 @@ use super::structs::{desired_table_widths, SearchResult};
 use clap;
 use open;
 use std::str;
+use std::sync::atomic::{Ordering, AtomicUsize};
 use std::sync::{Mutex, Arc};
 use std::io::{self, Write};
 use std::fmt::{self, Display};
@@ -13,7 +14,7 @@ use termion::raw::IntoRawMode;
 use termion::input::TermRead;
 use termion::{cursor, clear};
 use tokio_core::reactor::Core;
-use futures::{self, Sink, Stream, Future};
+use futures::{self, Poll, Sink, Stream, Future};
 use futures::future::BoxFuture;
 use futures::sync::mpsc;
 use tokio_curl::Session;
@@ -112,7 +113,54 @@ enum ReducerDo {
     Open { force: bool, number: usize },
 }
 
-fn setup_future(cmd: Command, session: &Session) -> BoxFuture<ReducerDo, ()> {
+#[must_use = "futures do nothing unless polled"]
+struct DropOutdated<A>
+    where A: Future
+{
+    inner: Option<A>,
+    version: usize,
+    current_version: Arc<AtomicUsize>,
+}
+
+enum DroppedOrError<T> {
+    Dropped,
+    Err(T),
+}
+
+impl<A> Future for DropOutdated<A>
+    where A: Future
+{
+    type Item = A::Item;
+    type Error = DroppedOrError<A::Error>;
+
+    fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
+        let v = self.current_version.load(Ordering::Relaxed);
+        if v != self.version {
+            drop(self.inner.take());
+        }
+        match self.inner {
+            Some(ref mut f) => f.poll().map_err(|e| DroppedOrError::Err(e)),
+            None => Err(DroppedOrError::Dropped),
+        }
+    }
+}
+
+impl<A> DropOutdated<A>
+    where A: Future
+{
+    fn with_version(f: A, version: Arc<AtomicUsize>) -> DropOutdated<A> {
+        DropOutdated {
+            inner: Some(f),
+            version: version.load(Ordering::Relaxed),
+            current_version: version,
+        }
+    }
+}
+
+fn setup_future(cmd: Command,
+                session: &Session,
+                version: &Arc<AtomicUsize>)
+                -> BoxFuture<ReducerDo, ()> {
     match cmd {
         Clear => futures::finished(ReducerDo::Clear).boxed(),
         Open { force, number } => {
@@ -125,11 +173,15 @@ fn setup_future(cmd: Command, session: &Session) -> BoxFuture<ReducerDo, ()> {
         DrawIndices => futures::finished(ReducerDo::DrawIndices).boxed(),
         ShowLast => futures::finished(ReducerDo::ShowLast).boxed(),
         Search(term) => {
+            let version = {
+                version.fetch_add(1, Ordering::SeqCst);
+                version.clone()
+            };
+
             let mut req = Easy::new();
             let dim = dimension();
             ok_or_exit(req.get(true));
-            let url = format!("https://crates.\
-                                           io/api/v1/crates?page=1&per_page={}&q={}&sort=",
+            let url = format!("https://crates.io/api/v1/crates?page=1&per_page={}&q={}&sort=",
                               dim.height,
                               req.url_encode(String::as_bytes(&term)));
             ok_or_exit(req.url(&url));
@@ -140,7 +192,7 @@ fn setup_future(cmd: Command, session: &Session) -> BoxFuture<ReducerDo, ()> {
                 Ok(data.len())
             }));
             info(&"searching ...");
-            session.perform(req)
+            let req = session.perform(req)
                 .map_err(|e| {
                     info(&e);
                     ()
@@ -153,7 +205,12 @@ fn setup_future(cmd: Command, session: &Session) -> BoxFuture<ReducerDo, ()> {
                     });
                     ReducerDo::Show(ok_or_exit(result))
                 })
-                .or_else(|_| Ok(ReducerDo::ShowLast))
+                .or_else(|_| Ok(ReducerDo::ShowLast));
+            DropOutdated::with_version(req, version.clone())
+                .or_else(|e| match e {
+                    DroppedOrError::Dropped => Ok(ReducerDo::ShowLast),
+                    DroppedOrError::Err(e) => Err(e),
+                })
                 .boxed()
         }
     }
@@ -248,9 +305,10 @@ pub fn handle_interactive_search(_args: &clap::ArgMatches) {
     let t = thread::spawn(|| {
         let mut reactor = ok_or_exit(Core::new());
         let session = Session::new(reactor.handle());
+        let version = Arc::new(AtomicUsize::new(0));
         let mut current_result = None;
 
-        let commands = receiver.and_then(|cmd: Command| setup_future(cmd, &session))
+        let commands = receiver.and_then(|cmd: Command| setup_future(cmd, &session, &version))
             .for_each(|cmd| {
                 if let Some(next_result) = handle_future_result(cmd, current_result.as_ref()) {
                     current_result = next_result;
