@@ -7,7 +7,6 @@ use std::sync::{Mutex, Arc};
 use std::io::{self, Write};
 use std::fmt::{self, Display};
 use std::thread;
-use futures_cpupool::CpuPool;
 use curl::easy::Easy;
 use termion::event::Key;
 use termion::raw::IntoRawMode;
@@ -194,8 +193,8 @@ fn setup_future(cmd: Command,
             }));
             info(&"searching ...");
             let req = session.perform(req)
-                .map_err(|e| {
-                    info(&e);
+                .map_err(move |e| {
+                    info(&format!("Request to {} failed with error: '{}'", url, e));
                     ()
                 })
                 .map(move |_response| {
@@ -321,8 +320,6 @@ pub fn handle_interactive_search(_args: &clap::ArgMatches) {
         println!("Thread shutting down");
     });
 
-    let pool = CpuPool::new(1);
-
     for k in stdin.keys() {
         let (mut force_open, mut show_last_search) = (false, false);
         match ok_or_exit(k) {
@@ -402,7 +399,7 @@ pub fn handle_interactive_search(_args: &clap::ArgMatches) {
             }
             Opening => DrawIndices,
         };
-        pool.spawn(sender.clone().send(cmd.clone())).wait();
+        ok_or_exit(sender.clone().send(cmd.clone()).wait());
     }
     drop(sender);
     t.join().unwrap();
