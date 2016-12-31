@@ -30,8 +30,9 @@ fn dimension() -> Dimension {
 
 #[derive(Clone)]
 enum Command {
-    Search(bool, String),
-    Open(bool, usize),
+    Search(String),
+    ShowLast,
+    Open { force: bool, number: usize },
     DrawIndices,
     Clear,
 }
@@ -114,7 +115,7 @@ enum ReducerDo {
 fn setup_future(cmd: Command, session: &Session) -> BoxFuture<ReducerDo, ()> {
     match cmd {
         Clear => futures::finished(ReducerDo::Clear).boxed(),
-        Open(force, number) => {
+        Open { force, number } => {
             futures::finished(ReducerDo::Open {
                     force: force,
                     number: number,
@@ -122,10 +123,8 @@ fn setup_future(cmd: Command, session: &Session) -> BoxFuture<ReducerDo, ()> {
                 .boxed()
         }
         DrawIndices => futures::finished(ReducerDo::DrawIndices).boxed(),
-        Search(show_last, term) => {
-            if show_last {
-                return futures::finished(ReducerDo::ShowLast).boxed();
-            }
+        ShowLast => futures::finished(ReducerDo::ShowLast).boxed(),
+        Search(term) => {
             let mut req = Easy::new();
             let dim = dimension();
             ok_or_exit(req.get(true));
@@ -239,13 +238,13 @@ fn handle_future_result(cmd: ReducerDo,
 pub fn handle_interactive_search(_args: &clap::ArgMatches) {
     let stdin = io::stdin();
     let mut stdout = ok_or_exit(io::stdout().into_raw_mode());
-    ok_or_exit(write!(stdout, "{}{}", cursor::Goto(1, 1), clear::All));
     let mut state = State::default();
+
+    ok_or_exit(write!(stdout, "{}{}", cursor::Goto(1, 1), clear::All));
     promptf(&state, &mut stdout);
     usage();
 
     let (sender, receiver) = mpsc::channel(10);
-
     let t = thread::spawn(|| {
         let mut reactor = ok_or_exit(Core::new());
         let session = Session::new(reactor.handle());
@@ -323,19 +322,24 @@ pub fn handle_interactive_search(_args: &clap::ArgMatches) {
                 if state.term.is_empty() {
                     Clear
                 } else {
-                    Search(show_last_search, state.term.clone())
+                    match show_last_search {
+                        true => ShowLast,
+                        false => Search(state.term.clone()),
+                    }
                 }
             }
             Opening if state.number.len() > 0 => {
-                Open(force_open,
-                     match state.number.parse() {
-                         Ok(n) => n,
-                         Err(e) => {
-                             info(&e);
-                             state.number.clear();
-                             continue;
-                         }
-                     })
+                Open {
+                    force: force_open,
+                    number: match state.number.parse() {
+                        Ok(n) => n,
+                        Err(e) => {
+                            info(&e);
+                            state.number.clear();
+                            continue;
+                        }
+                    },
+                }
             }
             Opening => DrawIndices,
         };
