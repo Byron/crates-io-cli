@@ -161,7 +161,7 @@ fn setup_future(cmd: Command, session: &Session) -> BoxFuture<ReducerDo, ()> {
 
 fn handle_future_result(cmd: ReducerDo,
                         current_result: Option<&SearchResult>)
-                        -> Option<SearchResult> {
+                        -> Option<Option<SearchResult>> {
     use self::ReducerDo::*;
     let mut res = None;
     match (cmd, current_result) {
@@ -203,7 +203,7 @@ fn handle_future_result(cmd: ReducerDo,
             usage();
             let empty_search = SearchResult::with_dimension(dimension());
             write!(io::stdout(), "{goto}{}", empty_search, goto = CONTENT_LINE).ok();
-            res = Some(empty_search);
+            res = Some(None);
         }
         (ShowLast, None) => {
             info(&"There is no previous result - conduct a search first.");
@@ -227,7 +227,7 @@ fn handle_future_result(cmd: ReducerDo,
                     .ok();
             } else {
                 write!(io::stdout(), "{goto}{}", result, goto = CONTENT_LINE).ok();
-                res = Some(result);
+                res = Some(Some(result));
             }
         }
     }
@@ -253,7 +253,7 @@ pub fn handle_interactive_search(_args: &clap::ArgMatches) {
         let commands = receiver.and_then(|cmd: Command| setup_future(cmd, &session))
             .for_each(|cmd| {
                 if let Some(next_result) = handle_future_result(cmd, current_result.as_ref()) {
-                    current_result = Some(next_result);
+                    current_result = next_result;
                 }
                 Ok(())
             });
