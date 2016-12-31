@@ -2,6 +2,7 @@ use super::structs::{desired_table_widths, SearchResult};
 use clap;
 use open;
 use std::str;
+use std::time::Duration;
 use std::sync::atomic::{Ordering, AtomicUsize};
 use std::sync::{Mutex, Arc};
 use std::io::{self, Write};
@@ -12,7 +13,7 @@ use termion::event::Key;
 use termion::raw::IntoRawMode;
 use termion::input::TermRead;
 use termion::{cursor, clear};
-use tokio_core::reactor::Core;
+use tokio_core::reactor::{Timeout, Handle, Core};
 use futures::{self, Poll, Sink, Stream, Future};
 use futures::future::BoxFuture;
 use futures::sync::mpsc;
@@ -159,6 +160,7 @@ impl<A> DropOutdated<A>
 
 fn setup_future(cmd: Command,
                 session: &Session,
+                handle: &Handle,
                 version: &Arc<AtomicUsize>)
                 -> BoxFuture<ReducerDo, ()> {
     match cmd {
@@ -192,6 +194,16 @@ fn setup_future(cmd: Command,
                 Ok(data.len())
             }));
             info(&"searching ...");
+            let default_timeout: Duration = Duration::from_millis(1500);
+            let timeout = Timeout::new(default_timeout.clone(), handle)
+                .map(Future::boxed)
+                .unwrap_or_else(|_| futures::empty().boxed())
+                .map(move |_| {
+                    info(&format!("Timeout occurred after {:?} - request dropped. Keep typing \
+                                   to try again.",
+                                  default_timeout));
+                    ReducerDo::Nothing
+                });
             let req = session.perform(req)
                 .map_err(move |e| {
                     info(&format!("Request to {} failed with error: '{}'", url, e));
@@ -206,6 +218,18 @@ fn setup_future(cmd: Command,
                     ReducerDo::Show(ok_or_exit(result))
                 })
                 .or_else(|_| Ok(ReducerDo::Nothing));
+            let req = req.select(timeout)
+                .then(|res| {
+                    Ok(match res {
+                        Ok((do_nothing @ ReducerDo::Nothing, pending_request)) => {
+                            drop(pending_request);
+                            do_nothing
+                        }
+                        Ok((result, _timeout)) => result,
+                        Err(_) => ReducerDo::Nothing,
+                    })
+                })
+                .boxed();
             DropOutdated::with_version(req, version.clone())
                 .or_else(|e| match e {
                     DroppedOrError::Dropped => Ok(ReducerDo::Nothing),
@@ -306,16 +330,18 @@ pub fn handle_interactive_search(_args: &clap::ArgMatches) {
     let t = thread::spawn(|| {
         let mut reactor = ok_or_exit(Core::new());
         let session = Session::new(reactor.handle());
+        let handle = reactor.handle();
         let version = Arc::new(AtomicUsize::new(0));
         let mut current_result = None;
 
-        let commands = receiver.and_then(|cmd: Command| setup_future(cmd, &session, &version))
-            .for_each(|cmd| {
-                if let Some(next_result) = handle_future_result(cmd, current_result.as_ref()) {
-                    current_result = next_result;
-                }
-                Ok(())
-            });
+        let commands =
+            receiver.and_then(|cmd: Command| setup_future(cmd, &session, &handle, &version))
+                .for_each(|cmd| {
+                    if let Some(next_result) = handle_future_result(cmd, current_result.as_ref()) {
+                        current_result = next_result;
+                    }
+                    Ok(())
+                });
         reactor.run(commands).ok();
         println!("Thread shutting down");
     });
