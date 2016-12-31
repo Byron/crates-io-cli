@@ -145,3 +145,76 @@ impl Display for SearchResult {
         Ok(())
     }
 }
+
+#[derive(Clone)]
+pub enum Command {
+    Search(String),
+    ShowLast,
+    Open { force: bool, number: usize },
+    DrawIndices,
+    Clear,
+}
+
+#[derive(Clone, Copy)]
+pub enum Mode {
+    Searching,
+    Opening,
+}
+
+impl Display for Mode {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f,
+               "{}",
+               match *self {
+                   Mode::Searching => "search",
+                   Mode::Opening => "open by number",
+               })
+    }
+}
+
+impl Default for Mode {
+    fn default() -> Self {
+        Mode::Searching
+    }
+}
+
+
+#[derive(Default)]
+pub struct State {
+    pub number: String,
+    pub term: String,
+    pub mode: Mode,
+}
+
+impl State {
+    pub fn prompt(&self) -> &str {
+        match self.mode {
+            Mode::Searching => &self.term,
+            Mode::Opening => &self.number,
+        }
+    }
+}
+
+pub struct Indexed<'a>(pub &'a SearchResult);
+
+impl<'a> Display for Indexed<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let dim = self.0.meta.dimension.clone().unwrap_or_default();
+
+        let (nw, ..) = desired_table_widths(&self.0.crates, &dim);
+        let center = (nw + 1) as u16;
+        write!(f,
+               "{hide}{align}",
+               hide = cursor::Hide,
+               align = cursor::Right(center))?;
+        for i in (0..self.0.crates.len()).take(dim.height as usize) {
+            let rendered = format!("|#{:3} #|", i);
+            write!(f,
+                   "{}{left}{down}",
+                   rendered,
+                   left = cursor::Left(rendered.len() as u16),
+                   down = cursor::Down(1))?
+        }
+        Ok(())
+    }
+}

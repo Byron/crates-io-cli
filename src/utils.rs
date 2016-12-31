@@ -71,7 +71,7 @@ pub enum DroppedOrError<T> {
 }
 
 impl<A> Future for DropOutdated<A>
-where A: Future
+    where A: Future
 {
     type Item = A::Item;
     type Error = DroppedOrError<A::Error>;
@@ -89,7 +89,7 @@ where A: Future
 }
 
 impl<A> DropOutdated<A>
-where A: Future
+    where A: Future
 {
     pub fn with_version(f: A, version: Arc<AtomicUsize>) -> DropOutdated<A> {
         DropOutdated {
@@ -99,4 +99,3 @@ where A: Future
         }
     }
 }
-

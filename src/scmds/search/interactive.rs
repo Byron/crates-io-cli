@@ -1,4 +1,4 @@
-use super::structs::{desired_table_widths, SearchResult};
+use super::structs::{State, Indexed, Command, SearchResult};
 use clap;
 use open;
 use std::str;
@@ -6,7 +6,7 @@ use std::time::Duration;
 use std::sync::atomic::{Ordering, AtomicUsize};
 use std::sync::{Mutex, Arc};
 use std::io::{self, Write};
-use std::fmt::{self, Display};
+use std::fmt::Display;
 use std::thread;
 use curl::easy::Easy;
 use termion::event::Key;
@@ -29,81 +29,8 @@ fn dimension() -> Dimension {
     Dimension::default().loose_heigth(NON_CONTENT_LINES)
 }
 
-#[derive(Clone)]
-enum Command {
-    Search(String),
-    ShowLast,
-    Open { force: bool, number: usize },
-    DrawIndices,
-    Clear,
-}
-
-#[derive(Clone, Copy)]
-enum Mode {
-    Searching,
-    Opening,
-}
-
-impl Display for Mode {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f,
-               "{}",
-               match *self {
-                   Searching => "search",
-                   Opening => "open by number",
-               })
-    }
-}
-
-impl Default for Mode {
-    fn default() -> Self {
-        Searching
-    }
-}
-
-
-use self::Command::*;
-use self::Mode::*;
-
-#[derive(Default)]
-struct State {
-    number: String,
-    term: String,
-    mode: Mode,
-}
-
-impl State {
-    fn prompt(&self) -> &str {
-        match self.mode {
-            Searching => &self.term,
-            Opening => &self.number,
-        }
-    }
-}
-
-struct Indexed<'a>(&'a SearchResult);
-
-impl<'a> Display for Indexed<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let dim = self.0.meta.dimension.clone().unwrap_or_default();
-
-        let (nw, ..) = desired_table_widths(&self.0.crates, &dim);
-        let center = (nw + 1) as u16;
-        write!(f,
-               "{hide}{align}",
-               hide = cursor::Hide,
-               align = cursor::Right(center))?;
-        for i in (0..self.0.crates.len()).take(dim.height as usize) {
-            let rendered = format!("|#{:3} #|", i);
-            write!(f,
-                   "{}{left}{down}",
-                   rendered,
-                   left = cursor::Left(rendered.len() as u16),
-                   down = cursor::Down(1))?
-        }
-        Ok(())
-    }
-}
+use super::structs::Command::*;
+use super::structs::Mode::*;
 
 enum ReducerDo {
     Nothing,
