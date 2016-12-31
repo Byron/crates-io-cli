@@ -14,6 +14,7 @@ use termion::input::TermRead;
 use termion::{cursor, clear};
 use tokio_core::reactor::Core;
 use futures::{self, Sink, Stream, Future};
+use futures::future::BoxFuture;
 use futures::sync::mpsc;
 use tokio_curl::Session;
 
@@ -107,6 +108,46 @@ enum ReducerDo {
     ShowLast,
     Show(SearchResult),
     DrawIndices,
+}
+
+fn setup_future(cmd: Command, session: &Session) -> BoxFuture<(Option<SearchResult>, Command), ()> {
+    match cmd.clone() {
+        Clear | Open(_, _) | DrawIndices => futures::finished((None, cmd)).boxed(),
+        Search(show_last, term) => {
+            if show_last {
+                return futures::finished((None, cmd)).boxed();
+            }
+            let mut req = Easy::new();
+            let dim = dimension();
+            ok_or_exit(req.get(true));
+            let url = format!("https://crates.\
+                                           io/api/v1/crates?page=1&per_page={}&q={}&sort=",
+                              dim.height,
+                              req.url_encode(String::as_bytes(&term)));
+            ok_or_exit(req.url(&url));
+            let buf = Arc::new(Mutex::new(Vec::new()));
+            let buf_handle = buf.clone();
+            ok_or_exit(req.write_function(move |data| {
+                buf_handle.lock().unwrap().extend_from_slice(data);
+                Ok(data.len())
+            }));
+            info(&"searching ...");
+            session.perform(req)
+                .map_err(|e| {
+                    info(&e);
+                    ()
+                })
+                .map(move |_response| {
+                    let buf_slice = buf.lock().unwrap();
+                    let result = SearchResult::from_data(&buf_slice, dim).map_err(|e| {
+                        write!(io::stderr(), "{}\n", String::from_utf8_lossy(&buf_slice)).ok();
+                        e
+                    });
+                    (Some(ok_or_exit(result)), cmd)
+                })
+                .boxed()
+        }
+    }
 }
 
 fn handle_future_result(search: Option<SearchResult>,
@@ -211,49 +252,7 @@ pub fn handle_interactive_search(_args: &clap::ArgMatches) {
         let session = Session::new(reactor.handle());
         let mut current_result = None;
 
-        let commands = receiver.and_then(|cmd: Command| {
-                match cmd.clone() {
-                    Clear | Open(_, _) | DrawIndices => futures::finished((None, cmd)).boxed(),
-                    Search(show_last, term) => {
-                        if show_last {
-                            return futures::finished((None, cmd)).boxed();
-                        }
-                        let mut req = Easy::new();
-                        let dim = dimension();
-                        ok_or_exit(req.get(true));
-                        let url = format!("https://crates.\
-                                           io/api/v1/crates?page=1&per_page={}&q={}&sort=",
-                                          dim.height,
-                                          req.url_encode(String::as_bytes(&term)));
-                        ok_or_exit(req.url(&url));
-                        let buf = Arc::new(Mutex::new(Vec::new()));
-                        let buf_handle = buf.clone();
-                        ok_or_exit(req.write_function(move |data| {
-                            buf_handle.lock().unwrap().extend_from_slice(data);
-                            Ok(data.len())
-                        }));
-                        info(&"searching ...");
-                        session.perform(req)
-                            .map_err(|e| {
-                                info(&e);
-                                ()
-                            })
-                            .map(move |_response| {
-                                let buf_slice = buf.lock().unwrap();
-                                let result = SearchResult::from_data(&buf_slice, dim)
-                                    .map_err(|e| {
-                                        write!(io::stderr(),
-                                               "{}\n",
-                                               String::from_utf8_lossy(&buf_slice))
-                                            .ok();
-                                        e
-                                    });
-                                (Some(ok_or_exit(result)), cmd)
-                            })
-                            .boxed()
-                    }
-                }
-            })
+        let commands = receiver.and_then(|cmd: Command| setup_future(cmd, &session))
             .for_each(|(search, cmd)| handle_future_result(search, cmd, &mut current_result));
         reactor.run(commands).ok();
         println!("Thread shutting down");
