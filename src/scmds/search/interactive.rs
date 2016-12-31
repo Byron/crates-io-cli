@@ -226,7 +226,6 @@ pub fn handle_interactive_search(_args: &clap::ArgMatches) {
                     Ok(())
                 });
         reactor.run(commands).ok();
-        println!("Thread shutting down");
     });
 
     for k in stdin.keys() {
@@ -308,7 +307,7 @@ pub fn handle_interactive_search(_args: &clap::ArgMatches) {
             }
             Opening => DrawIndices,
         };
-        ok_or_exit(sender.clone().send(cmd.clone()).wait());
+        ok_or_exit(sender.clone().send(cmd).wait());
     }
     drop(sender);
     t.join().unwrap();
