@@ -1,4 +1,5 @@
 use super::structs::{State, Indexed, Command, SearchResult};
+use super::error::Error;
 use clap;
 use open;
 use std::str;
@@ -205,7 +206,10 @@ enum LoopControl {
     ShouldKeepGoing,
 }
 
-fn handle_key(k: Key, sender: mpsc::Sender<Command>, state: &mut State) -> LoopControl {
+fn handle_key(k: Key,
+              sender: mpsc::Sender<Command>,
+              state: &mut State)
+              -> Result<LoopControl, Error> {
     let (mut force_open, mut show_last_search) = (false, false);
     match k {
         Key::Char('\n') => {
@@ -227,7 +231,7 @@ fn handle_key(k: Key, sender: mpsc::Sender<Command>, state: &mut State) -> LoopC
                         }
                         _ => {
                             info(&format!("Please enter digits from 0-9"));
-                            return LoopControl::ShouldKeepGoing;
+                            return Ok(LoopControl::ShouldKeepGoing);
                         }
                     }
                 }
@@ -251,11 +255,11 @@ fn handle_key(k: Key, sender: mpsc::Sender<Command>, state: &mut State) -> LoopC
             };
         }
         Key::Esc => {
-            return LoopControl::ShouldBreak;
+            return Ok(LoopControl::ShouldBreak);
         }
         key @ _ => {
             info(&format!("unsupported key sequence: {:?}", key));
-            return LoopControl::ShouldKeepGoing;
+            return Ok(LoopControl::ShouldKeepGoing);
         }
     }
     promptf(&state);
@@ -278,23 +282,23 @@ fn handle_key(k: Key, sender: mpsc::Sender<Command>, state: &mut State) -> LoopC
                     Err(e) => {
                         info(&e);
                         state.number.clear();
-                        return LoopControl::ShouldKeepGoing;
+                        return Ok(LoopControl::ShouldKeepGoing);
                     }
                 },
             }
         }
         Opening => DrawIndices,
     };
-    ok_or_exit(sender.send(cmd).wait());
-    return LoopControl::ShouldKeepGoing;
+    sender.send(cmd).wait().map_err(|e| Error::SendCommand(e))?;
+    return Ok(LoopControl::ShouldKeepGoing);
 }
 
-pub fn handle_interactive_search(_args: &clap::ArgMatches) {
+pub fn handle_interactive_search(_args: &clap::ArgMatches) -> Result<(), Error> {
     let stdin = io::stdin();
-    let mut stdout = ok_or_exit(io::stdout().into_raw_mode());
+    let mut stdout = io::stdout().into_raw_mode()?;
     let mut state = State::default();
 
-    ok_or_exit(write!(stdout, "{}{}", cursor::Goto(1, 1), clear::All));
+    write!(stdout, "{}{}", cursor::Goto(1, 1), clear::All).map_err(|e| Error::FirstIo(e))?;
     promptf(&state);
     usage();
 
@@ -319,13 +323,16 @@ pub fn handle_interactive_search(_args: &clap::ArgMatches) {
     });
 
     for k in stdin.keys() {
-        if let LoopControl::ShouldBreak = handle_key(ok_or_exit(k), sender.clone(), &mut state) {
+        if let LoopControl::ShouldBreak = handle_key(k.map_err(|e| Error::KeySequence(e))?,
+                                                     sender.clone(),
+                                                     &mut state)? {
             break;
         }
     }
     drop(sender);
     t.join().unwrap();
     reset_terminal();
+    Ok(())
 }
 
 fn reset_terminal() {

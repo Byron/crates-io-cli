@@ -12,6 +12,8 @@ extern crate tokio_curl;
 #[cfg(unix)]
 extern crate termion;
 extern crate open;
+#[macro_use]
+extern crate quick_error;
 
 
 mod utils;
@@ -19,6 +21,7 @@ mod scmds;
 
 use scmds::{handle_interactive_search, handle_recent_changes, OutputKind};
 use std::env;
+use utils::ok_or_exit;
 use std::path::PathBuf;
 use clap::{Arg, SubCommand, App};
 
@@ -75,7 +78,7 @@ fn main() {
 
     match matches.subcommand() {
         ("recent-changes", Some(args)) => handle_recent_changes(repo_path, args),
-        ("search", Some(args)) => handle_interactive_search(args),
+        ("search", Some(args)) => ok_or_exit(handle_interactive_search(args)),
         _ => {
             print!("{}\n", matches.usage());
             std::process::exit(1);

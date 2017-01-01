@@ -3,6 +3,8 @@ mod structs;
 #[cfg(unix)]
 mod interactive;
 
+mod error;
+
 #[cfg(unix)]
 pub use self::interactive::handle_interactive_search;
 
