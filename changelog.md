@@ -1,3 +1,23 @@
+<a name="v1.3.1"></a>
+### v1.3.1 (2017-01-01)
+
+
+#### Improvements
+
+* **search:**
+  *  timeout for curl requests ([798acf34](https://github.com/Byron/crates-io-cli-rs/commit/798acf3449d97ec7c68d7630e0895ad96b2580de))
+  *  allow to do nothing in some cases ([f0e96258](https://github.com/Byron/crates-io-cli-rs/commit/f0e96258b4707e9df7f161f884adf5d023655a66))
+  *  explicit select-like future drops ([65888661](https://github.com/Byron/crates-io-cli-rs/commit/65888661f1f1516f5fa6f8549d0d65b047a18330))
+  *  failed queries don't abort everything anymore ([1f195cc7](https://github.com/Byron/crates-io-cli-rs/commit/1f195cc7a8de5850c0cc5344d1fe6079a95e0fd6))
+
+#### Bug Fixes
+
+* **search:**
+  *  info about valid characters is now shown ([89dfcd04](https://github.com/Byron/crates-io-cli-rs/commit/89dfcd04bf7e10632676a72d9265056a877a77ee))
+  *  show better info if no search was made ([a6f8be20](https://github.com/Byron/crates-io-cli-rs/commit/a6f8be20b4c5b25667eb26566c10146cfee574e9))
+
+
+
 <a name="v1.3.0"></a>
 ## v1.3.0 (2016-12-30)
 
