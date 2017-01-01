@@ -46,7 +46,7 @@ fn setup_future(cmd: Command,
                 session: &Session,
                 handle: &Handle,
                 version: &Arc<AtomicUsize>)
-                -> BoxFuture<ReducerDo, ()> {
+                -> BoxFuture<ReducerDo, Error> {
     match cmd {
         Clear => futures::finished(ReducerDo::Clear).boxed(),
         Open { force, number } => {
@@ -82,6 +82,7 @@ fn setup_future(cmd: Command,
             let timeout = Timeout::new(default_timeout.clone(), handle)
                 .map(Future::boxed)
                 .unwrap_or_else(|_| futures::empty().boxed())
+                .map_err(|e| Error::Timeout(e))
                 .map(move |_| {
                     info(&format!("Timeout occurred after {:?} - request dropped. Keep typing \
                                    to try again.",
@@ -91,17 +92,20 @@ fn setup_future(cmd: Command,
             let req = session.perform(req)
                 .map_err(move |e| {
                     info(&format!("Request to {} failed with error: '{}'", url, e));
-                    ()
+                    Error::Curl(e)
                 })
-                .map(move |_response| {
+                .and_then(move |_response| {
                     let buf_slice = buf.lock().unwrap();
-                    let result = SearchResult::from_data(&buf_slice, dim).map_err(|e| {
-                        write!(io::stderr(), "{}\n", String::from_utf8_lossy(&buf_slice)).ok();
-                        e
-                    });
-                    ReducerDo::Show(ok_or_exit(result))
-                })
-                .or_else(|_| Ok(ReducerDo::Nothing));
+                    SearchResult::from_data(&buf_slice, dim)
+                        .map_err(|e| {
+                            write!(io::stderr(),
+                                   "Json decoder failed\n{}\n",
+                                   String::from_utf8_lossy(&buf_slice))
+                                .ok();
+                            Error::Decode(e)
+                        })
+                        .map(|result| ReducerDo::Show(result))
+                });
             let req = req.select(timeout)
                 .then(|res| {
                     Ok(match res {
@@ -310,15 +314,21 @@ pub fn handle_interactive_search(_args: &clap::ArgMatches) -> Result<(), Error> 
         let version = Arc::new(AtomicUsize::new(0));
         let mut current_result = None;
 
-        let commands =
-            receiver.and_then(|cmd: Command| setup_future(cmd, &session, &handle, &version))
-                .for_each(|result| {
-                    if let Some(next_result) =
-                        handle_future_result(result, current_result.as_ref()) {
-                        current_result = next_result;
+        let commands = receiver.and_then(|cmd: Command| {
+                setup_future(cmd, &session, &handle, &version).then(|r| {
+                    match r {
+                        Ok(r) => Ok(r),
+                        Err(Error::Decode(_)) => Err(()), /*abort stream on decode error*/
+                        Err(_) => Ok(ReducerDo::Nothing), /*ignore other errors*/
                     }
-                    Ok(())
-                });
+                })
+            })
+            .for_each(|result| {
+                if let Some(next_result) = handle_future_result(result, current_result.as_ref()) {
+                    current_result = next_result;
+                }
+                Ok(())
+            });
         reactor.run(commands).ok();
     });
 
