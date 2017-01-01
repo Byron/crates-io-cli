@@ -219,8 +219,9 @@ pub fn handle_interactive_search(_args: &clap::ArgMatches) {
 
         let commands =
             receiver.and_then(|cmd: Command| setup_future(cmd, &session, &handle, &version))
-                .for_each(|cmd| {
-                    if let Some(next_result) = handle_future_result(cmd, current_result.as_ref()) {
+                .for_each(|result| {
+                    if let Some(next_result) =
+                        handle_future_result(result, current_result.as_ref()) {
                         current_result = next_result;
                     }
                     Ok(())
@@ -250,6 +251,7 @@ pub fn handle_interactive_search(_args: &clap::ArgMatches) {
                             }
                             _ => {
                                 info(&format!("Please enter digits from 0-9"));
+                                continue;
                             }
                         }
                     }
