@@ -3,10 +3,16 @@ use futures::sync::mpsc;
 use rustc_serialize::json;
 use tokio_curl::PerformError;
 use super::structs::Command;
+use curl;
 
 quick_error! {
     #[derive(Debug)]
     pub enum Error {
+        Easy(err: curl::Error) {
+            description("Easy curl could not be configured")
+            from()
+            cause(err)
+        }
         Curl(err: PerformError) {
             description("A curl request failed")
             from()

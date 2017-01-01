@@ -66,17 +66,23 @@ fn setup_future(cmd: Command,
 
             let mut req = Easy::new();
             let dim = dimension();
-            ok_or_exit(req.get(true));
+            if let Err(e) = req.get(true) {
+                return futures::failed(e.into()).boxed();
+            }
             let url = format!("https://crates.io/api/v1/crates?page=1&per_page={}&q={}&sort=",
                               dim.height,
                               req.url_encode(String::as_bytes(&term)));
-            ok_or_exit(req.url(&url));
+            if let Err(e) = req.url(&url) {
+                return futures::failed(e.into()).boxed();
+            }
             let buf = Arc::new(Mutex::new(Vec::new()));
             let buf_handle = buf.clone();
-            ok_or_exit(req.write_function(move |data| {
+            if let Err(e) = req.write_function(move |data| {
                 buf_handle.lock().unwrap().extend_from_slice(data);
                 Ok(data.len())
-            }));
+            }) {
+                return futures::failed(e.into()).boxed();
+            };
             info(&"searching ...");
             let default_timeout: Duration = Duration::from_millis(1500);
             let timeout = Timeout::new(default_timeout.clone(), handle)
