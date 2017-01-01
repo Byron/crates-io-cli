@@ -200,13 +200,102 @@ fn handle_future_result(cmd: ReducerDo,
     res
 }
 
+enum LoopControl {
+    ShouldBreak,
+    ShouldKeepGoing,
+}
+
+fn handle_key(k: Key, sender: mpsc::Sender<Command>, state: &mut State) -> LoopControl {
+    let (mut force_open, mut show_last_search) = (false, false);
+    match k {
+        Key::Char('\n') => {
+            match state.mode {
+                Searching => state.term.clear(),
+                Opening => {
+                    force_open = true;
+                    state.mode = Opening;
+                }
+            }
+        }
+        Key::Char(c) => {
+            match state.mode {
+                Searching => state.term.push(c),
+                Opening => {
+                    match c {
+                        '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' => {
+                            state.number.push(c)
+                        }
+                        _ => {
+                            info(&format!("Please enter digits from 0-9"));
+                            return LoopControl::ShouldKeepGoing;
+                        }
+                    }
+                }
+            }
+        }
+        Key::Backspace => {
+            match state.mode {
+                    Searching => &mut state.term,
+                    Opening => &mut state.number,
+                }
+                .pop();
+        }
+        Key::Ctrl('o') => {
+            state.mode = match state.mode {
+                Searching => Opening,
+                Opening => {
+                    state.number.clear();
+                    show_last_search = true;
+                    Searching
+                }
+            };
+        }
+        Key::Esc => {
+            return LoopControl::ShouldBreak;
+        }
+        key @ _ => {
+            info(&format!("unsupported key sequence: {:?}", key));
+            return LoopControl::ShouldKeepGoing;
+        }
+    }
+    promptf(&state);
+    let cmd = match state.mode {
+        Searching => {
+            if state.term.is_empty() {
+                Clear
+            } else {
+                match show_last_search {
+                    true => ShowLast,
+                    false => Search(state.term.clone()),
+                }
+            }
+        }
+        Opening if state.number.len() > 0 => {
+            Open {
+                force: force_open,
+                number: match state.number.parse() {
+                    Ok(n) => n,
+                    Err(e) => {
+                        info(&e);
+                        state.number.clear();
+                        return LoopControl::ShouldKeepGoing;
+                    }
+                },
+            }
+        }
+        Opening => DrawIndices,
+    };
+    ok_or_exit(sender.send(cmd).wait());
+    return LoopControl::ShouldKeepGoing;
+}
+
 pub fn handle_interactive_search(_args: &clap::ArgMatches) {
     let stdin = io::stdin();
     let mut stdout = ok_or_exit(io::stdout().into_raw_mode());
     let mut state = State::default();
 
     ok_or_exit(write!(stdout, "{}{}", cursor::Goto(1, 1), clear::All));
-    promptf(&state, &mut stdout);
+    promptf(&state);
     usage();
 
     let (sender, receiver) = mpsc::channel(10);
@@ -230,86 +319,9 @@ pub fn handle_interactive_search(_args: &clap::ArgMatches) {
     });
 
     for k in stdin.keys() {
-        let (mut force_open, mut show_last_search) = (false, false);
-        match ok_or_exit(k) {
-            Key::Char('\n') => {
-                match state.mode {
-                    Searching => state.term.clear(),
-                    Opening => {
-                        force_open = true;
-                        state.mode = Opening;
-                    }
-                }
-            }
-            Key::Char(c) => {
-                match state.mode {
-                    Searching => state.term.push(c),
-                    Opening => {
-                        match c {
-                            '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' => {
-                                state.number.push(c)
-                            }
-                            _ => {
-                                info(&format!("Please enter digits from 0-9"));
-                                continue;
-                            }
-                        }
-                    }
-                }
-            }
-            Key::Backspace => {
-                match state.mode {
-                        Searching => &mut state.term,
-                        Opening => &mut state.number,
-                    }
-                    .pop();
-            }
-            Key::Ctrl('o') => {
-                state.mode = match state.mode {
-                    Searching => Opening,
-                    Opening => {
-                        state.number.clear();
-                        show_last_search = true;
-                        Searching
-                    }
-                };
-            }
-            Key::Esc => {
-                break;
-            }
-            key @ _ => {
-                info(&format!("unsupported key sequence: {:?}", key));
-                continue;
-            }
+        if let LoopControl::ShouldBreak = handle_key(ok_or_exit(k), sender.clone(), &mut state) {
+            break;
         }
-        promptf(&state, &mut stdout);
-        let cmd = match state.mode {
-            Searching => {
-                if state.term.is_empty() {
-                    Clear
-                } else {
-                    match show_last_search {
-                        true => ShowLast,
-                        false => Search(state.term.clone()),
-                    }
-                }
-            }
-            Opening if state.number.len() > 0 => {
-                Open {
-                    force: force_open,
-                    number: match state.number.parse() {
-                        Ok(n) => n,
-                        Err(e) => {
-                            info(&e);
-                            state.number.clear();
-                            continue;
-                        }
-                    },
-                }
-            }
-            Opening => DrawIndices,
-        };
-        ok_or_exit(sender.clone().send(cmd).wait());
     }
     drop(sender);
     t.join().unwrap();
@@ -342,8 +354,8 @@ fn info(item: &Display) -> usize {
     buf.len()
 }
 
-fn promptf(state: &State, stdout: &mut io::Stdout) {
-    write!(stdout,
+fn promptf(state: &State) {
+    write!(io::stdout(),
            "{show}{goto}{clear} {mode}: {}",
            state.prompt(),
            mode = state.mode,
@@ -351,5 +363,5 @@ fn promptf(state: &State, stdout: &mut io::Stdout) {
            goto = cursor::Goto(1, 1),
            clear = clear::CurrentLine)
         .ok();
-    stdout.flush().ok();
+    io::stdout().flush().ok();
 }
