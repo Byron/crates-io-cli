@@ -20,7 +20,7 @@ use futures::future::BoxFuture;
 use futures::sync::mpsc;
 use tokio_curl::Session;
 
-use utils::{DropOutdated, DroppedOrError, ok_or_exit, Dimension};
+use utils::{DropOutdated, DroppedOrError, Dimension};
 
 const INFO_LINE: cursor::Goto = cursor::Goto(1, 2);
 const CONTENT_LINE: cursor::Goto = cursor::Goto(1, 3);
@@ -314,7 +314,10 @@ pub fn handle_interactive_search(_args: &clap::ArgMatches) -> Result<(), Error> 
 
     let (sender, receiver) = mpsc::channel(10);
     let t = thread::spawn(|| {
-        let mut reactor = ok_or_exit(Core::new());
+        let mut reactor = match Core::new() {
+            Ok(r) => r,
+            Err(e) => return Err(e),
+        };
         let session = Session::new(reactor.handle());
         let handle = reactor.handle();
         let version = Arc::new(AtomicUsize::new(0));
@@ -336,6 +339,7 @@ pub fn handle_interactive_search(_args: &clap::ArgMatches) -> Result<(), Error> 
                 Ok(())
             });
         reactor.run(commands).ok();
+        Ok(())
     });
 
     for k in stdin.keys() {
@@ -346,7 +350,12 @@ pub fn handle_interactive_search(_args: &clap::ArgMatches) -> Result<(), Error> 
         }
     }
     drop(sender);
-    t.join().unwrap();
+    if let Err(e) = t.join() {
+        write!(io::stderr(),
+               "Could not tokio event loop in worker thread: {:?}",
+               e)
+            .ok();
+    }
     reset_terminal();
     Ok(())
 }
