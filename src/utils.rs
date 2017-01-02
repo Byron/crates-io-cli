@@ -1,5 +1,6 @@
 use futures::{Poll, Future};
 
+use std::fmt::{self, Display};
 use std::error::Error;
 use std::default::Default;
 use std::sync::Arc;
@@ -44,13 +45,28 @@ impl Default for Dimension {
     }
 }
 
+struct WithCauses<'a>(&'a Error);
+
+impl<'a> Display for WithCauses<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        try!(write!(f, "ERROR: {}", self.0));
+        let mut cursor = self.0;
+        while let Some(err) = cursor.cause() {
+            try!(write!(f, "\ncaused by: \n{}", err));
+            cursor = err;
+        }
+        try!(write!(f, "\n"));
+        Ok(())
+    }
+}
+
 pub fn ok_or_exit<T, E>(result: Result<T, E>) -> T
     where E: Error
 {
     match result {
         Ok(v) => v,
         Err(err) => {
-            println!("{}", err);
+            println!("{}", WithCauses(&err));
             std::process::exit(2);
         }
     }
