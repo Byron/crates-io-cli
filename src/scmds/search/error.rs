@@ -8,6 +8,13 @@ use curl;
 quick_error! {
     #[derive(Debug)]
     pub enum Error {
+        ThreadPanic {
+            description("The worker thread panicked")
+        }
+        ReactorInit(err: io::Error) {
+            description("Could not initialize tokio event loop in worker thread")
+            cause(err)
+        }
         Easy(err: curl::Error) {
             description("Easy curl could not be configured")
             from()

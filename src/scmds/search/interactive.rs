@@ -315,8 +315,8 @@ pub fn handle_interactive_search(_args: &clap::ArgMatches) -> Result<(), Error> 
     let (sender, receiver) = mpsc::channel(10);
     let t = thread::spawn(|| {
         let mut reactor = match Core::new() {
+            Err(e) => return Err(Error::ReactorInit(e)),
             Ok(r) => r,
-            Err(e) => return Err(e),
         };
         let session = Session::new(reactor.handle());
         let handle = reactor.handle();
@@ -350,14 +350,9 @@ pub fn handle_interactive_search(_args: &clap::ArgMatches) -> Result<(), Error> 
         }
     }
     drop(sender);
-    if let Err(e) = t.join() {
-        write!(io::stderr(),
-               "Could not tokio event loop in worker thread: {:?}",
-               e)
-            .ok();
-    }
+    let res = t.join().map_err(|_| Error::ThreadPanic).and_then(|r| r);
     reset_terminal();
-    Ok(())
+    res
 }
 
 fn reset_terminal() {
