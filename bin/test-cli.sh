@@ -25,7 +25,7 @@ if ! $exe recent-changes >/dev/null; then
   exit 4
 fi
 
-if ! $exe $with_repo list by-user byron; then
+if [ `$exe $with_repo list by-user byron | wc -l` -lt 200 ] ; then
   echo "It can list repositories of a known user with paging"
   exit 5
 fi

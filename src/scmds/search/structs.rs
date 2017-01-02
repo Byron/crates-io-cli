@@ -1,4 +1,5 @@
 use utils::Dimension;
+use structs::Crate;
 
 use std::fmt::{self, Display};
 use std::default::Default;
@@ -22,14 +23,6 @@ fn sanitize(input: &str) -> String {
 pub struct Meta {
     pub total: u32,
     pub dimension: Option<Dimension>,
-}
-
-#[derive(RustcDecodable, Debug, Clone, Default)]
-pub struct Crate {
-    pub description: Option<String>,
-    pub downloads: u32,
-    pub max_version: String,
-    pub name: String,
 }
 
 struct CrateRow<'a>(&'a Crate, &'a (usize, usize, usize, usize));

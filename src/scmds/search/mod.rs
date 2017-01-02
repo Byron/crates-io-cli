@@ -4,6 +4,7 @@ mod structs;
 mod interactive;
 
 mod error;
+pub use self::error::Error;
 
 #[cfg(unix)]
 pub use self::interactive::handle_interactive_search;

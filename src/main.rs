@@ -19,8 +19,9 @@ extern crate git2;
 
 mod utils;
 mod scmds;
+mod structs;
 
-use scmds::{handle_interactive_search, handle_recent_changes, OutputKind};
+use scmds::{handle_interactive_search, handle_recent_changes, handle_list, by_user, OutputKind};
 use std::env;
 use utils::ok_or_exit;
 use std::path::PathBuf;
@@ -39,6 +40,11 @@ fn default_repository_dir() -> PathBuf {
     let mut p = env::temp_dir();
     p.push("crates-io-bare-clone_for-cli");
     p
+}
+
+fn invalid_subcommand(matches: &clap::ArgMatches) -> ! {
+    print!("{}\n", matches.usage());
+    std::process::exit(1);
 }
 
 fn main() {
@@ -89,10 +95,13 @@ fn main() {
     match matches.subcommand() {
         ("recent-changes", Some(args)) => ok_or_exit(handle_recent_changes(repo_path, args)),
         ("search", Some(args)) => ok_or_exit(handle_interactive_search(args)),
-        (_, Some(_)) => panic!("unknown subcommand"),
-        _ => {
-            print!("{}\n", matches.usage());
-            std::process::exit(1);
+        ("list", Some(list_args)) => {
+            let subcommand_handler = match list_args.subcommand() {
+                ("by-user", Some(_by_user_args)) => by_user,
+                _ => invalid_subcommand(list_args),
+            };
+            ok_or_exit(handle_list(list_args, subcommand_handler));
         }
+        _ => invalid_subcommand(&matches),
     }
 }
