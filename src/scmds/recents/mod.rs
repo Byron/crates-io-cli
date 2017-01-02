@@ -1,4 +1,4 @@
 mod error;
-mod oneshot;
+mod cmd;
 
-pub use self::oneshot::*;
+pub use self::cmd::*;

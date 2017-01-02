@@ -71,7 +71,16 @@ fn main() {
             .after_help(CHANGES_SUBCOMMAND_DESCRIPTION))
         .subcommand(SubCommand::with_name("search")
             .display_order(2)
-            .about("search crates interactively"));
+            .about("search crates interactively"))
+        .subcommand(SubCommand::with_name("list")
+            .display_order(3)
+            .subcommand(SubCommand::with_name("by-user")
+                .arg(Arg::with_name("user-name")
+                    .required(true)
+                    .takes_value(true)
+                    .help("The github login name of the user in question"))
+                .about("crates for the given username"))
+            .about("list crates by a particular criterion"));
 
 
     let matches = app.get_matches();
@@ -80,6 +89,7 @@ fn main() {
     match matches.subcommand() {
         ("recent-changes", Some(args)) => ok_or_exit(handle_recent_changes(repo_path, args)),
         ("search", Some(args)) => ok_or_exit(handle_interactive_search(args)),
+        (_, Some(_)) => panic!("unknown subcommand"),
         _ => {
             print!("{}\n", matches.usage());
             std::process::exit(1);
