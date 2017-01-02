@@ -26,7 +26,7 @@ quick_error! {
             cause(err)
         }
         Timeout(err: io::Error) {
-            description("A timeout could not be created")
+            description("A timeout could not be created or failed while being invoked")
             cause(err)
         }
         Decode(err: json::DecoderError) {

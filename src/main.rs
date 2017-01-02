@@ -14,6 +14,7 @@ extern crate termion;
 extern crate open;
 #[macro_use]
 extern crate quick_error;
+extern crate git2;
 
 
 mod utils;
@@ -77,7 +78,7 @@ fn main() {
     let repo_path = matches.value_of("repository").expect("default to be set");
 
     match matches.subcommand() {
-        ("recent-changes", Some(args)) => handle_recent_changes(repo_path, args),
+        ("recent-changes", Some(args)) => ok_or_exit(handle_recent_changes(repo_path, args)),
         ("search", Some(args)) => ok_or_exit(handle_interactive_search(args)),
         _ => {
             print!("{}\n", matches.usage());

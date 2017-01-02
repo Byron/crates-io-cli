@@ -88,7 +88,7 @@ fn setup_future(cmd: Command,
             let timeout = Timeout::new(default_timeout.clone(), handle)
                 .map(Future::boxed)
                 .unwrap_or_else(|_| futures::empty().boxed())
-                .map_err(|e| Error::Timeout(e))
+                .map_err(Error::Timeout)
                 .map(move |_| {
                     info(&format!("Timeout occurred after {:?} - request dropped. Keep typing \
                                    to try again.",
@@ -299,7 +299,7 @@ fn handle_key(k: Key,
         }
         Opening => DrawIndices,
     };
-    sender.send(cmd).wait().map_err(|e| Error::SendCommand(e))?;
+    sender.send(cmd).wait().map_err(Error::SendCommand)?;
     return Ok(LoopControl::ShouldKeepGoing);
 }
 
@@ -308,7 +308,7 @@ pub fn handle_interactive_search(_args: &clap::ArgMatches) -> Result<(), Error> 
     let mut stdout = io::stdout().into_raw_mode()?;
     let mut state = State::default();
 
-    write!(stdout, "{}{}", cursor::Goto(1, 1), clear::All).map_err(|e| Error::FirstIo(e))?;
+    write!(stdout, "{}{}", cursor::Goto(1, 1), clear::All).map_err(Error::FirstIo)?;
     promptf(&state);
     usage();
 
@@ -343,7 +343,7 @@ pub fn handle_interactive_search(_args: &clap::ArgMatches) -> Result<(), Error> 
     });
 
     for k in stdin.keys() {
-        if let LoopControl::ShouldBreak = handle_key(k.map_err(|e| Error::KeySequence(e))?,
+        if let LoopControl::ShouldBreak = handle_key(k.map_err(Error::KeySequence)?,
                                                      sender.clone(),
                                                      &mut state)? {
             break;
