@@ -1,7 +1,7 @@
 [package]
 authors = ["Sebastian Thiel <byronimo@gmail.com>"]
 description = "Interact with crates.io from the command-line"
-keywords = ["crates", "index", "diff", "cli"]
+keywords = ["crates", "krates", "index", "search", "diff", "cli", "tui"]
 license = "MIT"
 name = "crates-io-cli"
 repository = "https://github.com/Byron/crates-io-cli-rs"
