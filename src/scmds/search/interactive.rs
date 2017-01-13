@@ -3,6 +3,8 @@ use super::error::Error;
 use clap;
 use open;
 use std::str;
+use std::cell::RefCell;
+use std::rc::Rc;
 use std::time::Duration;
 use std::sync::atomic::{Ordering, AtomicUsize};
 use std::sync::{Mutex, Arc};
@@ -321,23 +323,29 @@ pub fn handle_interactive_search(_args: &clap::ArgMatches) -> Result<(), Error> 
         let session = Session::new(reactor.handle());
         let handle = reactor.handle();
         let version = Arc::new(AtomicUsize::new(0));
-        let mut current_result = None;
+        let mut current_result = Rc::new(RefCell::new(None));
 
         let commands = receiver.and_then(|cmd: Command| {
-                setup_future(cmd, &session, &handle, &version).then(|r| {
-                    match r {
-                        Ok(r) => Ok(r),
-                        Err(Error::Decode(_)) => Err(()), /*abort stream on decode error*/
-                        Err(_) => Ok(ReducerDo::Nothing), /*ignore other errors*/
-                    }
-                })
-            })
-            .for_each(|result| {
-                if let Some(next_result) = handle_future_result(result, current_result.as_ref()) {
-                    current_result = next_result;
-                }
+                let cr = current_result.clone();
+                let spawnable = setup_future(cmd, &session, &handle, &version)
+                    .then(|r| {
+                        match r {
+                            Ok(r) => Ok(r),
+                            Err(Error::Decode(_)) => Err(()), /*abort stream on decode error*/
+                            Err(_) => Ok(ReducerDo::Nothing), /*ignore other errors*/
+                        }
+                    })
+                    .and_then(move |result| {
+                        let res = handle_future_result(result, cr.borrow().as_ref());
+                        if let Some(next_result) = res {
+                            *cr.borrow_mut() = next_result;
+                        }
+                        Ok(())
+                    });
+                handle.spawn(spawnable);
                 Ok(())
-            });
+            })
+            .for_each(|_| Ok(()));
         reactor.run(commands).ok();
         Ok(())
     });
