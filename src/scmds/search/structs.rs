@@ -22,6 +22,7 @@ fn sanitize(input: &str) -> String {
 #[derive(RustcDecodable, Default)]
 pub struct Meta {
     pub total: u32,
+    pub term: Option<String>,
     pub dimension: Option<Dimension>,
 }
 

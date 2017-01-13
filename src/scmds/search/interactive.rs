@@ -86,7 +86,7 @@ fn setup_future(cmd: Command,
                 return futures::failed(e.into()).boxed();
             };
             info(&"searching ...");
-            let default_timeout: Duration = Duration::from_millis(1500);
+            let default_timeout: Duration = Duration::from_millis(2000);
             let timeout = Timeout::new(default_timeout.clone(), handle)
                 .map(Future::boxed)
                 .unwrap_or_else(|_| futures::empty().boxed())
@@ -111,6 +111,10 @@ fn setup_future(cmd: Command,
                                    String::from_utf8_lossy(&buf_slice))
                                 .ok();
                             Error::Decode(e)
+                        })
+                        .map(|mut result| {
+                            result.meta.term = Some(term);
+                            result
                         })
                         .map(|result| ReducerDo::Show(result))
                 });
@@ -158,7 +162,7 @@ fn handle_future_result(cmd: ReducerDo,
         (Open { .. }, None) => {
             info(&"There is nothing to open - conduct a search first");
         }
-        (Open { force, number }, Some(ref search)) => {
+        (Open { force, number }, Some(search)) => {
             match search.crates.get(number) {
                 Some(c1) => {
                     if number == 0 || search.crates.get(number * 10).is_none() || force {
@@ -189,9 +193,10 @@ fn handle_future_result(cmd: ReducerDo,
         (ShowLast, Some(ref search)) => {
             write!(io::stdout(), "{goto}{}", search, goto = CONTENT_LINE).ok();
         }
-        (Show(result), _) => {
-            info(&format!("{} results in total, showing {} max",
+        (Show(result), last_search) => {
+            info(&format!("{} results for '{}' in total, showing {} max",
                           result.meta.total,
+                          result.meta.term.as_ref().map(|s| s.as_str()).unwrap_or(""),
                           result.meta
                               .dimension
                               .as_ref()
@@ -199,8 +204,12 @@ fn handle_future_result(cmd: ReducerDo,
                               .height));
             if result.crates.is_empty() {
                 let last = usage();
+                let suffix = last_search.and_then(|r| r.meta.term.as_ref())
+                    .map(|term| format!("Showing results for '{}'", term))
+                    .unwrap_or_else(String::new);
                 write!(io::stdout(),
-                       "{gotolast} - 0 results found",
+                       "{gotolast} - nothing found.{suffix}",
+                       suffix = suffix,
                        gotolast = cursor::Goto(last as u16, INFO_LINE.1))
                     .ok();
             } else {
