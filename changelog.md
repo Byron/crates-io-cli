@@ -1,3 +1,22 @@
+<a name="v1.3.2"></a>
+### v1.3.2 (2017-01-13)
+
+
+#### Bug Fixes
+
+* **search:**  prevent failure due to paging size ([961360b0](https://github.com/Byron/crates-io-cli-rs/commit/961360b007122d0be8e942174d866a3fe85a7f5d))
+
+#### Improvements
+
+* **bin:**  `krates` is an alternative program name ([329c54b9](https://github.com/Byron/crates-io-cli-rs/commit/329c54b9fc88c8e3f995e09cab6dee78f1a82d61))
+* **cargo:**  better keywords ([fee77ec2](https://github.com/Byron/crates-io-cli-rs/commit/fee77ec2d3142f7be29a3c0d1b72209941d81d32))
+* **cli:**  allow printing causes ([7d1f8933](https://github.com/Byron/crates-io-cli-rs/commit/7d1f8933b51718c17b382fd9ae5ce5b84846694b))
+* **search:**
+  *  make clear which search result you see ([1b00f362](https://github.com/Byron/crates-io-cli-rs/commit/1b00f362827b69319703fa64b79a34e2c7d6d5b9))
+  *  parallel search processing thanks to spawn! ([8d013f82](https://github.com/Byron/crates-io-cli-rs/commit/8d013f82dbf85d5895eca72f94674b6a403cfb29))
+
+
+
 <a name="v1.3.1"></a>
 ### v1.3.1 (2017-01-01)
 
