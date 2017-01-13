@@ -333,7 +333,7 @@ pub fn handle_interactive_search(_args: &clap::ArgMatches) -> Result<(), Error> 
         let session = Session::new(reactor.handle());
         let handle = reactor.handle();
         let version = Arc::new(AtomicUsize::new(0));
-        let mut current_result = Rc::new(RefCell::new(None));
+        let current_result = Rc::new(RefCell::new(None));
 
         let commands = receiver.and_then(|cmd: Command| {
                 let cr = current_result.clone();
