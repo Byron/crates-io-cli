@@ -21,7 +21,7 @@ mod utils;
 mod scmds;
 mod structs;
 
-use scmds::{handle_interactive_search, handle_recent_changes, OutputKind};
+use scmds::{handle_interactive_search, handle_recent_changes, handle_list, by_user, OutputKind};
 use std::env;
 use utils::ok_or_exit;
 use std::path::PathBuf;
@@ -77,7 +77,16 @@ fn main() {
             .after_help(CHANGES_SUBCOMMAND_DESCRIPTION))
         .subcommand(SubCommand::with_name("search")
             .display_order(2)
-            .about("search crates interactively"));
+            .about("search crates interactively"))
+        .subcommand(SubCommand::with_name("list")
+            .display_order(3)
+            .subcommand(SubCommand::with_name("by-user")
+                .arg(Arg::with_name("user-name")
+                    .required(true)
+                    .takes_value(true)
+                    .help("The github login name of the user in question"))
+                .about("crates for the given username"))
+            .about("list crates by a particular criterion"));
 
 
     let matches = app.get_matches();
@@ -86,6 +95,13 @@ fn main() {
     match matches.subcommand() {
         ("recent-changes", Some(args)) => ok_or_exit(handle_recent_changes(repo_path, args)),
         ("search", Some(args)) => ok_or_exit(handle_interactive_search(args)),
+        ("list", Some(list_args)) => {
+            let subcommand_handler = match list_args.subcommand() {
+                ("by-user", Some(_by_user_args)) => by_user,
+                _ => invalid_subcommand(list_args),
+            };
+            ok_or_exit(handle_list(list_args, subcommand_handler));
+        }
         _ => invalid_subcommand(&matches),
     }
 }
