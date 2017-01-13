@@ -2,6 +2,7 @@ use super::structs::{State, Indexed, Command, SearchResult};
 use super::error::Error;
 use clap;
 use open;
+use std::cmp::max;
 use std::str;
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -72,7 +73,7 @@ fn setup_future(cmd: Command,
                 return futures::failed(e.into()).boxed();
             }
             let url = format!("https://crates.io/api/v1/crates?page=1&per_page={}&q={}&sort=",
-                              dim.height,
+                              max(100, dim.height),
                               req.url_encode(String::as_bytes(&term)));
             if let Err(e) = req.url(&url) {
                 return futures::failed(e.into()).boxed();
