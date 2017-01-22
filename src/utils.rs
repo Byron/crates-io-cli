@@ -4,6 +4,7 @@ use tokio_curl::{PerformError, Session};
 
 use curl;
 use futures;
+use std::cmp;
 use std::sync::Mutex;
 use std::fmt::{self, Display};
 use std::error::Error;
@@ -173,7 +174,7 @@ pub struct CallMetaData {
 }
 
 pub fn paged_crates_io_remote_call<T, M, E>(url: &str,
-                                            max_items: u32,
+                                            max_items: Option<u32>,
                                             session: Arc<Mutex<Session>>,
                                             merge: M,
                                             extract: E)
@@ -187,7 +188,8 @@ pub fn paged_crates_io_remote_call<T, M, E>(url: &str,
         .and_then(move |r| {
             let (m, initial) = extract(r);
             let mut f = Vec::new();
-            let num_chunks = m.total / MAX_ITEMS_PER_PAGE;
+            let num_chunks = cmp::min(m.total, max_items.unwrap_or(u32::max_value())) /
+                             MAX_ITEMS_PER_PAGE;
             let remainder = if m.total % MAX_ITEMS_PER_PAGE > 0 {
                 1
             } else {
