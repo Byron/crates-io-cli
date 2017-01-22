@@ -1,4 +1,4 @@
-use futures::{Poll, Future};
+use futures::{Stream, Poll, Future};
 use curl::easy::Easy;
 use tokio_curl::{PerformError, Session};
 
@@ -12,6 +12,8 @@ use std::sync::Arc;
 use std::sync::atomic::{Ordering, AtomicUsize};
 
 use std;
+
+const MAX_ITEMS_PER_PAGE: u32 = 100;
 
 #[derive(RustcDecodable, Clone)]
 pub struct Dimension {
@@ -121,9 +123,10 @@ impl<A> DropOutdated<A>
     }
 }
 
-pub fn remote_call<'a>(url: &str,
-                       session: &Session)
-                       -> futures::BoxFuture<(Arc<Mutex<Vec<u8>>>, Easy), RemoteCallError> {
+type CalLResult = (Arc<Mutex<Vec<u8>>>, Easy);
+type RemoteCallFuture = futures::BoxFuture<CalLResult, RemoteCallError>;
+
+pub fn remote_call<'a>(url: &str, session: &Session) -> RemoteCallFuture {
     let mut req = Easy::new();
     if let Err(e) = req.get(true) {
         return futures::failed(e.into()).boxed();
@@ -142,10 +145,7 @@ pub fn remote_call<'a>(url: &str,
 
     session.perform(req)
         .map(move |res| (buf, res))
-        .map_err(move |e| {
-            //               info(&format!("Request to {} failed with error: '{}'", url, e));
-            e.into()
-        })
+        .map_err(move |e| e.into())
         .boxed()
 }
 
@@ -163,4 +163,45 @@ quick_error! {
             cause(err)
         }
     }
+}
+
+#[derive(RustcDecodable, Default)]
+pub struct CallMetaData {
+    pub total: u32,
+}
+
+pub fn paged_crates_io_remote_call<T, M, E>(url: &str,
+                                            max_items: u32,
+                                            session: &Session,
+                                            merge: M,
+                                            extract: E)
+                                            -> futures::BoxFuture<T, RemoteCallError>
+    where T: Default + Send,
+          M: Fn(T, CalLResult) -> T + Send + Sync + 'static,
+          E: FnOnce(CalLResult) -> (CallMetaData, T) + Send + Sync + 'static
+{
+    if max_items <= MAX_ITEMS_PER_PAGE {
+        return remote_call(url, session).map(move |r| merge(T::default(), r)).boxed();
+    }
+    remote_call(url, session)
+        .and_then(|r| {
+            let (m, initial) = extract(r);
+            let mut f = Vec::new();
+            let num_chunks = m.total / MAX_ITEMS_PER_PAGE;
+            let remainder = if m.total % MAX_ITEMS_PER_PAGE > 0 {
+                1
+            } else {
+                0
+            };
+            for ci in 0..num_chunks + remainder {
+                f.push(remote_call(&format!("{}&page={}&per_page={}",
+                                            url,
+                                            1 + ci,
+                                            MAX_ITEMS_PER_PAGE),
+                                   session));
+            }
+            futures::stream::futures_unordered(f.into_iter())
+                .fold(initial, |m, r| Ok::<_, RemoteCallError>(merge(m, r)))
+        })
+        .boxed()
 }
