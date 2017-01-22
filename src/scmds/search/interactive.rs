@@ -8,11 +8,10 @@ use std::cell::RefCell;
 use std::rc::Rc;
 use std::time::Duration;
 use std::sync::atomic::{Ordering, AtomicUsize};
-use std::sync::{Mutex, Arc};
+use std::sync::Arc;
 use std::io::{self, Write};
 use std::fmt::Display;
 use std::thread;
-use curl::easy::Easy;
 use termion::event::Key;
 use termion::raw::IntoRawMode;
 use termion::input::TermRead;
@@ -23,7 +22,7 @@ use futures::future::BoxFuture;
 use futures::sync::mpsc;
 use tokio_curl::Session;
 
-use utils::{DropOutdated, DroppedOrError, Dimension};
+use utils::{remote_call, DropOutdated, DroppedOrError, Dimension};
 
 const INFO_LINE: cursor::Goto = cursor::Goto(1, 2);
 const CONTENT_LINE: cursor::Goto = cursor::Goto(1, 3);
@@ -67,25 +66,11 @@ fn setup_future(cmd: Command,
                 version.clone()
             };
 
-            let mut req = Easy::new();
             let dim = dimension();
-            if let Err(e) = req.get(true) {
-                return futures::failed(e.into()).boxed();
-            }
             let url = format!("https://crates.io/api/v1/crates?page=1&per_page={}&q={}&sort=",
                               max(100, dim.height),
-                              req.url_encode(String::as_bytes(&term)));
-            if let Err(e) = req.url(&url) {
-                return futures::failed(e.into()).boxed();
-            }
-            let buf = Arc::new(Mutex::new(Vec::new()));
-            let buf_handle = buf.clone();
-            if let Err(e) = req.write_function(move |data| {
-                buf_handle.lock().unwrap().extend_from_slice(data);
-                Ok(data.len())
-            }) {
-                return futures::failed(e.into()).boxed();
-            };
+                              &term /* TODO: urlencode */);
+            let req = remote_call(&url, &session);
             info(&"searching ...");
             let default_timeout: Duration = Duration::from_millis(2000);
             let timeout = Timeout::new(default_timeout.clone(), handle)
@@ -98,12 +83,11 @@ fn setup_future(cmd: Command,
                                   default_timeout));
                     ReducerDo::Nothing
                 });
-            let req = session.perform(req)
-                .map_err(move |e| {
+            let req = req.map_err(move |e| {
                     info(&format!("Request to {} failed with error: '{}'", url, e));
-                    Error::Curl(e)
+                    e.into()
                 })
-                .and_then(move |_response| {
+                .and_then(move |(buf, _response)| {
                     let buf_slice = buf.lock().unwrap();
                     SearchResult::from_data(&buf_slice, dim)
                         .map_err(|e| {

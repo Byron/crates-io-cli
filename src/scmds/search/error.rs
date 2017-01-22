@@ -1,9 +1,8 @@
 use std::io;
 use futures::sync::mpsc;
 use rustc_serialize::json;
-use tokio_curl::PerformError;
+use utils::RemoteCallError;
 use super::structs::Command;
-use curl;
 
 quick_error! {
     #[derive(Debug)]
@@ -15,13 +14,8 @@ quick_error! {
             description("Could not initialize tokio event loop in worker thread")
             cause(err)
         }
-        Easy(err: curl::Error) {
-            description("Easy curl could not be configured")
-            from()
-            cause(err)
-        }
-        Curl(err: PerformError) {
-            description("A curl request failed")
+        Easy(err: RemoteCallError) {
+            description("A remote call could not be performed")
             from()
             cause(err)
         }

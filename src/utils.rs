@@ -121,7 +121,9 @@ impl<A> DropOutdated<A>
     }
 }
 
-fn remote_call<'a>(url: &str, session: &Session) -> futures::BoxFuture<Easy, RemoteCallError> {
+pub fn remote_call<'a>(url: &str,
+                       session: &Session)
+                       -> futures::BoxFuture<(Arc<Mutex<Vec<u8>>>, Easy), RemoteCallError> {
     let mut req = Easy::new();
     if let Err(e) = req.get(true) {
         return futures::failed(e.into()).boxed();
@@ -139,6 +141,7 @@ fn remote_call<'a>(url: &str, session: &Session) -> futures::BoxFuture<Easy, Rem
     };
 
     session.perform(req)
+        .map(move |res| (buf, res))
         .map_err(move |e| {
             //               info(&format!("Request to {} failed with error: '{}'", url, e));
             e.into()
