@@ -1,5 +1,10 @@
 use futures::{Poll, Future};
+use curl::easy::Easy;
+use tokio_curl::{PerformError, Session};
 
+use curl;
+use futures;
+use std::sync::Mutex;
 use std::fmt::{self, Display};
 use std::error::Error;
 use std::default::Default;
@@ -112,6 +117,47 @@ impl<A> DropOutdated<A>
             inner: Some(f),
             version: version.load(Ordering::Relaxed),
             current_version: version,
+        }
+    }
+}
+
+fn remote_call<'a>(url: &str, session: &Session) -> futures::BoxFuture<Easy, RemoteCallError> {
+    let mut req = Easy::new();
+    if let Err(e) = req.get(true) {
+        return futures::failed(e.into()).boxed();
+    }
+    if let Err(e) = req.url(&url) {
+        return futures::failed(e.into()).boxed();
+    }
+    let buf = Arc::new(Mutex::new(Vec::new()));
+    let buf_handle = buf.clone();
+    if let Err(e) = req.write_function(move |data| {
+        buf_handle.lock().unwrap().extend_from_slice(data);
+        Ok(data.len())
+    }) {
+        return futures::failed(e.into()).boxed();
+    };
+
+    session.perform(req)
+        .map_err(move |e| {
+            //               info(&format!("Request to {} failed with error: '{}'", url, e));
+            e.into()
+        })
+        .boxed()
+}
+
+quick_error! {
+    #[derive(Debug)]
+    pub enum RemoteCallError {
+        Easy(err: curl::Error) {
+            description("Easy curl could not be configured")
+            from()
+            cause(err)
+        }
+        Curl(err: PerformError) {
+            description("A curl request failed")
+            from()
+            cause(err)
         }
     }
 }
