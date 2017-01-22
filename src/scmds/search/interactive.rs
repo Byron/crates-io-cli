@@ -8,7 +8,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 use std::time::Duration;
 use std::sync::atomic::{Ordering, AtomicUsize};
-use std::sync::Arc;
+use std::sync::{Mutex, Arc};
 use std::io::{self, Write};
 use std::fmt::Display;
 use std::thread;
@@ -45,7 +45,7 @@ enum ReducerDo {
 }
 
 fn setup_future(cmd: Command,
-                session: &Session,
+                session: Arc<Mutex<Session>>,
                 handle: &Handle,
                 version: &Arc<AtomicUsize>)
                 -> BoxFuture<ReducerDo, Error> {
@@ -70,7 +70,7 @@ fn setup_future(cmd: Command,
             let url = format!("https://crates.io/api/v1/crates?page=1&per_page={}&q={}&sort=",
                               max(100, dim.height),
                               &term /* TODO: urlencode */);
-            let req = remote_call(&url, &session);
+            let req = remote_call(&url, session.clone());
             info(&"searching ...");
             let default_timeout: Duration = Duration::from_millis(2000);
             let timeout = Timeout::new(default_timeout.clone(), handle)
@@ -314,14 +314,14 @@ pub fn handle_interactive_search(_args: &clap::ArgMatches) -> Result<(), Error> 
             Err(e) => return Err(Error::ReactorInit(e)),
             Ok(r) => r,
         };
-        let session = Session::new(reactor.handle());
+        let session = Arc::new(Mutex::new(Session::new(reactor.handle())));
         let handle = reactor.handle();
         let version = Arc::new(AtomicUsize::new(0));
         let current_result = Rc::new(RefCell::new(None));
 
         let commands = receiver.and_then(|cmd: Command| {
                 let cr = current_result.clone();
-                let spawnable = setup_future(cmd, &session, &handle, &version)
+                let spawnable = setup_future(cmd, session.clone(), &handle, &version)
                     .then(|r| {
                         match r {
                             Ok(r) => Ok(r),

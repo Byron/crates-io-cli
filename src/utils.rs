@@ -126,7 +126,7 @@ impl<A> DropOutdated<A>
 type CalLResult = (Arc<Mutex<Vec<u8>>>, Easy);
 type RemoteCallFuture = futures::BoxFuture<CalLResult, RemoteCallError>;
 
-pub fn remote_call<'a>(url: &str, session: &Session) -> RemoteCallFuture {
+pub fn remote_call<'a>(url: &str, session: Arc<Mutex<Session>>) -> RemoteCallFuture {
     let mut req = Easy::new();
     if let Err(e) = req.get(true) {
         return futures::failed(e.into()).boxed();
@@ -143,7 +143,9 @@ pub fn remote_call<'a>(url: &str, session: &Session) -> RemoteCallFuture {
         return futures::failed(e.into()).boxed();
     };
 
-    session.perform(req)
+    session.lock()
+        .unwrap()
+        .perform(req)
         .map(move |res| (buf, res))
         .map_err(move |e| e.into())
         .boxed()
@@ -172,19 +174,17 @@ pub struct CallMetaData {
 
 pub fn paged_crates_io_remote_call<T, M, E>(url: &str,
                                             max_items: u32,
-                                            session: &Session,
+                                            session: Arc<Mutex<Session>>,
                                             merge: M,
                                             extract: E)
                                             -> futures::BoxFuture<T, RemoteCallError>
-    where T: Default + Send,
+    where T: Default + Send + 'static,
           M: Fn(T, CalLResult) -> T + Send + Sync + 'static,
           E: FnOnce(CalLResult) -> (CallMetaData, T) + Send + Sync + 'static
 {
-    if max_items <= MAX_ITEMS_PER_PAGE {
-        return remote_call(url, session).map(move |r| merge(T::default(), r)).boxed();
-    }
-    remote_call(url, session)
-        .and_then(|r| {
+    let url = url.to_owned();
+    remote_call(&url, session.clone())
+        .and_then(move |r| {
             let (m, initial) = extract(r);
             let mut f = Vec::new();
             let num_chunks = m.total / MAX_ITEMS_PER_PAGE;
@@ -198,10 +198,10 @@ pub fn paged_crates_io_remote_call<T, M, E>(url: &str,
                                             url,
                                             1 + ci,
                                             MAX_ITEMS_PER_PAGE),
-                                   session));
+                                   session.clone()));
             }
             futures::stream::futures_unordered(f.into_iter())
-                .fold(initial, |m, r| Ok::<_, RemoteCallError>(merge(m, r)))
+                .fold(initial, move |m, r| Ok::<_, RemoteCallError>(merge(m, r)))
         })
         .boxed()
 }
