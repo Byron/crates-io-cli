@@ -15,6 +15,7 @@ extern crate open;
 #[macro_use]
 extern crate quick_error;
 extern crate git2;
+extern crate urlencoding;
 
 
 mod utils;

@@ -2,6 +2,7 @@ use super::structs::{State, Indexed, Command, SearchResult};
 use super::error::Error;
 use clap;
 use open;
+use urlencoding;
 use std::cmp::max;
 use std::str;
 use std::cell::RefCell;
@@ -69,7 +70,7 @@ fn setup_future(cmd: Command,
             let dim = dimension();
             let url = format!("https://crates.io/api/v1/crates?page=1&per_page={}&q={}&sort=",
                               max(100, dim.height),
-                              &term /* TODO: urlencode */);
+                              urlencoding::encode(&term));
             let req = remote_call(&url, session.clone());
             info(&"searching ...");
             let default_timeout: Duration = Duration::from_millis(2000);

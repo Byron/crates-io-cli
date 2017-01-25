@@ -17,14 +17,15 @@ name = "krates"
 clap = "2.19.2"
 crates-index-diff = "3"
 curl = "0.4.2"
-git2 = "0.6.3"
 futures = "0.1.7"
 futures-cpupool = "0.1.2"
+git2 = "0.6.3"
 open = "1.1.1"
 quick-error = "1.1.0"
 rustc-serialize = "0.3.22"
 tokio-core = "0.1.2"
 tokio-curl = "0.1.7"
+urlencoding = "0.2.0"
 
 [dependencies.prettytable-rs]
 default-features = false
