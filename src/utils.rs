@@ -124,8 +124,8 @@ impl<A> DropOutdated<A>
     }
 }
 
-type CalLResult = (Arc<Mutex<Vec<u8>>>, Easy);
-type RemoteCallFuture = futures::BoxFuture<CalLResult, RemoteCallError>;
+pub type CallResult = (Arc<Mutex<Vec<u8>>>, Easy);
+pub type RemoteCallFuture = futures::BoxFuture<CallResult, RemoteCallError>;
 
 pub fn remote_call<'a>(url: &str, session: Arc<Mutex<Session>>) -> RemoteCallFuture {
     let mut req = Easy::new();
@@ -170,7 +170,10 @@ quick_error! {
 
 #[derive(RustcDecodable, Default)]
 pub struct CallMetaData {
+    /// total amount of items as reported by crates.io in `meta.total`
     pub total: u32,
+    /// amount of items seen in the current call
+    pub items: u32,
 }
 
 pub fn paged_crates_io_remote_call<T, M, E>(url: &str,
@@ -180,26 +183,23 @@ pub fn paged_crates_io_remote_call<T, M, E>(url: &str,
                                             extract: E)
                                             -> futures::BoxFuture<T, RemoteCallError>
     where T: Default + Send + 'static,
-          M: Fn(T, CalLResult) -> T + Send + Sync + 'static,
-          E: FnOnce(CalLResult) -> (CallMetaData, T) + Send + Sync + 'static
+          M: Fn(T, CallResult) -> T + Send + Sync + 'static,
+          E: FnOnce(CallResult) -> (CallMetaData, T) + Send + Sync + 'static
 {
+    let max_items = max_items.unwrap_or(u32::max_value());
+    let page_size = cmp::min(MAX_ITEMS_PER_PAGE, max_items);
+
     let url = url.to_owned();
-    remote_call(&url, session.clone())
+    remote_call(&format!("{}&per_page={}", url, page_size), session.clone())
         .and_then(move |r| {
             let (m, initial) = extract(r);
             let mut f = Vec::new();
-            let num_chunks = cmp::min(m.total, max_items.unwrap_or(u32::max_value())) /
-                             MAX_ITEMS_PER_PAGE;
-            let remainder = if m.total % MAX_ITEMS_PER_PAGE > 0 {
-                1
-            } else {
-                0
-            };
+            let num_chunks = cmp::min(m.total.saturating_sub(m.items),
+                                      max_items.saturating_sub(m.items)) /
+                             page_size;
+            let remainder = if m.total % page_size > 0 { 1 } else { 0 };
             for ci in 0..num_chunks + remainder {
-                f.push(remote_call(&format!("{}&page={}&per_page={}",
-                                            url,
-                                            1 + ci,
-                                            MAX_ITEMS_PER_PAGE),
+                f.push(remote_call(&format!("{}&page={}&per_page={}", url, 2 + ci, page_size),
                                    session.clone()));
             }
             futures::stream::futures_unordered(f.into_iter())

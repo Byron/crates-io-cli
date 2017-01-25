@@ -23,11 +23,41 @@ use futures::future::BoxFuture;
 use futures::sync::mpsc;
 use tokio_curl::Session;
 
-use utils::{remote_call, DropOutdated, DroppedOrError, Dimension};
+use utils::{paged_crates_io_remote_call, CallResult, CallMetaData, DropOutdated, DroppedOrError,
+            Dimension};
 
 const INFO_LINE: cursor::Goto = cursor::Goto(1, 2);
 const CONTENT_LINE: cursor::Goto = cursor::Goto(1, 3);
 const NON_CONTENT_LINES: u16 = 2;
+
+fn search_result_from_callresult(c: CallResult) -> SearchResult {
+    let (buf, _) = c;
+    let buf_slice = buf.lock().unwrap();
+    SearchResult::from_data(&buf_slice, dimension())
+        .map_err(|e| {
+            write!(io::stderr(),
+                   "Json decoder failed\n{}\n",
+                   String::from_utf8_lossy(&buf_slice))
+                .ok();
+            Error::Decode(e)
+        })
+        .expect("todo: add proper error handling")
+}
+
+fn merge(mut r: SearchResult, c: CallResult) -> SearchResult {
+    let mut res = search_result_from_callresult(c);
+    r.crates.append(&mut res.crates);
+    r
+}
+
+fn extract(c: CallResult) -> (CallMetaData, SearchResult) {
+    let res = search_result_from_callresult(c);
+    (CallMetaData {
+         total: res.meta.total,
+         items: res.crates.len() as u32,
+     },
+     res)
+}
 
 fn dimension() -> Dimension {
     Dimension::default().loose_heigth(NON_CONTENT_LINES)
@@ -71,9 +101,13 @@ fn setup_future(cmd: Command,
             let url = format!("https://crates.io/api/v1/crates?page=1&per_page={}&q={}&sort=",
                               max(100, dim.height),
                               urlencoding::encode(&term));
-            let req = remote_call(&url, session.clone());
+            let req = paged_crates_io_remote_call(&url,
+                                                  Some(dim.height as u32),
+                                                  session.clone(),
+                                                  merge,
+                                                  extract);
             info(&"searching ...");
-            let default_timeout: Duration = Duration::from_millis(2000);
+            let default_timeout: Duration = Duration::from_millis(5000);
             let timeout = Timeout::new(default_timeout.clone(), handle)
                 .map(Future::boxed)
                 .unwrap_or_else(|_| futures::empty().boxed())
@@ -88,22 +122,11 @@ fn setup_future(cmd: Command,
                     info(&format!("Request to {} failed with error: '{}'", url, e));
                     e.into()
                 })
-                .and_then(move |(buf, _response)| {
-                    let buf_slice = buf.lock().unwrap();
-                    SearchResult::from_data(&buf_slice, dim)
-                        .map_err(|e| {
-                            write!(io::stderr(),
-                                   "Json decoder failed\n{}\n",
-                                   String::from_utf8_lossy(&buf_slice))
-                                .ok();
-                            Error::Decode(e)
-                        })
-                        .map(|mut result| {
-                            result.meta.term = Some(term);
-                            result
-                        })
-                        .map(|result| ReducerDo::Show(result))
+                .map(move |mut result| {
+                    result.meta.term = Some(term);
+                    ReducerDo::Show(result)
                 });
+
             let req = req.select(timeout)
                 .then(|res| {
                     Ok(match res {
