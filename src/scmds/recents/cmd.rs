@@ -7,8 +7,7 @@ use rustc_serialize::{json, Encodable};
 use tokio_core::reactor::{Timeout, Core};
 
 use clap;
-use prettytable::format;
-use prettytable::Table;
+use prettytable::{format, Table};
 use std;
 use tokio_core;
 use crates_index_diff::Index;

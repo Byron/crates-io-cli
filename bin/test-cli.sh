@@ -9,21 +9,21 @@ if $exe >/dev/null; then
   exit 1
 fi
 
-with_repo="--repository $existing_crates_clone"
-if ! $exe $with_repo recent-changes >/dev/null; then
-  echo "Expecting recent-changes on existing repo to work"
-  exit 2
-fi
-
-if ! $exe $with_repo recent-changes --output=json >/dev/null; then
-  echo "You can change the output to json"
-  exit 3
-fi
-
-if ! $exe recent-changes >/dev/null; then
-  echo "It should be able to clone a non-existing crates repository"
-  exit 4
-fi
+#with_repo="--repository $existing_crates_clone"
+#if ! $exe $with_repo recent-changes >/dev/null; then
+#  echo "Expecting recent-changes on existing repo to work"
+#  exit 2
+#fi
+#
+#if ! $exe $with_repo recent-changes --output=json >/dev/null; then
+#  echo "You can change the output to json"
+#  exit 3
+#fi
+#
+#if ! $exe recent-changes >/dev/null; then
+#  echo "It should be able to clone a non-existing crates repository"
+#  exit 4
+#fi
 
 if [ `$exe $with_repo list by-user byron | wc -l` -lt 200 ] ; then
   echo "It can list repositories of a known user with paging"

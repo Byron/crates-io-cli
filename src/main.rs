@@ -97,11 +97,11 @@ fn main() {
         ("recent-changes", Some(args)) => ok_or_exit(handle_recent_changes(repo_path, args)),
         ("search", Some(args)) => ok_or_exit(handle_interactive_search(args)),
         ("list", Some(list_args)) => {
-            let subcommand_handler = match list_args.subcommand() {
-                ("by-user", Some(_by_user_args)) => by_user,
+            let (subcommand_handler, subcommand_args) = match list_args.subcommand() {
+                ("by-user", Some(args)) => (by_user, args),
                 _ => invalid_subcommand(list_args),
             };
-            ok_or_exit(handle_list(list_args, subcommand_handler));
+            ok_or_exit(handle_list(list_args, subcommand_args, subcommand_handler));
         }
         _ => invalid_subcommand(&matches),
     }
