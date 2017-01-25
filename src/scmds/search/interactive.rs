@@ -30,33 +30,33 @@ const INFO_LINE: cursor::Goto = cursor::Goto(1, 2);
 const CONTENT_LINE: cursor::Goto = cursor::Goto(1, 3);
 const NON_CONTENT_LINES: u16 = 2;
 
-fn search_result_from_callresult(c: CallResult) -> SearchResult {
+fn search_result_from_callresult(c: CallResult) -> Result<SearchResult, Error> {
     let (buf, _) = c;
     let buf_slice = buf.lock().unwrap();
-    SearchResult::from_data(&buf_slice, dimension())
-        .map_err(|e| {
-            write!(io::stderr(),
-                   "Json decoder failed\n{}\n",
-                   String::from_utf8_lossy(&buf_slice))
-                .ok();
-            Error::Decode(e)
-        })
-        .expect("todo: add proper error handling")
+    SearchResult::from_data(&buf_slice, dimension()).map_err(|e| {
+        write!(io::stderr(),
+               "Json decoder failed\n{}\n",
+               String::from_utf8_lossy(&buf_slice))
+            .ok();
+        Error::Decode(e)
+    })
 }
 
-fn merge(mut r: SearchResult, c: CallResult) -> SearchResult {
-    let mut res = search_result_from_callresult(c);
-    r.crates.append(&mut res.crates);
-    r
+fn merge(mut r: SearchResult, c: CallResult) -> Result<SearchResult, Error> {
+    search_result_from_callresult(c).map(|mut res| {
+        r.crates.append(&mut res.crates);
+        r
+    })
 }
 
-fn extract(c: CallResult) -> (CallMetaData, SearchResult) {
-    let res = search_result_from_callresult(c);
-    (CallMetaData {
-         total: res.meta.total,
-         items: res.crates.len() as u32,
-     },
-     res)
+fn extract(c: CallResult) -> Result<(CallMetaData, SearchResult), Error> {
+    search_result_from_callresult(c).map(|res| {
+        (CallMetaData {
+             total: res.meta.total,
+             items: res.crates.len() as u32,
+         },
+         res)
+    })
 }
 
 fn dimension() -> Dimension {
