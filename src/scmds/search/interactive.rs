@@ -229,7 +229,11 @@ fn handle_key(k: Key,
         }
         Key::Char(c) => {
             match state.mode {
-                Searching => state.term.push(c),
+                Searching => {
+                    if !is_special(c) {
+                        state.term.push(c)
+                    }
+                }
                 Opening => {
                     match c {
                         '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' => {
@@ -393,4 +397,8 @@ fn promptf(state: &State) {
            clear = clear::CurrentLine)
         .ok();
     io::stdout().flush().ok();
+}
+
+fn is_special(c: char) -> bool {
+    c == '\t'
 }
