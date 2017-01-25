@@ -173,7 +173,7 @@ quick_error! {
     }
 }
 
-#[derive(RustcDecodable, Default)]
+#[derive(Default)]
 pub struct CallMetaData {
     /// total amount of items as reported by crates.io in `meta.total`
     pub total: u32,

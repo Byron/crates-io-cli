@@ -1,24 +1,46 @@
 use clap;
 use super::error::Error;
-use structs::Crate;
+use structs::{Meta, Crate};
 use tokio_core::reactor;
 use futures::{self, Future, BoxFuture, IntoFuture};
 use std::sync::{Mutex, Arc};
 use tokio_curl::Session;
 use prettytable::{format, Table};
+use utils::{CallMetaData, CallResult, paged_crates_io_remote_call};
+use urlencoding;
 
-// fetch user info, user->user-id, then
-// curl 'https://crates.io/api/v1/crates?page=1&per_page=10&user_id=980&sort=asc' -H 'Accept:
-// application/json'
+fn crates_from_callresult(c: CallResult) -> Result<(Vec<Crate>, Meta), Error> {
+    Ok((Vec::new(), Meta { total: 0 }))
+}
+
+fn crates_merge(mut r: Vec<Crate>, c: CallResult) -> Result<Vec<Crate>, Error> {
+    crates_from_callresult(c).map(|(mut res, _)| {
+        r.append(&mut res);
+        r
+    })
+}
+
+fn crates_extract(c: CallResult) -> Result<(CallMetaData, Vec<Crate>), Error> {
+    crates_from_callresult(c).map(|(crates, meta)| {
+        (CallMetaData {
+             total: meta.total,
+             items: crates.len() as u32,
+         },
+         crates)
+    })
+}
+
 pub fn by_user(args: &clap::ArgMatches,
                session: Arc<Mutex<Session>>)
                -> BoxFuture<Vec<Crate>, Error> {
-    futures::finished(vec![Crate {
-                               description: Some("description".to_owned()),
-                               downloads: 123,
-                               max_version: "1.1".to_owned(),
-                               name: "name".to_owned(),
-                           }])
+    let uid = args.value_of("user-id").expect("clap to work");
+    paged_crates_io_remote_call(&format!("https://crates.io/api/v1/crates?user_id={}",
+                                         urlencoding::encode(uid)),
+                                None,
+                                session.clone(),
+                                crates_merge,
+                                crates_extract)
+        .map_err(Into::into)
         .boxed()
 }
 

@@ -82,10 +82,13 @@ fn main() {
         .subcommand(SubCommand::with_name("list")
             .display_order(3)
             .subcommand(SubCommand::with_name("by-user")
-                .arg(Arg::with_name("user-name")
+                .arg(Arg::with_name("user-id")
                     .required(true)
                     .takes_value(true)
-                    .help("The github login name of the user in question"))
+                    .help("The numerical id of your user, e.g. 980. Currently there is no way \
+                           to easily obtain it though, so you will have to debug actual \
+                           crates.io calls in your browser - the /me response contains all \
+                           user data."))
                 .about("crates for the given username"))
             .about("list crates by a particular criterion"));
 
