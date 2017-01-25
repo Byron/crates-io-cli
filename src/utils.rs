@@ -1,4 +1,4 @@
-use futures::{Stream, Poll, Future};
+use futures::{Stream, Poll, Future, IntoFuture};
 use curl::easy::Easy;
 use tokio_curl::{PerformError, Session};
 
@@ -165,6 +165,11 @@ quick_error! {
             from()
             cause(err)
         }
+        Any(err: Box<Error + Send + 'static>) {
+            description("An error occurred")
+            from()
+            cause(&**err)
+        }
     }
 }
 
@@ -174,6 +179,47 @@ pub struct CallMetaData {
     pub total: u32,
     /// amount of items seen in the current call
     pub items: u32,
+}
+
+pub fn paged_crates_io_remote_call_res<T, M, E, Err>(url: &str,
+                                                     max_items: Option<u32>,
+                                                     session: Arc<Mutex<Session>>,
+                                                     merge: M,
+                                                     extract: E)
+                                                     -> futures::BoxFuture<T, RemoteCallError>
+    where T: Default + Send + 'static,
+          Err: Error + Send + 'static,
+          M: Fn(T, CallResult) -> Result<T, Err> + Send + Sync + 'static,
+          E: FnOnce(CallResult) -> Result<(CallMetaData, T), Err> + Send + Sync + 'static
+{
+    let max_items = max_items.unwrap_or(u32::max_value());
+    let page_size = cmp::min(MAX_ITEMS_PER_PAGE, max_items);
+
+    let url = url.to_owned();
+    remote_call(&format!("{}&per_page={}", url, page_size), session.clone())
+        .and_then(move |r| {
+            extract(r)
+                .map_err(|e| RemoteCallError::Any(Box::new(e)))
+                .into_future()
+                .and_then(move |(m, initial)| {
+                    let mut f = Vec::new();
+                    let num_chunks = cmp::min(m.total.saturating_sub(m.items),
+                                              max_items.saturating_sub(m.items)) /
+                                     page_size;
+                    let remainder = if m.total % page_size > 0 { 1 } else { 0 };
+                    for ci in 0..num_chunks + remainder {
+                        f.push(remote_call(&format!("{}&page={}&per_page={}",
+                                                    url,
+                                                    2 + ci,
+                                                    page_size),
+                                           session.clone()));
+                    }
+                    futures::stream::futures_unordered(f.into_iter()).fold(initial, move |m, r| {
+                        merge(m, r).map_err(|e| RemoteCallError::Any(Box::new(e)))
+                    })
+                })
+        })
+        .boxed()
 }
 
 pub fn paged_crates_io_remote_call<T, M, E>(url: &str,
