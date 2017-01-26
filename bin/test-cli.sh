@@ -10,12 +10,12 @@ if $exe >/dev/null; then
 fi
 
 with_repo="--repository $existing_crates_clone"
-if ! $exe $with_repo recent-changes >/dev/null; then
+if ! $exe recent-changes $with_repo >/dev/null; then
   echo "Expecting recent-changes on existing repo to work"
   exit 2
 fi
 
-if ! $exe $with_repo recent-changes --output=json >/dev/null; then
+if ! $exe recent-changes $with_repo --output=json >/dev/null; then
   echo "You can change the output to json"
   exit 3
 fi
@@ -25,9 +25,15 @@ if ! $exe recent-changes >/dev/null; then
   exit 4
 fi
 
-if [ `$exe $with_repo list by-user 980 | wc -l` -lt 200 ] ; then
+if [ `$exe list by-user 980 | wc -l` -lt 200 ] ; then
   echo "It can list repositories of a known user with paging"
   exit 5
 fi
+
+if ! $exe list -o json by-user 980  >/dev/null ; then
+  echo "You can change the list output to json"
+  exit 6
+fi
+
 
 echo "OK"

@@ -69,12 +69,13 @@ fn show_changes(repo_path: String, output_kind: OutputKind) -> Result<ResultKind
 }
 
 
-pub fn handle_recent_changes(repo_path: &str, args: &clap::ArgMatches) -> Result<(), Error> {
+pub fn handle_recent_changes(args: &clap::ArgMatches) -> Result<(), Error> {
     let mut reactor = Core::new().map_err(Error::ReactorInit)?;
     let handle: tokio_core::reactor::Handle = reactor.handle();
     let timeout: Timeout = Timeout::new(Duration::from_secs(3), &handle).map_err(Error::Timeout)?;
     let pool = CpuPool::new(1);
 
+    let repo_path = args.value_of("repository").expect("default to be set");
     let output_kind: OutputKind =
         args.value_of("format").expect("default to be set").parse().expect("clap to work");
     let owned_repo_path = repo_path.to_owned();

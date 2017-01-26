@@ -56,17 +56,17 @@ fn main() {
         .version(crate_version!())
         .author("Sebastian Thiel <byronimo@gmail.com>")
         .about("Interact with the https://crates.io index via the command-line")
-        .arg(Arg::with_name("repository")
-            .short("r")
-            .long("repository")
-            .value_name("REPO")
-            .help("Path to the possibly existing crates.io repository clone.")
-            .default_value(&temp_dir_str)
-            .required(false)
-            .takes_value(true))
         .subcommand(SubCommand::with_name("recent-changes")
             .about("show all recently changed crates")
             .display_order(1)
+            .arg(Arg::with_name("repository")
+                .short("r")
+                .long("repository")
+                .value_name("REPO")
+                .help("Path to the possibly existing crates.io repository clone.")
+                .default_value(&temp_dir_str)
+                .required(false)
+                .takes_value(true))
             .arg(Arg::with_name("format")
                 .short("o")
                 .long("output")
@@ -94,10 +94,8 @@ fn main() {
 
 
     let matches = app.get_matches();
-    let repo_path = matches.value_of("repository").expect("default to be set");
-
     match matches.subcommand() {
-        ("recent-changes", Some(args)) => ok_or_exit(handle_recent_changes(repo_path, args)),
+        ("recent-changes", Some(args)) => ok_or_exit(handle_recent_changes(args)),
         ("search", Some(args)) => ok_or_exit(handle_interactive_search(args)),
         ("list", Some(list_args)) => {
             let (subcommand_handler, subcommand_args) = match list_args.subcommand() {
