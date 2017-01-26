@@ -2,24 +2,17 @@ use super::error::Error;
 use futures_cpupool::CpuPool;
 use futures::Future;
 use std::time::Duration;
-use std::io::{self, Write};
-use rustc_serialize::{json, Encodable};
 use tokio_core::reactor::{Timeout, Core};
+use structs::OutputKind;
 
 use clap;
+use std::io::Write;
+use utils::json_to_stdout;
 use prettytable::{format, Table};
 use std;
 use tokio_core;
 use crates_index_diff::Index;
 
-arg_enum! {
-    #[allow(non_camel_case_types)]
-    #[derive(Debug)]
-    pub enum OutputKind {
-        human,
-        json
-    }
-}
 
 enum ResultKind {
     ComputationDone,
@@ -30,8 +23,6 @@ fn show_changes(repo_path: String, output_kind: OutputKind) -> Result<ResultKind
     std::fs::create_dir_all(&repo_path)
         .map_err(|e| Error::RepositoryDirectory(e, repo_path.clone().into()))?;
     let index = Index::from_path_or_cloned(repo_path)?;
-    let stdout = io::stdout();
-    let mut channel = stdout.lock();
     let changes = index.fetch_changes()?;
 
     match output_kind {
@@ -49,21 +40,7 @@ fn show_changes(repo_path: String, output_kind: OutputKind) -> Result<ResultKind
                 table.print_tty(false);
             }
         }
-        OutputKind::json => {
-            let mut buf = String::with_capacity(256);
-            for version in changes {
-                buf.clear();
-                // unfortunately io::Write cannot be used directly, the encoder needs fmt::Write
-                // To allow us reusing the buffer, we need to restrict its lifetime.
-                if {
-                        let mut encoder = json::Encoder::new(&mut buf);
-                        version.encode(&mut encoder)
-                    }
-                    .is_ok() {
-                    writeln!(channel, "{}", buf).ok();
-                }
-            }
-        }
+        OutputKind::json => json_to_stdout(&changes),
     }
     Ok(ResultKind::ComputationDone)
 }

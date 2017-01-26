@@ -22,7 +22,8 @@ mod scmds;
 mod structs;
 
 use utils::ok_or_exit;
-use scmds::{handle_interactive_search, handle_recent_changes, handle_list, by_user, OutputKind};
+use scmds::{handle_interactive_search, handle_recent_changes, handle_list, by_user};
+use structs::OutputKind;
 
 use std::env;
 use std::path::PathBuf;
@@ -52,6 +53,14 @@ fn main() {
     let temp_dir = default_repository_dir();
     let temp_dir_str = temp_dir.to_string_lossy();
     let human_output = format!("{}", OutputKind::human);
+    let format_arg = Arg::with_name("format")
+        .short("o")
+        .long("output")
+        .required(false)
+        .takes_value(true)
+        .default_value(&human_output)
+        .possible_values(&OutputKind::variants())
+        .help("The type of output to produce.");
     let app = App::new("crates.io interface")
         .version(crate_version!())
         .author("Sebastian Thiel <byronimo@gmail.com>")
@@ -67,20 +76,14 @@ fn main() {
                 .default_value(&temp_dir_str)
                 .required(false)
                 .takes_value(true))
-            .arg(Arg::with_name("format")
-                .short("o")
-                .long("output")
-                .required(false)
-                .takes_value(true)
-                .default_value(&human_output)
-                .possible_values(&OutputKind::variants())
-                .help("The type of output to produce."))
+            .arg(format_arg.clone())
             .after_help(CHANGES_SUBCOMMAND_DESCRIPTION))
         .subcommand(SubCommand::with_name("search")
             .display_order(2)
             .about("search crates interactively"))
         .subcommand(SubCommand::with_name("list")
             .display_order(3)
+            .arg(format_arg)
             .subcommand(SubCommand::with_name("by-user")
                 .arg(Arg::with_name("user-id")
                     .required(true)

@@ -1,14 +1,14 @@
 use clap;
 use super::error::Error;
-use structs::{Meta, Crate};
+use structs::{Meta, Crate, OutputKind};
 use tokio_core::reactor;
 use futures::{Future, BoxFuture, IntoFuture};
 use std::sync::{Mutex, Arc};
 use tokio_curl::Session;
 use prettytable::{format, Table};
-use utils::{CallMetaData, CallResult, paged_crates_io_remote_call};
+use utils::{json_to_stdout, CallMetaData, CallResult, paged_crates_io_remote_call};
 use urlencoding;
-use rustc_serialize::json::{self, Json, Decoder};
+use rustc_serialize::json::{Json, Decoder, DecoderError};
 use rustc_serialize::Decodable;
 use std::str;
 
@@ -16,18 +16,17 @@ const TOTAL_PATH: [&'static str; 2] = ["meta", "total"];
 const CRATES_PATH: [&'static str; 1] = ["crates"];
 
 fn crates_from_callresult_buf(buf: &[u8]) -> Result<(Vec<Crate>, Meta), Error> {
-    fn at_path<'a>(json: &'a Json, p: &[&str]) -> Result<&'a Json, json::DecoderError> {
+    fn at_path<'a>(json: &'a Json, p: &[&str]) -> Result<&'a Json, DecoderError> {
         json.find_path(&p)
-            .ok_or_else(|| json::DecoderError::ApplicationError(format!("Missing path: {:?}", p)))
+            .ok_or_else(|| DecoderError::ApplicationError(format!("Missing path: {:?}", p)))
     }
     str::from_utf8(buf)
-        .map_err(|e| Error::Decode(json::DecoderError::ApplicationError(format!("{}", e))))
-        .and_then(|s| Json::from_str(s).map_err(json::DecoderError::ParseError).map_err(Into::into))
+        .map_err(|e| Error::Decode(DecoderError::ApplicationError(format!("{}", e))))
+        .and_then(|s| Json::from_str(s).map_err(DecoderError::ParseError).map_err(Into::into))
         .and_then(|json| {
             let total = at_path(&json, &TOTAL_PATH).and_then(|json| {
                     json.as_u64().map(|v| v as u32).ok_or_else(|| {
-                        json::DecoderError::ApplicationError(format!("Expected integer, found {}",
-                                                                     json))
+                        DecoderError::ApplicationError(format!("Expected integer, found {}", json))
                     })
                 })?;
             at_path(&json, &CRATES_PATH)?;
@@ -75,7 +74,7 @@ pub fn by_user(args: &clap::ArgMatches,
         .boxed()
 }
 
-pub fn handle_list<F, R>(_args: &clap::ArgMatches,
+pub fn handle_list<F, R>(args: &clap::ArgMatches,
                          scmd_args: &clap::ArgMatches,
                          make_future: F)
                          -> Result<(), Error>
@@ -84,26 +83,33 @@ pub fn handle_list<F, R>(_args: &clap::ArgMatches,
 {
     let mut reactor = reactor::Core::new().map_err(Error::ReactorInit)?;
     let session = Arc::new(Mutex::new(Session::new(reactor.handle())));
+    let output_kind: OutputKind =
+        args.value_of("format").expect("default to be set").parse().expect("clap to work");
     let fut =
         make_future(scmd_args, session.clone()).into_future().and_then(|crates: Vec<Crate>| {
-            if !crates.is_empty() {
-                let table = {
-                    let mut t = Table::new();
-                    t.set_titles(row![b -> "Name", b -> "Description", b -> "Downloads",
+            match output_kind {
+                OutputKind::human => {
+                    if !crates.is_empty() {
+                        let table = {
+                            let mut t = Table::new();
+                            t.set_titles(row![b -> "Name", b -> "Description", b -> "Downloads",
                 b -> "MaxVersion"]);
-                    t.set_format(*format::consts::FORMAT_NO_LINESEP_WITH_TITLE);
-                    crates.into_iter().fold(t, |mut t, c| {
-                        t.add_row(row![c.name,
-                                       c.description
-                                           .unwrap_or_else(|| {
-                                               String::from("no description provided")
-                                           }),
-                                       c.downloads,
-                                       c.max_version]);
-                        t
-                    })
-                };
-                table.print_tty(false);
+                            t.set_format(*format::consts::FORMAT_NO_LINESEP_WITH_TITLE);
+                            crates.into_iter().fold(t, |mut t, c| {
+                                t.add_row(row![c.name,
+                                               c.description
+                                                   .unwrap_or_else(|| {
+                                                       String::from("no description provided")
+                                                   }),
+                                               c.downloads,
+                                               c.max_version]);
+                                t
+                            })
+                        };
+                        table.print_tty(false);
+                    }
+                }
+                OutputKind::json => json_to_stdout(&crates),
             }
             Ok(())
         });

@@ -2,17 +2,17 @@ use futures::{Stream, Poll, Future, IntoFuture};
 use curl::easy::Easy;
 use tokio_curl::{PerformError, Session};
 
+use rustc_serialize::{json, Encodable};
+use std::io::{self, Write};
 use curl;
 use futures;
-use std::cmp;
+use std::{process, cmp};
 use std::sync::Mutex;
 use std::fmt::{self, Display};
 use std::error::Error;
 use std::default::Default;
 use std::sync::Arc;
 use std::sync::atomic::{Ordering, AtomicUsize};
-
-use std;
 
 const MAX_ITEMS_PER_PAGE: u32 = 100;
 
@@ -75,7 +75,7 @@ pub fn ok_or_exit<T, E>(result: Result<T, E>) -> T
         Ok(v) => v,
         Err(err) => {
             println!("{}", WithCauses(&err));
-            std::process::exit(2);
+            process::exit(2);
         }
     }
 }
@@ -220,4 +220,25 @@ pub fn paged_crates_io_remote_call<T, M, E, Err>(url: &str,
                 })
         })
         .boxed()
+}
+
+pub fn json_to_stdout<T>(encodable: &[T])
+    where T: Encodable
+{
+    let mut buf = String::with_capacity(256);
+    let stdout = io::stdout();
+    let mut channel = stdout.lock();
+
+    for item in encodable {
+        buf.clear();
+        // unfortunately io::Write cannot be used directly, the encoder needs fmt::Write
+        // To allow us reusing the buffer, we need to restrict its lifetime.
+        if {
+                let mut encoder = json::Encoder::new(&mut buf);
+                item.encode(&mut encoder)
+            }
+            .is_ok() {
+            writeln!(channel, "{}", buf).ok();
+        }
+    }
 }
