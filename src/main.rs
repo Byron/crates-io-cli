@@ -1,30 +1,11 @@
 #[macro_use]
 extern crate clap;
-#[macro_use]
-extern crate prettytable;
-extern crate rustc_serialize;
-extern crate crates_index_diff;
-extern crate futures;
-extern crate futures_cpupool;
-extern crate curl;
-extern crate tokio_core;
-extern crate tokio_curl;
-#[cfg(unix)]
-extern crate termion;
-extern crate open;
-#[macro_use]
-extern crate quick_error;
-extern crate git2;
-extern crate urlencoding;
+extern crate crates_io_cli;
 
+use crates_io_cli::{ok_or_exit, handle_interactive_search, handle_recent_changes, handle_list,
+                    by_user, OutputKind};
 
-mod utils;
-mod scmds;
-mod structs;
-
-use scmds::{handle_interactive_search, handle_recent_changes, handle_list, by_user, OutputKind};
 use std::env;
-use utils::ok_or_exit;
 use std::path::PathBuf;
 use clap::{Arg, SubCommand, App};
 
@@ -88,7 +69,7 @@ fn main() {
                     .help("The numerical id of your user, e.g. 980. Currently there is no way \
                            to easily obtain it though, so you will have to debug actual \
                            crates.io calls in your browser - the /me response contains all \
-                           user data."))
+                           user data. Use any string to receive *all* crates!"))
                 .about("crates for the given username"))
             .about("list crates by a particular criterion"));
 

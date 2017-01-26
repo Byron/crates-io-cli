@@ -2,15 +2,46 @@ use clap;
 use super::error::Error;
 use structs::{Meta, Crate};
 use tokio_core::reactor;
-use futures::{self, Future, BoxFuture, IntoFuture};
+use futures::{Future, BoxFuture, IntoFuture};
 use std::sync::{Mutex, Arc};
 use tokio_curl::Session;
 use prettytable::{format, Table};
 use utils::{CallMetaData, CallResult, paged_crates_io_remote_call};
 use urlencoding;
+use rustc_serialize::json::{self, Json, Decoder};
+use rustc_serialize::Decodable;
+use std::str;
+
+const TOTAL_PATH: [&'static str; 2] = ["meta", "total"];
+const CRATES_PATH: [&'static str; 1] = ["crates"];
+
+fn crates_from_callresult_buf(buf: &[u8]) -> Result<(Vec<Crate>, Meta), Error> {
+    fn at_path<'a>(json: &'a Json, p: &[&str]) -> Result<&'a Json, json::DecoderError> {
+        json.find_path(&p)
+            .ok_or_else(|| json::DecoderError::ApplicationError(format!("Missing path: {:?}", p)))
+    }
+    str::from_utf8(buf)
+        .map_err(|e| Error::Decode(json::DecoderError::ApplicationError(format!("{}", e))))
+        .and_then(|s| Json::from_str(s).map_err(json::DecoderError::ParseError).map_err(Into::into))
+        .and_then(|json| {
+            let total = at_path(&json, &TOTAL_PATH).and_then(|json| {
+                    json.as_u64().map(|v| v as u32).ok_or_else(|| {
+                        json::DecoderError::ApplicationError(format!("Expected integer, found {}",
+                                                                     json))
+                    })
+                })?;
+            at_path(&json, &CRATES_PATH)?;
+            let crates = json.into_object()
+                .expect("top level object")
+                .remove("crates")
+                .expect("crates entry");
+            let mut decoder = Decoder::new(crates);
+            Ok((Decodable::decode(&mut decoder)?, Meta { total: total }))
+        })
+}
 
 fn crates_from_callresult(c: CallResult) -> Result<(Vec<Crate>, Meta), Error> {
-    Ok((Vec::new(), Meta { total: 0 }))
+    crates_from_callresult_buf(&c.0.lock().unwrap())
 }
 
 fn crates_merge(mut r: Vec<Crate>, c: CallResult) -> Result<Vec<Crate>, Error> {
@@ -77,4 +108,12 @@ pub fn handle_list<F, R>(_args: &clap::ArgMatches,
             Ok(())
         });
     reactor.run(fut)
+}
+
+#[test]
+fn test_crates_from_callresult() {
+    let buf = include_bytes!("../../../tests/fixtures/byrons-crates.json");
+    let (crates, meta) = crates_from_callresult_buf(buf).unwrap();
+    assert_eq!(meta.total, 244);
+    assert_eq!(crates.len(), 10);
 }
