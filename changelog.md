@@ -1,3 +1,26 @@
+<a name="v2.0.0"></a>
+## v2.0.0 (2017-01-26)
+
+This release comes with vastly improved responsiveness for `crates search`, as well as the first
+implementation of the `list` subcommand.
+
+
+#### Improvements
+
+* **recent-changes:**  --repository is local to recent-changes ([271fcf56](https://github.com/Byron/crates-io-cli-rs/commit/271fcf561ac98e8438643bea84a59ace83e2dc59))
+* **search:**
+  *  support for paging ([9d482796](https://github.com/Byron/crates-io-cli-rs/commit/9d4827964fafac6a8ac3b57445ea268c9ba12a93))
+  *  ignore tab character ([a278a55b](https://github.com/Byron/crates-io-cli-rs/commit/a278a55b556b2f01ab34ded394f0bc3ac27f83f8), closes [#2](https://github.com/Byron/crates-io-cli-rs/issues/2))
+
+#### Features
+
+* **list:**
+  * a new subcommand for listing crates by a certain critereons.
+  *  --format for all list outputs ([4b783bdb](https://github.com/Byron/crates-io-cli-rs/commit/4b783bdbe145ae0974c081d3393bcf028e283e8b))
+  *  first implementation of by-user ([a9f9fcdb](https://github.com/Byron/crates-io-cli-rs/commit/a9f9fcdba9311e662cf3c289e261910ed249c180))
+
+
+
 <a name="v1.3.2"></a>
 ### v1.3.2 (2017-01-13)
 
