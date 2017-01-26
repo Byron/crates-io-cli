@@ -27,7 +27,7 @@ use structs::OutputKind;
 
 use std::env;
 use std::path::PathBuf;
-use clap::{Arg, SubCommand, App};
+use clap::{Arg, SubCommand};
 
 const CHANGES_SUBCOMMAND_DESCRIPTION: &'static str = r##"
 The output of this command is based on the state of the current crates.io repository clone.
@@ -46,7 +46,7 @@ fn default_repository_dir() -> PathBuf {
 
 fn invalid_subcommand(matches: &clap::ArgMatches) -> ! {
     print!("{}\n", matches.usage());
-    std::process::exit(1);
+    std::process::exit(1)
 }
 
 fn main() {
@@ -61,10 +61,7 @@ fn main() {
         .default_value(&human_output)
         .possible_values(&OutputKind::variants())
         .help("The type of output to produce.");
-    let app = App::new("crates.io interface")
-        .version(crate_version!())
-        .author("Sebastian Thiel <byronimo@gmail.com>")
-        .about("Interact with the https://crates.io index via the command-line")
+    let app = app_from_crate!()
         .subcommand(SubCommand::with_name("recent-changes")
             .about("show all recently changed crates")
             .display_order(1)
