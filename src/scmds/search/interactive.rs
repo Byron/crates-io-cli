@@ -288,7 +288,7 @@ fn handle_key(k: Key,
                 }
             };
         }
-        Key::Esc => {
+        Key::Esc | Key::Ctrl('c') => {
             return Ok(LoopControl::ShouldBreak);
         }
         key @ _ => {
