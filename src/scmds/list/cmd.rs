@@ -120,7 +120,7 @@ where
                                         || String::from("no description provided")
                                     ),
                                     c.downloads,
-                                    c.max_version,
+                                    c.max_version
                                 ]);
                                 t
                             })
