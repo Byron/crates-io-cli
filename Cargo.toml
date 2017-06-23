@@ -14,7 +14,7 @@ name = "crates"
 name = "krates"
 
 [dependencies]
-clap = "2.19.2"
+clap = "2"
 crates-index-diff = "3"
 curl = "0.4.2"
 futures = "0.1.7"
@@ -30,7 +30,7 @@ urlencoding = "0.2.0"
 [dependencies.prettytable-rs]
 default-features = false
 features = ["win_crlf"]
-version = "0.6"
+version = "=0.6.0"
 
 [target]
 
