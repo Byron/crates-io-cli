@@ -14,7 +14,8 @@ use termion::cursor;
 const CRATE_ROW_OVERHEAD: u16 = 3 * 3;
 
 fn sanitize(input: &str) -> String {
-    input.chars()
+    input
+        .chars()
         .map(|c| if c == '\n' { ' ' } else { c })
         .collect()
 }
@@ -35,17 +36,22 @@ impl<'a> Display for CrateRow<'a> {
         if self.0.name.is_empty() {
             write!(f, "{clear}", clear = clear::AfterCursor)
         } else {
-            write!(f,
-                   "{name:nw$.nw$} | {desc:dw$.dw$} | {downloads:dlw$.dlw$} | {version:vw$.vw$}",
-                   name = krate.name,
-                   desc =
-                       krate.description.as_ref().map(|d| sanitize(d)).unwrap_or_else(String::new),
-                   downloads = krate.downloads,
-                   version = krate.max_version,
-                   nw = nw,
-                   dw = dw,
-                   dlw = dlw,
-                   vw = vw)
+            write!(
+                f,
+                "{name:nw$.nw$} | {desc:dw$.dw$} | {downloads:dlw$.dlw$} | {version:vw$.vw$}",
+                name = krate.name,
+                desc = krate
+                    .description
+                    .as_ref()
+                    .map(|d| sanitize(d))
+                    .unwrap_or_else(String::new),
+                downloads = krate.downloads,
+                version = krate.max_version,
+                nw = nw,
+                dw = dw,
+                dlw = dlw,
+                vw = vw
+            )
         }
     }
 }
@@ -55,25 +61,31 @@ pub fn desired_table_widths(items: &[Crate], dim: &Dimension) -> (usize, usize, 
 }
 
 fn desired_string_widths(items: &[Crate], max_width: u16) -> (usize, usize, usize, usize) {
-    let (nw, dw, vw, dlw) = items.iter()
-        .fold((0, 0, 0, 0), |(mut nw, mut dw, mut vw, mut dlw), c| {
-            if c.name.len() > nw {
-                nw = c.name.len();
-            }
-            let dlen =
-                c.description.as_ref().map(|s| sanitize(&s)).unwrap_or_else(String::new).len();
-            if dlen > dw {
-                dw = dlen;
-            }
-            if c.max_version.len() > vw {
-                vw = c.max_version.len();
-            }
-            let dllen = f64::log10(c.downloads as f64) as usize + 1;
-            if dllen > dlw {
-                dlw = dllen;
-            }
-            (nw, dw, vw, dlw)
-        });
+    let (nw, dw, vw, dlw) = items.iter().fold((0, 0, 0, 0), |(mut nw,
+      mut dw,
+      mut vw,
+      mut dlw),
+     c| {
+        if c.name.len() > nw {
+            nw = c.name.len();
+        }
+        let dlen = c.description
+            .as_ref()
+            .map(|s| sanitize(&s))
+            .unwrap_or_else(String::new)
+            .len();
+        if dlen > dw {
+            dw = dlen;
+        }
+        if c.max_version.len() > vw {
+            vw = c.max_version.len();
+        }
+        let dllen = f64::log10(c.downloads as f64) as usize + 1;
+        if dllen > dlw {
+            dlw = dllen;
+        }
+        (nw, dw, vw, dlw)
+    });
     let w = {
         let mut prio_widths = [dw, vw, dlw, nw];
         let max_width = max_width as usize;
@@ -103,7 +115,10 @@ pub struct SearchResult {
 impl SearchResult {
     pub fn with_dimension(dim: Dimension) -> SearchResult {
         SearchResult {
-            meta: Meta { dimension: Some(dim), ..Default::default() },
+            meta: Meta {
+                dimension: Some(dim),
+                ..Default::default()
+            },
             ..Default::default()
         }
     }
@@ -126,15 +141,18 @@ impl Display for SearchResult {
             .iter()
             .cloned()
             .chain(iter::repeat(Crate::default()))
-            .take(dim.height as usize) {
+            .take(dim.height as usize)
+        {
             let krate = format!("{}", CrateRow(&krate, &max_width));
-            write!(f,
-                   "{clear}{:.max$}{down}{left}",
-                   krate,
-                   clear = clear::CurrentLine,
-                   down = cursor::Down(1),
-                   left = cursor::Left(cmp::max(krate.len(), dim.width as usize) as u16),
-                   max = dim.width as usize)?;
+            write!(
+                f,
+                "{clear}{:.max$}{down}{left}",
+                krate,
+                clear = clear::CurrentLine,
+                down = cursor::Down(1),
+                left = cursor::Left(cmp::max(krate.len(), dim.width as usize) as u16),
+                max = dim.width as usize
+            )?;
         }
         Ok(())
     }
@@ -157,12 +175,14 @@ pub enum Mode {
 
 impl Display for Mode {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f,
-               "{}",
-               match *self {
-                   Mode::Searching => "search",
-                   Mode::Opening => "open by number",
-               })
+        write!(
+            f,
+            "{}",
+            match *self {
+                Mode::Searching => "search",
+                Mode::Opening => "open by number",
+            }
+        )
     }
 }
 
@@ -197,17 +217,21 @@ impl<'a> Display for Indexed<'a> {
 
         let (nw, ..) = desired_table_widths(&self.0.crates, &dim);
         let center = (nw + 1) as u16;
-        write!(f,
-               "{hide}{align}",
-               hide = cursor::Hide,
-               align = cursor::Right(center))?;
+        write!(
+            f,
+            "{hide}{align}",
+            hide = cursor::Hide,
+            align = cursor::Right(center)
+        )?;
         for i in (0..self.0.crates.len()).take(dim.height as usize) {
             let rendered = format!("|#{:3} #|", i);
-            write!(f,
-                   "{}{left}{down}",
-                   rendered,
-                   left = cursor::Left(rendered.len() as u16),
-                   down = cursor::Down(1))?
+            write!(
+                f,
+                "{}{left}{down}",
+                rendered,
+                left = cursor::Left(rendered.len() as u16),
+                down = cursor::Down(1)
+            )?
         }
         Ok(())
     }

@@ -34,10 +34,11 @@ fn search_result_from_callresult(c: CallResult) -> Result<SearchResult, Error> {
     let (buf, _) = c;
     let buf_slice = buf.lock().unwrap();
     SearchResult::from_data(&buf_slice, dimension()).map_err(|e| {
-        write!(io::stderr(),
-               "Json decoder failed\n{}\n",
-               String::from_utf8_lossy(&buf_slice))
-            .ok();
+        write!(
+            io::stderr(),
+            "Json decoder failed\n{}\n",
+            String::from_utf8_lossy(&buf_slice)
+        ).ok();
         Error::Decode(e)
     })
 }
@@ -51,11 +52,13 @@ fn merge(mut r: SearchResult, c: CallResult) -> Result<SearchResult, Error> {
 
 fn extract(c: CallResult) -> Result<(CallMetaData, SearchResult), Error> {
     search_result_from_callresult(c).map(|res| {
-        (CallMetaData {
-             total: res.meta.total,
-             items: res.crates.len() as u32,
-         },
-         res)
+        (
+            CallMetaData {
+                total: res.meta.total,
+                items: res.crates.len() as u32,
+            },
+            res,
+        )
     })
 }
 
@@ -75,19 +78,19 @@ enum ReducerDo {
     Open { force: bool, number: usize },
 }
 
-fn setup_future(cmd: Command,
-                session: Arc<Mutex<Session>>,
-                handle: &Handle,
-                version: &Arc<AtomicUsize>)
-                -> BoxFuture<ReducerDo, Error> {
+fn setup_future(
+    cmd: Command,
+    session: Arc<Mutex<Session>>,
+    handle: &Handle,
+    version: &Arc<AtomicUsize>,
+) -> BoxFuture<ReducerDo, Error> {
     match cmd {
         Clear => futures::finished(ReducerDo::Clear).boxed(),
         Open { force, number } => {
             futures::finished(ReducerDo::Open {
-                    force: force,
-                    number: number,
-                })
-                .boxed()
+                force: force,
+                number: number,
+            }).boxed()
         }
         DrawIndices => futures::finished(ReducerDo::DrawIndices).boxed(),
         ShowLast => futures::finished(ReducerDo::ShowLast).boxed(),
@@ -98,14 +101,18 @@ fn setup_future(cmd: Command,
             };
 
             let dim = dimension();
-            let url = format!("https://crates.io/api/v1/crates?page=1&per_page={}&q={}&sort=",
-                              max(100, dim.height),
-                              urlencoding::encode(&term));
-            let req = paged_crates_io_remote_call(&url,
-                                                  Some(dim.height as u32),
-                                                  session.clone(),
-                                                  merge,
-                                                  extract);
+            let url = format!(
+                "https://crates.io/api/v1/crates?page=1&per_page={}&q={}&sort=",
+                max(100, dim.height),
+                urlencoding::encode(&term)
+            );
+            let req = paged_crates_io_remote_call(
+                &url,
+                Some(dim.height as u32),
+                session.clone(),
+                merge,
+                extract,
+            );
             info(&"searching ...");
             let default_timeout: Duration = Duration::from_millis(5000);
             let timeout = Timeout::new(default_timeout.clone(), handle)
@@ -113,16 +120,17 @@ fn setup_future(cmd: Command,
                 .unwrap_or_else(|_| futures::empty().boxed())
                 .map_err(Error::Timeout)
                 .map(move |_| {
-                    info(&format!("Timeout occurred after {:?} - request dropped. Keep typing \
+                    info(&format!(
+                        "Timeout occurred after {:?} - request dropped. Keep typing \
                                    to try again.",
-                                  default_timeout));
+                        default_timeout
+                    ));
                     ReducerDo::Nothing
                 });
             let req = req.map_err(move |e| {
-                    info(&format!("Request to {} failed with error: '{}'", url, e));
-                    e.into()
-                })
-                .map(move |mut result| {
+                info(&format!("Request to {} failed with error: '{}'", url, e));
+                e.into()
+            }).map(move |mut result| {
                     result.meta.term = Some(term);
                     ReducerDo::Show(result)
                 });
@@ -149,9 +157,10 @@ fn setup_future(cmd: Command,
     }
 }
 
-fn handle_future_result(cmd: ReducerDo,
-                        current_result: Option<&SearchResult>)
-                        -> Option<Option<SearchResult>> {
+fn handle_future_result(
+    cmd: ReducerDo,
+    current_result: Option<&SearchResult>,
+) -> Option<Option<SearchResult>> {
     use self::ReducerDo::*;
     let mut res = None;
     match (cmd, current_result) {
@@ -160,13 +169,16 @@ fn handle_future_result(cmd: ReducerDo,
             info(&"There is nothing to open - conduct a search first.");
         }
         (DrawIndices, Some(ref search)) => {
-            info(&"(<ESC> to quit, Ctrl+o to cancel, <enter> to confirm) Type the number of the \
-                   crate to open.");
-            write!(io::stdout(),
-                   "{goto}{}",
-                   Indexed(search),
-                   goto = CONTENT_LINE)
-                .ok();
+            info(
+                &"(<ESC> to quit, Ctrl+o to cancel, <enter> to confirm) Type the number of the \
+                   crate to open.",
+            );
+            write!(
+                io::stdout(),
+                "{goto}{}",
+                Indexed(search),
+                goto = CONTENT_LINE
+            ).ok();
         }
         (Open { .. }, None) => {
             info(&"There is nothing to open - conduct a search first");
@@ -175,14 +187,19 @@ fn handle_future_result(cmd: ReducerDo,
             match search.crates.get(number) {
                 Some(c1) => {
                     if number == 0 || search.crates.get(number * 10).is_none() || force {
-                        let url = format!("https://crates.io/crates/{n}/{v}",
-                                          n = c1.name,
-                                          v = c1.max_version);
+                        let url = format!(
+                            "https://crates.io/crates/{n}/{v}",
+                            n = c1.name,
+                            v = c1.max_version
+                        );
                         if let Err(e) = open::that(url) {
                             info(&e);
                         }
                     } else {
-                        info(&format!("Hit <enter> to open crate #{} or keep typing ...", number));
+                        info(&format!(
+                            "Hit <enter> to open crate #{} or keep typing ...",
+                            number
+                        ));
                     }
                 }
                 None => {
@@ -203,24 +220,29 @@ fn handle_future_result(cmd: ReducerDo,
             write!(io::stdout(), "{goto}{}", search, goto = CONTENT_LINE).ok();
         }
         (Show(result), last_search) => {
-            info(&format!("{} results for '{}' in total, showing {} max",
-                          result.meta.total,
-                          result.meta.term.as_ref().map(|s| s.as_str()).unwrap_or(""),
-                          result.meta
-                              .dimension
-                              .as_ref()
-                              .expect("dimension to be set")
-                              .height));
+            info(&format!(
+                "{} results for '{}' in total, showing {} max",
+                result.meta.total,
+                result.meta.term.as_ref().map(|s| s.as_str()).unwrap_or(""),
+                result
+                    .meta
+                    .dimension
+                    .as_ref()
+                    .expect("dimension to be set")
+                    .height
+            ));
             if result.crates.is_empty() {
                 let last = usage();
-                let suffix = last_search.and_then(|r| r.meta.term.as_ref())
+                let suffix = last_search
+                    .and_then(|r| r.meta.term.as_ref())
                     .map(|term| format!("Showing results for '{}'", term))
                     .unwrap_or_else(String::new);
-                write!(io::stdout(),
-                       "{gotolast} - nothing found.{suffix}",
-                       suffix = suffix,
-                       gotolast = cursor::Goto(last as u16, INFO_LINE.1))
-                    .ok();
+                write!(
+                    io::stdout(),
+                    "{gotolast} - nothing found.{suffix}",
+                    suffix = suffix,
+                    gotolast = cursor::Goto(last as u16, INFO_LINE.1)
+                ).ok();
             } else {
                 write!(io::stdout(), "{goto}{}", result, goto = CONTENT_LINE).ok();
                 res = Some(Some(result));
@@ -236,10 +258,11 @@ enum LoopControl {
     ShouldKeepGoing,
 }
 
-fn handle_key(k: Key,
-              sender: mpsc::Sender<Command>,
-              state: &mut State)
-              -> Result<LoopControl, Error> {
+fn handle_key(
+    k: Key,
+    sender: mpsc::Sender<Command>,
+    state: &mut State,
+) -> Result<LoopControl, Error> {
     let (mut force_open, mut show_last_search) = (false, false);
     match k {
         Key::Char('\n') => {
@@ -273,10 +296,9 @@ fn handle_key(k: Key,
         }
         Key::Backspace => {
             match state.mode {
-                    Searching => &mut state.term,
-                    Opening => &mut state.number,
-                }
-                .pop();
+                Searching => &mut state.term,
+                Opening => &mut state.number,
+            }.pop();
         }
         Key::Ctrl('o') => {
             state.mode = match state.mode {
@@ -332,7 +354,8 @@ pub fn handle_interactive_search(_args: &clap::ArgMatches) -> Result<(), Error> 
     let mut stdout = io::stdout().into_raw_mode()?;
     let mut state = State::default();
 
-    write!(stdout, "{}{}", cursor::Goto(1, 1), clear::All).map_err(Error::FirstIo)?;
+    write!(stdout, "{}{}", cursor::Goto(1, 1), clear::All)
+        .map_err(Error::FirstIo)?;
     promptf(&state);
     usage();
 
@@ -347,7 +370,8 @@ pub fn handle_interactive_search(_args: &clap::ArgMatches) -> Result<(), Error> 
         let version = Arc::new(AtomicUsize::new(0));
         let current_result = Rc::new(RefCell::new(None));
 
-        let commands = receiver.and_then(|cmd: Command| {
+        let commands = receiver
+            .and_then(|cmd: Command| {
                 let cr = current_result.clone();
                 let spawnable = setup_future(cmd, session.clone(), &handle, &version)
                     .then(|r| {
@@ -373,9 +397,12 @@ pub fn handle_interactive_search(_args: &clap::ArgMatches) -> Result<(), Error> 
     });
 
     for k in stdin.keys() {
-        if let LoopControl::ShouldBreak = handle_key(k.map_err(Error::KeySequence)?,
-                                                     sender.clone(),
-                                                     &mut state)? {
+        if let LoopControl::ShouldBreak = handle_key(
+            k.map_err(Error::KeySequence)?,
+            sender.clone(),
+            &mut state,
+        )?
+        {
             break;
         }
     }
@@ -386,40 +413,45 @@ pub fn handle_interactive_search(_args: &clap::ArgMatches) -> Result<(), Error> 
 }
 
 fn reset_terminal() {
-    write!(io::stdout(),
-           "{}{}{}",
-           cursor::Goto(1, 1),
-           cursor::Show,
-           clear::All)
-        .ok();
+    write!(
+        io::stdout(),
+        "{}{}{}",
+        cursor::Goto(1, 1),
+        cursor::Show,
+        clear::All
+    ).ok();
 }
 
 fn usage() -> usize {
-    info(&"(<ESC> to quit, <enter> to clear, Ctrl+o to open) Please enter your search term.")
+    info(
+        &"(<ESC> to quit, <enter> to clear, Ctrl+o to open) Please enter your search term.",
+    )
 }
 
 fn info(item: &Display) -> usize {
     let buf = format!("{}", item);
-    write!(io::stdout(),
-           "{hide}{goto}{clear}{}",
-           buf,
-           hide = cursor::Hide,
-           goto = INFO_LINE,
-           clear = clear::CurrentLine)
-        .ok();
+    write!(
+        io::stdout(),
+        "{hide}{goto}{clear}{}",
+        buf,
+        hide = cursor::Hide,
+        goto = INFO_LINE,
+        clear = clear::CurrentLine
+    ).ok();
     io::stdout().flush().ok();
     buf.len()
 }
 
 fn promptf(state: &State) {
-    write!(io::stdout(),
-           "{show}{goto}{clear} {mode}: {}",
-           state.prompt(),
-           mode = state.mode,
-           show = cursor::Show,
-           goto = cursor::Goto(1, 1),
-           clear = clear::CurrentLine)
-        .ok();
+    write!(
+        io::stdout(),
+        "{show}{goto}{clear} {mode}: {}",
+        state.prompt(),
+        mode = state.mode,
+        show = cursor::Show,
+        goto = cursor::Goto(1, 1),
+        clear = clear::CurrentLine
+    ).ok();
     io::stdout().flush().ok();
 }
 

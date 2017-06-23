@@ -17,18 +17,25 @@ const CRATES_PATH: [&'static str; 1] = ["crates"];
 
 fn crates_from_callresult_buf(buf: &[u8]) -> Result<(Vec<Crate>, Meta), Error> {
     fn at_path<'a>(json: &'a Json, p: &[&str]) -> Result<&'a Json, DecoderError> {
-        json.find_path(&p)
-            .ok_or_else(|| DecoderError::ApplicationError(format!("Missing path: {:?}", p)))
+        json.find_path(&p).ok_or_else(|| {
+            DecoderError::ApplicationError(format!("Missing path: {:?}", p))
+        })
     }
     str::from_utf8(buf)
-        .map_err(|e| Error::Decode(DecoderError::ApplicationError(format!("{}", e))))
-        .and_then(|s| Json::from_str(s).map_err(DecoderError::ParseError).map_err(Into::into))
+        .map_err(|e| {
+            Error::Decode(DecoderError::ApplicationError(format!("{}", e)))
+        })
+        .and_then(|s| {
+            Json::from_str(s)
+                .map_err(DecoderError::ParseError)
+                .map_err(Into::into)
+        })
         .and_then(|json| {
             let total = at_path(&json, &TOTAL_PATH).and_then(|json| {
-                    json.as_u64().map(|v| v as u32).ok_or_else(|| {
-                        DecoderError::ApplicationError(format!("Expected integer, found {}", json))
-                    })
-                })?;
+                json.as_u64().map(|v| v as u32).ok_or_else(|| {
+                    DecoderError::ApplicationError(format!("Expected integer, found {}", json))
+                })
+            })?;
             at_path(&json, &CRATES_PATH)?;
             let crates = json.into_object()
                 .expect("top level object")
@@ -52,41 +59,52 @@ fn crates_merge(mut r: Vec<Crate>, c: CallResult) -> Result<Vec<Crate>, Error> {
 
 fn crates_extract(c: CallResult) -> Result<(CallMetaData, Vec<Crate>), Error> {
     crates_from_callresult(c).map(|(crates, meta)| {
-        (CallMetaData {
-             total: meta.total,
-             items: crates.len() as u32,
-         },
-         crates)
+        (
+            CallMetaData {
+                total: meta.total,
+                items: crates.len() as u32,
+            },
+            crates,
+        )
     })
 }
 
-pub fn by_user(args: &clap::ArgMatches,
-               session: Arc<Mutex<Session>>)
-               -> BoxFuture<Vec<Crate>, Error> {
+pub fn by_user(
+    args: &clap::ArgMatches,
+    session: Arc<Mutex<Session>>,
+) -> BoxFuture<Vec<Crate>, Error> {
     let uid = args.value_of("user-id").expect("clap to work");
-    paged_crates_io_remote_call(&format!("https://crates.io/api/v1/crates?user_id={}",
-                                         urlencoding::encode(uid)),
-                                None,
-                                session.clone(),
-                                crates_merge,
-                                crates_extract)
-        .map_err(Into::into)
+    paged_crates_io_remote_call(
+        &format!(
+            "https://crates.io/api/v1/crates?user_id={}",
+            urlencoding::encode(uid)
+        ),
+        None,
+        session.clone(),
+        crates_merge,
+        crates_extract,
+    ).map_err(Into::into)
         .boxed()
 }
 
-pub fn handle_list<F, R>(args: &clap::ArgMatches,
-                         scmd_args: &clap::ArgMatches,
-                         make_future: F)
-                         -> Result<(), Error>
-    where F: FnOnce(&clap::ArgMatches, Arc<Mutex<Session>>) -> R,
-          R: IntoFuture<Item = Vec<Crate>, Error = Error>
+pub fn handle_list<F, R>(
+    args: &clap::ArgMatches,
+    scmd_args: &clap::ArgMatches,
+    make_future: F,
+) -> Result<(), Error>
+where
+    F: FnOnce(&clap::ArgMatches, Arc<Mutex<Session>>) -> R,
+    R: IntoFuture<Item = Vec<Crate>, Error = Error>,
 {
     let mut reactor = reactor::Core::new().map_err(Error::ReactorInit)?;
     let session = Arc::new(Mutex::new(Session::new(reactor.handle())));
-    let output_kind: OutputKind =
-        args.value_of("format").expect("default to be set").parse().expect("clap to work");
-    let fut =
-        make_future(scmd_args, session.clone()).into_future().and_then(|crates: Vec<Crate>| {
+    let output_kind: OutputKind = args.value_of("format")
+        .expect("default to be set")
+        .parse()
+        .expect("clap to work");
+    let fut = make_future(scmd_args, session.clone())
+        .into_future()
+        .and_then(|crates: Vec<Crate>| {
             match output_kind {
                 OutputKind::human => {
                     if !crates.is_empty() {
@@ -96,13 +114,14 @@ pub fn handle_list<F, R>(args: &clap::ArgMatches,
                 b -> "MaxVersion"]);
                             t.set_format(*format::consts::FORMAT_NO_LINESEP_WITH_TITLE);
                             crates.into_iter().fold(t, |mut t, c| {
-                                t.add_row(row![c.name,
-                                               c.description
-                                                   .unwrap_or_else(|| {
-                                                       String::from("no description provided")
-                                                   }),
-                                               c.downloads,
-                                               c.max_version]);
+                                t.add_row(row![
+                                    c.name,
+                                    c.description.unwrap_or_else(
+                                        || String::from("no description provided")
+                                    ),
+                                    c.downloads,
+                                    c.max_version,
+                                ]);
                                 t
                             })
                         };

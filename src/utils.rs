@@ -69,7 +69,8 @@ impl<'a> Display for WithCauses<'a> {
 }
 
 pub fn ok_or_exit<T, E>(result: Result<T, E>) -> T
-    where E: Error
+where
+    E: Error,
 {
     match result {
         Ok(v) => v,
@@ -82,7 +83,8 @@ pub fn ok_or_exit<T, E>(result: Result<T, E>) -> T
 
 #[must_use = "futures do nothing unless polled"]
 pub struct DropOutdated<A>
-    where A: Future
+where
+    A: Future,
 {
     inner: Option<A>,
     version: usize,
@@ -95,7 +97,8 @@ pub enum DroppedOrError<T> {
 }
 
 impl<A> Future for DropOutdated<A>
-    where A: Future
+where
+    A: Future,
 {
     type Item = A::Item;
     type Error = DroppedOrError<A::Error>;
@@ -113,7 +116,8 @@ impl<A> Future for DropOutdated<A>
 }
 
 impl<A> DropOutdated<A>
-    where A: Future
+where
+    A: Future,
 {
     pub fn with_version(f: A, version: Arc<AtomicUsize>) -> DropOutdated<A> {
         DropOutdated {
@@ -140,11 +144,13 @@ pub fn remote_call<'a>(url: &str, session: Arc<Mutex<Session>>) -> RemoteCallFut
     if let Err(e) = req.write_function(move |data| {
         buf_handle.lock().unwrap().extend_from_slice(data);
         Ok(data.len())
-    }) {
+    })
+    {
         return futures::failed(e.into()).boxed();
     };
 
-    session.lock()
+    session
+        .lock()
         .unwrap()
         .perform(req)
         .map(move |res| (buf, res))
@@ -181,16 +187,18 @@ pub struct CallMetaData {
     pub items: u32,
 }
 
-pub fn paged_crates_io_remote_call<T, M, E, Err>(url: &str,
-                                                 max_items: Option<u32>,
-                                                 session: Arc<Mutex<Session>>,
-                                                 merge: M,
-                                                 extract: E)
-                                                 -> futures::BoxFuture<T, RemoteCallError>
-    where T: Default + Send + 'static,
-          Err: Error + Send + 'static,
-          M: Fn(T, CallResult) -> Result<T, Err> + Send + Sync + 'static,
-          E: FnOnce(CallResult) -> Result<(CallMetaData, T), Err> + Send + Sync + 'static
+pub fn paged_crates_io_remote_call<T, M, E, Err>(
+    url: &str,
+    max_items: Option<u32>,
+    session: Arc<Mutex<Session>>,
+    merge: M,
+    extract: E,
+) -> futures::BoxFuture<T, RemoteCallError>
+where
+    T: Default + Send + 'static,
+    Err: Error + Send + 'static,
+    M: Fn(T, CallResult) -> Result<T, Err> + Send + Sync + 'static,
+    E: FnOnce(CallResult) -> Result<(CallMetaData, T), Err> + Send + Sync + 'static,
 {
     let max_items = max_items.unwrap_or(u32::max_value());
     let page_size = cmp::min(MAX_ITEMS_PER_PAGE, max_items);
@@ -203,16 +211,16 @@ pub fn paged_crates_io_remote_call<T, M, E, Err>(url: &str,
                 .into_future()
                 .and_then(move |(m, initial)| {
                     let mut f = Vec::new();
-                    let num_chunks = cmp::min(m.total.saturating_sub(m.items),
-                                              max_items.saturating_sub(m.items)) /
-                                     page_size;
+                    let num_chunks = cmp::min(
+                        m.total.saturating_sub(m.items),
+                        max_items.saturating_sub(m.items),
+                    ) / page_size;
                     let remainder = if m.total % page_size > 0 { 1 } else { 0 };
                     for ci in 0..num_chunks + remainder {
-                        f.push(remote_call(&format!("{}&page={}&per_page={}",
-                                                    url,
-                                                    2 + ci,
-                                                    page_size),
-                                           session.clone()));
+                        f.push(remote_call(
+                            &format!("{}&page={}&per_page={}", url, 2 + ci, page_size),
+                            session.clone(),
+                        ));
                     }
                     futures::stream::futures_unordered(f.into_iter()).fold(initial, move |m, r| {
                         merge(m, r).map_err(|e| RemoteCallError::Any(Box::new(e)))
@@ -223,7 +231,8 @@ pub fn paged_crates_io_remote_call<T, M, E, Err>(url: &str,
 }
 
 pub fn json_to_stdout<T>(encodable: &[T])
-    where T: Encodable
+where
+    T: Encodable,
 {
     let mut buf = String::with_capacity(256);
     let stdout = io::stdout();
@@ -234,10 +243,10 @@ pub fn json_to_stdout<T>(encodable: &[T])
         // unfortunately io::Write cannot be used directly, the encoder needs fmt::Write
         // To allow us reusing the buffer, we need to restrict its lifetime.
         if {
-                let mut encoder = json::Encoder::new(&mut buf);
-                item.encode(&mut encoder)
-            }
-            .is_ok() {
+            let mut encoder = json::Encoder::new(&mut buf);
+            item.encode(&mut encoder)
+        }.is_ok()
+        {
             writeln!(channel, "{}", buf).ok();
         }
     }
