@@ -1,30 +1,29 @@
-use super::structs::{State, Indexed, Command, SearchResult};
+use super::structs::{Command, Indexed, SearchResult, State};
 use super::error::Error;
 use clap;
 use open;
 use urlencoding;
 use std::cmp::max;
-use std::str;
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::time::Duration;
-use std::sync::atomic::{Ordering, AtomicUsize};
-use std::sync::{Mutex, Arc};
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::{Arc, Mutex};
 use std::io::{self, Write};
 use std::fmt::Display;
 use std::thread;
 use termion::event::Key;
 use termion::raw::IntoRawMode;
 use termion::input::TermRead;
-use termion::{cursor, clear};
-use tokio_core::reactor::{Timeout, Handle, Core};
-use futures::{self, Sink, Stream, Future};
+use termion::{clear, cursor};
+use tokio_core::reactor::{Core, Handle, Timeout};
+use futures::{self, Future, Sink, Stream};
 use futures::future::BoxFuture;
 use futures::sync::mpsc;
 use tokio_curl::Session;
 
-use utils::{paged_crates_io_remote_call, CallResult, CallMetaData, DropOutdated, DroppedOrError,
-            Dimension};
+use utils::{paged_crates_io_remote_call, CallMetaData, CallResult, Dimension, DropOutdated,
+            DroppedOrError};
 
 const INFO_LINE: cursor::Goto = cursor::Goto(1, 2);
 const CONTENT_LINE: cursor::Goto = cursor::Goto(1, 3);
@@ -86,12 +85,10 @@ fn setup_future(
 ) -> BoxFuture<ReducerDo, Error> {
     match cmd {
         Clear => futures::finished(ReducerDo::Clear).boxed(),
-        Open { force, number } => {
-            futures::finished(ReducerDo::Open {
-                force: force,
-                number: number,
-            }).boxed()
-        }
+        Open { force, number } => futures::finished(ReducerDo::Open {
+            force: force,
+            number: number,
+        }).boxed(),
         DrawIndices => futures::finished(ReducerDo::DrawIndices).boxed(),
         ShowLast => futures::finished(ReducerDo::ShowLast).boxed(),
         Search(term) => {
@@ -122,7 +119,7 @@ fn setup_future(
                 .map(move |_| {
                     info(&format!(
                         "Timeout occurred after {:?} - request dropped. Keep typing \
-                                   to try again.",
+                         to try again.",
                         default_timeout
                     ));
                     ReducerDo::Nothing
@@ -131,9 +128,9 @@ fn setup_future(
                 info(&format!("Request to {} failed with error: '{}'", url, e));
                 e.into()
             }).map(move |mut result| {
-                    result.meta.term = Some(term);
-                    ReducerDo::Show(result)
-                });
+                result.meta.term = Some(term);
+                ReducerDo::Show(result)
+            });
 
             let req = req.select(timeout)
                 .then(|res| {
@@ -171,7 +168,7 @@ fn handle_future_result(
         (DrawIndices, Some(ref search)) => {
             info(
                 &"(<ESC> to quit, Ctrl+o to cancel, <enter> to confirm) Type the number of the \
-                   crate to open.",
+                  crate to open.",
             );
             write!(
                 io::stdout(),
@@ -183,30 +180,28 @@ fn handle_future_result(
         (Open { .. }, None) => {
             info(&"There is nothing to open - conduct a search first");
         }
-        (Open { force, number }, Some(search)) => {
-            match search.crates.get(number) {
-                Some(c1) => {
-                    if number == 0 || search.crates.get(number * 10).is_none() || force {
-                        let url = format!(
-                            "https://crates.io/crates/{n}/{v}",
-                            n = c1.name,
-                            v = c1.max_version
-                        );
-                        if let Err(e) = open::that(url) {
-                            info(&e);
-                        }
-                    } else {
-                        info(&format!(
-                            "Hit <enter> to open crate #{} or keep typing ...",
-                            number
-                        ));
+        (Open { force, number }, Some(search)) => match search.crates.get(number) {
+            Some(c1) => {
+                if number == 0 || search.crates.get(number * 10).is_none() || force {
+                    let url = format!(
+                        "https://crates.io/crates/{n}/{v}",
+                        n = c1.name,
+                        v = c1.max_version
+                    );
+                    if let Err(e) = open::that(url) {
+                        info(&e);
                     }
-                }
-                None => {
-                    info(&format!("No crate #{}! Try using <backspace> ...", number));
+                } else {
+                    info(&format!(
+                        "Hit <enter> to open crate #{} or keep typing ...",
+                        number
+                    ));
                 }
             }
-        }
+            None => {
+                info(&format!("No crate #{}! Try using <backspace> ...", number));
+            }
+        },
         (Clear, _) => {
             usage();
             let empty_search = SearchResult::with_dimension(dimension());
@@ -265,35 +260,27 @@ fn handle_key(
 ) -> Result<LoopControl, Error> {
     let (mut force_open, mut show_last_search) = (false, false);
     match k {
-        Key::Char('\n') => {
-            match state.mode {
-                Searching => state.term.clear(),
-                Opening => {
-                    force_open = true;
-                    state.mode = Opening;
+        Key::Char('\n') => match state.mode {
+            Searching => state.term.clear(),
+            Opening => {
+                force_open = true;
+                state.mode = Opening;
+            }
+        },
+        Key::Char(c) => match state.mode {
+            Searching => {
+                if !is_special(c) {
+                    state.term.push(c)
                 }
             }
-        }
-        Key::Char(c) => {
-            match state.mode {
-                Searching => {
-                    if !is_special(c) {
-                        state.term.push(c)
-                    }
+            Opening => match c {
+                '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' => state.number.push(c),
+                _ => {
+                    info(&format!("Please enter digits from 0-9"));
+                    return Ok(LoopControl::ShouldKeepGoing);
                 }
-                Opening => {
-                    match c {
-                        '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' => {
-                            state.number.push(c)
-                        }
-                        _ => {
-                            info(&format!("Please enter digits from 0-9"));
-                            return Ok(LoopControl::ShouldKeepGoing);
-                        }
-                    }
-                }
-            }
-        }
+            },
+        },
         Key::Backspace => {
             match state.mode {
                 Searching => &mut state.term,
@@ -330,19 +317,17 @@ fn handle_key(
                 }
             }
         }
-        Opening if state.number.len() > 0 => {
-            Open {
-                force: force_open,
-                number: match state.number.parse() {
-                    Ok(n) => n,
-                    Err(e) => {
-                        info(&e);
-                        state.number.clear();
-                        return Ok(LoopControl::ShouldKeepGoing);
-                    }
-                },
-            }
-        }
+        Opening if state.number.len() > 0 => Open {
+            force: force_open,
+            number: match state.number.parse() {
+                Ok(n) => n,
+                Err(e) => {
+                    info(&e);
+                    state.number.clear();
+                    return Ok(LoopControl::ShouldKeepGoing);
+                }
+            },
+        },
         Opening => DrawIndices,
     };
     sender.send(cmd).wait().map_err(Error::SendCommand)?;
@@ -354,8 +339,7 @@ pub fn handle_interactive_search(_args: &clap::ArgMatches) -> Result<(), Error> 
     let mut stdout = io::stdout().into_raw_mode()?;
     let mut state = State::default();
 
-    write!(stdout, "{}{}", cursor::Goto(1, 1), clear::All)
-        .map_err(Error::FirstIo)?;
+    write!(stdout, "{}{}", cursor::Goto(1, 1), clear::All).map_err(Error::FirstIo)?;
     promptf(&state);
     usage();
 
@@ -397,11 +381,8 @@ pub fn handle_interactive_search(_args: &clap::ArgMatches) -> Result<(), Error> 
     });
 
     for k in stdin.keys() {
-        if let LoopControl::ShouldBreak = handle_key(
-            k.map_err(Error::KeySequence)?,
-            sender.clone(),
-            &mut state,
-        )?
+        if let LoopControl::ShouldBreak =
+            handle_key(k.map_err(Error::KeySequence)?, sender.clone(), &mut state)?
         {
             break;
         }
@@ -423,9 +404,7 @@ fn reset_terminal() {
 }
 
 fn usage() -> usize {
-    info(
-        &"(<ESC> to quit, <enter> to clear, Ctrl+o to open) Please enter your search term.",
-    )
+    info(&"(<ESC> to quit, <enter> to clear, Ctrl+o to open) Please enter your search term.")
 }
 
 fn info(item: &Display) -> usize {

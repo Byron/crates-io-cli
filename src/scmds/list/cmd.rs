@@ -1,14 +1,14 @@
 use clap;
 use super::error::Error;
-use structs::{Meta, Crate, OutputKind};
+use structs::{Crate, Meta, OutputKind};
 use tokio_core::reactor;
-use futures::{Future, BoxFuture, IntoFuture};
-use std::sync::{Mutex, Arc};
+use futures::{BoxFuture, Future, IntoFuture};
+use std::sync::{Arc, Mutex};
 use tokio_curl::Session;
 use prettytable::{format, Table};
-use utils::{json_to_stdout, CallMetaData, CallResult, paged_crates_io_remote_call};
+use utils::{json_to_stdout, paged_crates_io_remote_call, CallMetaData, CallResult};
 use urlencoding;
-use rustc_serialize::json::{Json, Decoder, DecoderError};
+use rustc_serialize::json::{Decoder, DecoderError, Json};
 use rustc_serialize::Decodable;
 use std::str;
 
@@ -17,14 +17,11 @@ const CRATES_PATH: [&'static str; 1] = ["crates"];
 
 fn crates_from_callresult_buf(buf: &[u8]) -> Result<(Vec<Crate>, Meta), Error> {
     fn at_path<'a>(json: &'a Json, p: &[&str]) -> Result<&'a Json, DecoderError> {
-        json.find_path(&p).ok_or_else(|| {
-            DecoderError::ApplicationError(format!("Missing path: {:?}", p))
-        })
+        json.find_path(&p)
+            .ok_or_else(|| DecoderError::ApplicationError(format!("Missing path: {:?}", p)))
     }
     str::from_utf8(buf)
-        .map_err(|e| {
-            Error::Decode(DecoderError::ApplicationError(format!("{}", e)))
-        })
+        .map_err(|e| Error::Decode(DecoderError::ApplicationError(format!("{}", e))))
         .and_then(|s| {
             Json::from_str(s)
                 .map_err(DecoderError::ParseError)
@@ -116,9 +113,8 @@ where
                             crates.into_iter().fold(t, |mut t, c| {
                                 t.add_row(row![
                                     c.name,
-                                    c.description.unwrap_or_else(
-                                        || String::from("no description provided")
-                                    ),
+                                    c.description
+                                        .unwrap_or_else(|| String::from("no description provided")),
                                     c.downloads,
                                     c.max_version
                                 ]);

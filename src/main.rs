@@ -1,20 +1,20 @@
 #[macro_use]
 extern crate clap;
-#[macro_use]
-extern crate prettytable;
-extern crate rustc_serialize;
 extern crate crates_index_diff;
+extern crate curl;
 extern crate futures;
 extern crate futures_cpupool;
-extern crate curl;
-extern crate tokio_core;
-extern crate tokio_curl;
-#[cfg(unix)]
-extern crate termion;
+extern crate git2;
 extern crate open;
 #[macro_use]
+extern crate prettytable;
+#[macro_use]
 extern crate quick_error;
-extern crate git2;
+extern crate rustc_serialize;
+#[cfg(unix)]
+extern crate termion;
+extern crate tokio_core;
+extern crate tokio_curl;
 extern crate urlencoding;
 
 mod utils;
@@ -22,7 +22,7 @@ mod scmds;
 mod structs;
 
 use utils::ok_or_exit;
-use scmds::{handle_interactive_search, handle_recent_changes, handle_list, by_user};
+use scmds::{by_user, handle_interactive_search, handle_list, handle_recent_changes};
 use structs::OutputKind;
 
 use std::env;
@@ -36,7 +36,6 @@ changed crates at all.
 Please note that the first query is likely to yield more than 40000 results!
 The first invocation may be slow as it might have to clone the crates.io index.
 "##;
-
 
 fn default_repository_dir() -> PathBuf {
     let mut p = env::temp_dir();
@@ -91,7 +90,6 @@ fn main() {
                            user data. Use any string to receive *all* crates!"))
                 .about("crates for the given username"))
             .about("list crates by a particular criterion"));
-
 
     let matches = app.get_matches();
     match matches.subcommand() {

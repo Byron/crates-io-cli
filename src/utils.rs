@@ -1,4 +1,4 @@
-use futures::{Stream, Poll, Future, IntoFuture};
+use futures::{Future, IntoFuture, Poll, Stream};
 use curl::easy::Easy;
 use tokio_curl::{PerformError, Session};
 
@@ -6,13 +6,13 @@ use rustc_serialize::{json, Encodable};
 use std::io::{self, Write};
 use curl;
 use futures;
-use std::{process, cmp};
+use std::{cmp, process};
 use std::sync::Mutex;
 use std::fmt::{self, Display};
 use std::error::Error;
 use std::default::Default;
 use std::sync::Arc;
-use std::sync::atomic::{Ordering, AtomicUsize};
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 const MAX_ITEMS_PER_PAGE: u32 = 100;
 
@@ -144,8 +144,7 @@ pub fn remote_call<'a>(url: &str, session: Arc<Mutex<Session>>) -> RemoteCallFut
     if let Err(e) = req.write_function(move |data| {
         buf_handle.lock().unwrap().extend_from_slice(data);
         Ok(data.len())
-    })
-    {
+    }) {
         return futures::failed(e.into()).boxed();
     };
 

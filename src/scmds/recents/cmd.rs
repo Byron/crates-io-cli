@@ -2,7 +2,7 @@ use super::error::Error;
 use futures_cpupool::CpuPool;
 use futures::Future;
 use std::time::Duration;
-use tokio_core::reactor::{Timeout, Core};
+use tokio_core::reactor::{Core, Timeout};
 use structs::OutputKind;
 
 use clap;
@@ -13,16 +13,14 @@ use std;
 use tokio_core;
 use crates_index_diff::Index;
 
-
 enum ResultKind {
     ComputationDone,
     Timeout,
 }
 
 fn show_changes(repo_path: String, output_kind: OutputKind) -> Result<ResultKind, Error> {
-    std::fs::create_dir_all(&repo_path).map_err(|e| {
-        Error::RepositoryDirectory(e, repo_path.clone().into())
-    })?;
+    std::fs::create_dir_all(&repo_path)
+        .map_err(|e| Error::RepositoryDirectory(e, repo_path.clone().into()))?;
     let index = Index::from_path_or_cloned(repo_path)?;
     let changes = index.fetch_changes()?;
 
@@ -46,13 +44,10 @@ fn show_changes(repo_path: String, output_kind: OutputKind) -> Result<ResultKind
     Ok(ResultKind::ComputationDone)
 }
 
-
 pub fn handle_recent_changes(args: &clap::ArgMatches) -> Result<(), Error> {
     let mut reactor = Core::new().map_err(Error::ReactorInit)?;
     let handle: tokio_core::reactor::Handle = reactor.handle();
-    let timeout: Timeout = Timeout::new(Duration::from_secs(3), &handle).map_err(
-        Error::Timeout,
-    )?;
+    let timeout: Timeout = Timeout::new(Duration::from_secs(3), &handle).map_err(Error::Timeout)?;
     let pool = CpuPool::new(1);
 
     let repo_path = args.value_of("repository").expect("default to be set");

@@ -61,31 +61,30 @@ pub fn desired_table_widths(items: &[Crate], dim: &Dimension) -> (usize, usize, 
 }
 
 fn desired_string_widths(items: &[Crate], max_width: u16) -> (usize, usize, usize, usize) {
-    let (nw, dw, vw, dlw) = items.iter().fold((0, 0, 0, 0), |(mut nw,
-      mut dw,
-      mut vw,
-      mut dlw),
-     c| {
-        if c.name.len() > nw {
-            nw = c.name.len();
-        }
-        let dlen = c.description
-            .as_ref()
-            .map(|s| sanitize(&s))
-            .unwrap_or_else(String::new)
-            .len();
-        if dlen > dw {
-            dw = dlen;
-        }
-        if c.max_version.len() > vw {
-            vw = c.max_version.len();
-        }
-        let dllen = f64::log10(c.downloads as f64) as usize + 1;
-        if dllen > dlw {
-            dlw = dllen;
-        }
-        (nw, dw, vw, dlw)
-    });
+    let (nw, dw, vw, dlw) = items.iter().fold(
+        (0, 0, 0, 0),
+        |(mut nw, mut dw, mut vw, mut dlw), c| {
+            if c.name.len() > nw {
+                nw = c.name.len();
+            }
+            let dlen = c.description
+                .as_ref()
+                .map(|s| sanitize(&s))
+                .unwrap_or_else(String::new)
+                .len();
+            if dlen > dw {
+                dw = dlen;
+            }
+            if c.max_version.len() > vw {
+                vw = c.max_version.len();
+            }
+            let dllen = f64::log10(c.downloads as f64) as usize + 1;
+            if dllen > dlw {
+                dlw = dllen;
+            }
+            (nw, dw, vw, dlw)
+        },
+    );
     let w = {
         let mut prio_widths = [dw, vw, dlw, nw];
         let max_width = max_width as usize;
@@ -191,7 +190,6 @@ impl Default for Mode {
         Mode::Searching
     }
 }
-
 
 #[derive(Default)]
 pub struct State {
