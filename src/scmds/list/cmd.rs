@@ -104,25 +104,32 @@ where
         .and_then(|crates: Vec<Crate>| {
             match output_kind {
                 OutputKind::human => {
-                    if !crates.is_empty() {
-                        let table = {
-                            let mut t = Table::new();
-                            t.set_titles(row![b -> "Name", b -> "Description", b -> "Downloads",
-                b -> "MaxVersion"]);
-                            t.set_format(*format::consts::FORMAT_NO_LINESEP_WITH_TITLE);
-                            crates.into_iter().fold(t, |mut t, c| {
-                                t.add_row(row![
-                                    c.name,
-                                    c.description
-                                        .unwrap_or_else(|| String::from("no description provided")),
-                                    c.downloads,
-                                    c.max_version
-                                ]);
-                                t
-                            })
-                        };
-                        table.print_tty(false);
+                    if crates.is_empty() {
+                        return Ok(());
                     }
+                    let (mut table, titles) = {
+                        let mut t = Table::new();
+                        t.set_format(*format::consts::FORMAT_NO_LINESEP_WITH_TITLE);
+                        let mut total = 0;
+                        let t = crates.into_iter().fold(t, |mut t, c| {
+                            total += c.downloads;
+                            t.add_row(row![
+                                c.name,
+                                c.description
+                                    .unwrap_or_else(|| String::from("no description provided")),
+                                c.downloads,
+                                c.max_version
+                            ]);
+                            t
+                        });
+                        (
+                            t,
+                            row![b -> "Name", b -> "Description", b ->
+                            format!("Downloads (total={})" , total), b -> "MaxVersion"],
+                        )
+                    };
+                    table.set_titles(titles);
+                    table.print_tty(false);
                 }
                 OutputKind::json => json_to_stdout(&crates),
             }
