@@ -81,7 +81,7 @@ fn setup_future(
     session: Arc<Mutex<Session>>,
     handle: &Handle,
     version: &Arc<AtomicUsize>,
-) -> Box<Future<Item=ReducerDo, Error=Error>+Send>{
+) -> Box<Future<Item = ReducerDo, Error = Error> + Send> {
     match cmd {
         Clear => Box::new(futures::finished(ReducerDo::Clear)),
         Open { force, number } => Box::new(futures::finished(ReducerDo::Open {
@@ -112,7 +112,7 @@ fn setup_future(
             info(&"searching ...");
             let default_timeout: Duration = Duration::from_millis(5000);
             let timeout = Timeout::new(default_timeout.clone(), handle)
-                .map(|f| Box::new(f) as Box<Future<Item=_, Error=_> + Send>)
+                .map(|f| Box::new(f) as Box<Future<Item = _, Error = _> + Send>)
                 .unwrap_or_else(|_| Box::new(futures::empty()))
                 .map_err(Error::Timeout)
                 .map(move |_| {
@@ -131,23 +131,23 @@ fn setup_future(
                 ReducerDo::Show(result)
             });
 
-            let req = Box::new(req.select(timeout)
-                .then(|res| {
-                    Ok(match res {
-                        Ok((do_nothing @ ReducerDo::Nothing, pending_request)) => {
-                            drop(pending_request);
-                            do_nothing
-                        }
-                        Ok((result, _timeout)) => result,
-                        Err(_) => ReducerDo::Nothing,
-                    })
-                }));
+            let req = Box::new(req.select(timeout).then(|res| {
+                Ok(match res {
+                    Ok((do_nothing @ ReducerDo::Nothing, pending_request)) => {
+                        drop(pending_request);
+                        do_nothing
+                    }
+                    Ok((result, _timeout)) => result,
+                    Err(_) => ReducerDo::Nothing,
+                })
+            }));
 
-            Box::new(DropOutdated::with_version(req, version.clone())
-                .or_else(|e| match e {
+            Box::new(
+                DropOutdated::with_version(req, version.clone()).or_else(|e| match e {
                     DroppedOrError::Dropped => Ok(ReducerDo::Nothing),
                     DroppedOrError::Err(e) => Err(e),
-                }))
+                }),
+            )
         }
     }
 }

@@ -69,18 +69,20 @@ fn crates_extract(c: CallResult) -> Result<(CallMetaData, Vec<Crate>), Error> {
 pub fn by_user(
     args: &clap::ArgMatches,
     session: Arc<Mutex<Session>>,
-) -> Box<Future<Item=Vec<Crate>, Error=Error>+Send>{
+) -> Box<Future<Item = Vec<Crate>, Error = Error> + Send> {
     let uid = args.value_of("user-id").expect("clap to work");
-    Box::new(paged_crates_io_remote_call(
-        &format!(
-            "https://crates.io/api/v1/crates?user_id={}",
-            urlencoding::encode(uid)
-        ),
-        None,
-        session.clone(),
-        crates_merge,
-        crates_extract,
-    ).map_err(Into::into))
+    Box::new(
+        paged_crates_io_remote_call(
+            &format!(
+                "https://crates.io/api/v1/crates?user_id={}",
+                urlencoding::encode(uid)
+            ),
+            None,
+            session.clone(),
+            crates_merge,
+            crates_extract,
+        ).map_err(Into::into),
+    )
 }
 
 pub fn handle_list<F, R>(

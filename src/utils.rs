@@ -129,7 +129,7 @@ where
 }
 
 pub type CallResult = (Arc<Mutex<Vec<u8>>>, Easy);
-pub type RemoteCallFuture = Box<futures::Future<Item=CallResult, Error=RemoteCallError> + Send>;
+pub type RemoteCallFuture = Box<futures::Future<Item = CallResult, Error = RemoteCallError> + Send>;
 
 pub fn remote_call<'a>(url: &str, session: Arc<Mutex<Session>>) -> RemoteCallFuture {
     let mut req = Easy::new();
@@ -148,12 +148,14 @@ pub fn remote_call<'a>(url: &str, session: Arc<Mutex<Session>>) -> RemoteCallFut
         return Box::new(futures::failed(e.into()));
     };
 
-    Box::new(session
-        .lock()
-        .unwrap()
-        .perform(req)
-        .map(move |res| (buf, res))
-        .map_err(move |e| e.into()))
+    Box::new(
+        session
+            .lock()
+            .unwrap()
+            .perform(req)
+            .map(move |res| (buf, res))
+            .map_err(move |e| e.into()),
+    )
 }
 
 quick_error! {
@@ -191,7 +193,7 @@ pub fn paged_crates_io_remote_call<T, M, E, Err>(
     session: Arc<Mutex<Session>>,
     merge: M,
     extract: E,
-) -> Box<futures::Future<Item=T, Error=RemoteCallError> + Send>
+) -> Box<futures::Future<Item = T, Error = RemoteCallError> + Send>
 where
     T: Default + Send + 'static,
     Err: Error + Send + 'static,
@@ -202,29 +204,33 @@ where
     let page_size = cmp::min(MAX_ITEMS_PER_PAGE, max_items);
 
     let url = url.to_owned();
-    Box::new(remote_call(&format!("{}&per_page={}", url, page_size), session.clone())
-        .and_then(move |r| {
-            extract(r)
-                .map_err(|e| RemoteCallError::Any(Box::new(e)))
-                .into_future()
-                .and_then(move |(m, initial)| {
-                    let mut f = Vec::new();
-                    let num_chunks = cmp::min(
-                        m.total.saturating_sub(m.items),
-                        max_items.saturating_sub(m.items),
-                    ) / page_size;
-                    let remainder = if m.total % page_size > 0 { 1 } else { 0 };
-                    for ci in 0..num_chunks + remainder {
-                        f.push(remote_call(
-                            &format!("{}&page={}&per_page={}", url, 2 + ci, page_size),
-                            session.clone(),
-                        ));
-                    }
-                    futures::stream::futures_unordered(f.into_iter()).fold(initial, move |m, r| {
-                        merge(m, r).map_err(|e| RemoteCallError::Any(Box::new(e)))
+    Box::new(
+        remote_call(&format!("{}&per_page={}", url, page_size), session.clone()).and_then(
+            move |r| {
+                extract(r)
+                    .map_err(|e| RemoteCallError::Any(Box::new(e)))
+                    .into_future()
+                    .and_then(move |(m, initial)| {
+                        let mut f = Vec::new();
+                        let num_chunks = cmp::min(
+                            m.total.saturating_sub(m.items),
+                            max_items.saturating_sub(m.items),
+                        ) / page_size;
+                        let remainder = if m.total % page_size > 0 { 1 } else { 0 };
+                        for ci in 0..num_chunks + remainder {
+                            f.push(remote_call(
+                                &format!("{}&page={}&per_page={}", url, 2 + ci, page_size),
+                                session.clone(),
+                            ));
+                        }
+                        futures::stream::futures_unordered(f.into_iter())
+                            .fold(initial, move |m, r| {
+                                merge(m, r).map_err(|e| RemoteCallError::Any(Box::new(e)))
+                            })
                     })
-                })
-        }))
+            },
+        ),
+    )
 }
 
 pub fn json_to_stdout<T>(encodable: &[T])
