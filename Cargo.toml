@@ -5,7 +5,7 @@ keywords = ["crates", "index", "search", "diff", "cli"]
 license = "MIT"
 name = "crates-io-cli"
 repository = "https://github.com/Byron/crates-io-cli-rs"
-version = "2.1.0"
+version = "2.1.1"
 
 [[bin]]
 name = "crates"
