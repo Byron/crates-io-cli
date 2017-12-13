@@ -134,10 +134,10 @@ pub type RemoteCallFuture = futures::BoxFuture<CallResult, RemoteCallError>;
 pub fn remote_call<'a>(url: &str, session: Arc<Mutex<Session>>) -> RemoteCallFuture {
     let mut req = Easy::new();
     if let Err(e) = req.get(true) {
-        return futures::failed(e.into()).boxed();
+        return Box::new(futures::failed(e.into()));
     }
     if let Err(e) = req.url(&url) {
-        return futures::failed(e.into()).boxed();
+        return Box::new(futures::failed(e.into()));
     }
     let buf = Arc::new(Mutex::new(Vec::new()));
     let buf_handle = buf.clone();
@@ -145,7 +145,7 @@ pub fn remote_call<'a>(url: &str, session: Arc<Mutex<Session>>) -> RemoteCallFut
         buf_handle.lock().unwrap().extend_from_slice(data);
         Ok(data.len())
     }) {
-        return futures::failed(e.into()).boxed();
+        return Box::new(futures::failed(e.into()));
     };
 
     session
