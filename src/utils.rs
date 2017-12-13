@@ -129,7 +129,7 @@ where
 }
 
 pub type CallResult = (Arc<Mutex<Vec<u8>>>, Easy);
-pub type RemoteCallFuture = futures::BoxFuture<CallResult, RemoteCallError>;
+pub type RemoteCallFuture = Box<futures::Future<Item=CallResult, Error=RemoteCallError> + Send>;
 
 pub fn remote_call<'a>(url: &str, session: Arc<Mutex<Session>>) -> RemoteCallFuture {
     let mut req = Easy::new();
@@ -148,13 +148,12 @@ pub fn remote_call<'a>(url: &str, session: Arc<Mutex<Session>>) -> RemoteCallFut
         return Box::new(futures::failed(e.into()));
     };
 
-    session
+    Box::new(session
         .lock()
         .unwrap()
         .perform(req)
         .map(move |res| (buf, res))
-        .map_err(move |e| e.into())
-        .boxed()
+        .map_err(move |e| e.into()))
 }
 
 quick_error! {
@@ -192,7 +191,7 @@ pub fn paged_crates_io_remote_call<T, M, E, Err>(
     session: Arc<Mutex<Session>>,
     merge: M,
     extract: E,
-) -> futures::BoxFuture<T, RemoteCallError>
+) -> Box<futures::Future<Item=T, Error=RemoteCallError> + Send>
 where
     T: Default + Send + 'static,
     Err: Error + Send + 'static,
@@ -203,7 +202,7 @@ where
     let page_size = cmp::min(MAX_ITEMS_PER_PAGE, max_items);
 
     let url = url.to_owned();
-    remote_call(&format!("{}&per_page={}", url, page_size), session.clone())
+    Box::new(remote_call(&format!("{}&per_page={}", url, page_size), session.clone())
         .and_then(move |r| {
             extract(r)
                 .map_err(|e| RemoteCallError::Any(Box::new(e)))
@@ -225,8 +224,7 @@ where
                         merge(m, r).map_err(|e| RemoteCallError::Any(Box::new(e)))
                     })
                 })
-        })
-        .boxed()
+        }))
 }
 
 pub fn json_to_stdout<T>(encodable: &[T])

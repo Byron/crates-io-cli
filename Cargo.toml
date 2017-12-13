@@ -27,7 +27,7 @@ quick-error = "1.1.0"
 rustc-serialize = "0.3.22"
 tokio-core = "0.1.2"
 tokio-curl = "0.1.7"
-urlencoding = "0.2.0"
+urlencoding = "1.0.0"
 
 [dependencies.prettytable-rs]
 default-features = false

@@ -18,7 +18,6 @@ use termion::input::TermRead;
 use termion::{clear, cursor};
 use tokio_core::reactor::{Core, Handle, Timeout};
 use futures::{self, Future, Sink, Stream};
-use futures::future::BoxFuture;
 use futures::sync::mpsc;
 use tokio_curl::Session;
 
@@ -82,15 +81,15 @@ fn setup_future(
     session: Arc<Mutex<Session>>,
     handle: &Handle,
     version: &Arc<AtomicUsize>,
-) -> BoxFuture<ReducerDo, Error> {
+) -> Box<Future<Item=ReducerDo, Error=Error>+Send>{
     match cmd {
-        Clear => futures::finished(ReducerDo::Clear).boxed(),
-        Open { force, number } => futures::finished(ReducerDo::Open {
+        Clear => Box::new(futures::finished(ReducerDo::Clear)),
+        Open { force, number } => Box::new(futures::finished(ReducerDo::Open {
             force: force,
             number: number,
-        }).boxed(),
-        DrawIndices => futures::finished(ReducerDo::DrawIndices).boxed(),
-        ShowLast => futures::finished(ReducerDo::ShowLast).boxed(),
+        })),
+        DrawIndices => Box::new(futures::finished(ReducerDo::DrawIndices)),
+        ShowLast => Box::new(futures::finished(ReducerDo::ShowLast)),
         Search(term) => {
             let version = {
                 version.fetch_add(1, Ordering::SeqCst);
@@ -113,8 +112,8 @@ fn setup_future(
             info(&"searching ...");
             let default_timeout: Duration = Duration::from_millis(5000);
             let timeout = Timeout::new(default_timeout.clone(), handle)
-                .map(Future::boxed)
-                .unwrap_or_else(|_| futures::empty().boxed())
+                .map(|f| Box::new(f) as Box<Future<Item=_, Error=_> + Send>)
+                .unwrap_or_else(|_| Box::new(futures::empty()))
                 .map_err(Error::Timeout)
                 .map(move |_| {
                     info(&format!(
@@ -132,7 +131,7 @@ fn setup_future(
                 ReducerDo::Show(result)
             });
 
-            let req = req.select(timeout)
+            let req = Box::new(req.select(timeout)
                 .then(|res| {
                     Ok(match res {
                         Ok((do_nothing @ ReducerDo::Nothing, pending_request)) => {
@@ -142,14 +141,13 @@ fn setup_future(
                         Ok((result, _timeout)) => result,
                         Err(_) => ReducerDo::Nothing,
                     })
-                })
-                .boxed();
-            DropOutdated::with_version(req, version.clone())
+                }));
+
+            Box::new(DropOutdated::with_version(req, version.clone())
                 .or_else(|e| match e {
                     DroppedOrError::Dropped => Ok(ReducerDo::Nothing),
                     DroppedOrError::Err(e) => Err(e),
-                })
-                .boxed()
+                }))
         }
     }
 }

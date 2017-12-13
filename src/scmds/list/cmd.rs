@@ -2,7 +2,7 @@ use clap;
 use super::error::Error;
 use structs::{Crate, Meta, OutputKind};
 use tokio_core::reactor;
-use futures::{BoxFuture, Future, IntoFuture};
+use futures::{Future, IntoFuture};
 use std::sync::{Arc, Mutex};
 use tokio_curl::Session;
 use prettytable::{format, Table};
@@ -69,9 +69,9 @@ fn crates_extract(c: CallResult) -> Result<(CallMetaData, Vec<Crate>), Error> {
 pub fn by_user(
     args: &clap::ArgMatches,
     session: Arc<Mutex<Session>>,
-) -> BoxFuture<Vec<Crate>, Error> {
+) -> Box<Future<Item=Vec<Crate>, Error=Error>+Send>{
     let uid = args.value_of("user-id").expect("clap to work");
-    paged_crates_io_remote_call(
+    Box::new(paged_crates_io_remote_call(
         &format!(
             "https://crates.io/api/v1/crates?user_id={}",
             urlencoding::encode(uid)
@@ -80,8 +80,7 @@ pub fn by_user(
         session.clone(),
         crates_merge,
         crates_extract,
-    ).map_err(Into::into)
-        .boxed()
+    ).map_err(Into::into))
 }
 
 pub fn handle_list<F, R>(
