@@ -32,7 +32,7 @@ urlencoding = "1.0.0"
 [dependencies.prettytable-rs]
 default-features = false
 features = ["win_crlf"]
-version = "0.6.7"
+version = "0.8.0"
 
 [target]
 
