@@ -100,7 +100,7 @@ dependencies = [
 
 [[package]]
 name = "crates-io-cli"
-version = "2.1.1"
+version = "2.2.0"
 dependencies = [
  "clap 2.32.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "crates-index-diff 3.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
