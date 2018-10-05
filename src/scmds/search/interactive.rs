@@ -1,6 +1,5 @@
 use super::structs::{Command, Indexed, SearchResult, State};
 use super::error::Error;
-use clap;
 use open;
 use urlencoding;
 use std::cmp::max;
@@ -332,7 +331,7 @@ fn handle_key(
     return Ok(LoopControl::ShouldKeepGoing);
 }
 
-pub fn handle_interactive_search(_args: &clap::ArgMatches) -> Result<(), Error> {
+pub fn handle_interactive_search() -> Result<(), Error> {
     let stdin = io::stdin();
     let mut stdout = io::stdout().into_raw_mode()?;
     let mut state = State::default();

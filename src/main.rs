@@ -94,7 +94,7 @@ fn main() {
     let matches = app.get_matches();
     match matches.subcommand() {
         ("recent-changes", Some(args)) => ok_or_exit(handle_recent_changes(args)),
-        ("search", Some(args)) => ok_or_exit(handle_interactive_search(args)),
+        ("search", Some(_)) => ok_or_exit(handle_interactive_search()),
         ("list", Some(list_args)) => {
             let (subcommand_handler, subcommand_args) = match list_args.subcommand() {
                 ("by-user", Some(args)) => (by_user, args),
@@ -102,6 +102,6 @@ fn main() {
             };
             ok_or_exit(handle_list(list_args, subcommand_args, subcommand_handler));
         }
-        _ => invalid_subcommand(&matches),
+        _ => ok_or_exit(handle_interactive_search()),
     }
 }
