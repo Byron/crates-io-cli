@@ -132,7 +132,7 @@ pub type CallResult = (Arc<Mutex<Vec<u8>>>, Easy);
 pub type RemoteCallFuture = Box<futures::Future<Item = CallResult, Error = RemoteCallError> + Send>;
 
 pub fn remote_call<'a>(url: &str, session: Arc<Mutex<Session>>) -> RemoteCallFuture {
-    let mut req = Easy::new();
+    let mut req = request_new();
     if let Err(e) = req.get(true) {
         return Box::new(futures::failed(e.into()));
     }
@@ -156,6 +156,12 @@ pub fn remote_call<'a>(url: &str, session: Arc<Mutex<Session>>) -> RemoteCallFut
             .map(move |res| (buf, res))
             .map_err(move |e| e.into()),
     )
+}
+
+fn request_new() -> Easy {
+    let mut easy = Easy::new();
+    easy.useragent("crates.io-cli (https://crates.io/crates/crates-io-cli)").ok();
+    easy
 }
 
 quick_error! {
