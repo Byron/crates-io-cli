@@ -16,7 +16,7 @@ name = "krates"
 path = "src/main.rs"
 
 [dependencies]
-clap = "2"
+clap = {version = "2", features = ["color"]}
 crates-index-diff = "3"
 curl = "0.4.2"
 futures = "0.1.7"

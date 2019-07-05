@@ -27,7 +27,7 @@ use structs::OutputKind;
 
 use std::env;
 use std::path::PathBuf;
-use clap::{Arg, SubCommand};
+use clap::{Arg, SubCommand, AppSettings};
 
 const CHANGES_SUBCOMMAND_DESCRIPTION: &'static str = r##"
 The output of this command is based on the state of the current crates.io repository clone.
@@ -61,6 +61,8 @@ fn main() {
         .possible_values(&OutputKind::variants())
         .help("The type of output to produce.");
     let app = app_from_crate!()
+        .setting(AppSettings::ColorAuto)
+        .setting(AppSettings::ColoredHelp)
         .subcommand(SubCommand::with_name("recent-changes")
             .about("show all recently changed crates")
             .display_order(1)
