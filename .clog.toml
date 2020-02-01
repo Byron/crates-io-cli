@@ -1,6 +1,0 @@
-[clog]
-repository = "https://github.com/Byron/crates-io-cli-rs"
-from-latest-tag = true
-
-[sections]
-Improvements = ["imp"]
