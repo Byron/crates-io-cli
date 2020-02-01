@@ -14,11 +14,11 @@ path = "src/main.rs"
 
 [dependencies]
 clap = {version = "2", features = ["color"]}
-crates-index-diff = "4"
+crates-index-diff = "5"
 curl = "0.4.2"
 futures = "0.1.7"
 futures-cpupool = "0.1.2"
-git2 = "0.10"
+git2 = "0.11"
 open = "1.1.1"
 quick-error = "1.1.0"
 rustc-serialize = "0.3.22"
