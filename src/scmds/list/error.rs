@@ -1,6 +1,6 @@
+use crate::utils::RemoteCallError;
 use rustc_serialize::json;
 use std::io;
-use utils::RemoteCallError;
 
 quick_error! {
     #[derive(Debug)]

@@ -1,15 +1,14 @@
-use structs::Crate;
-use utils::Dimension;
+use crate::{structs::Crate, utils::Dimension};
 
-use std::cmp;
-use std::default::Default;
-use std::fmt::{self, Display};
-use std::iter;
-use std::str;
+use std::{
+    cmp,
+    default::Default,
+    fmt::{self, Display},
+    iter, str,
+};
 
 use rustc_serialize::json;
-use termion::clear;
-use termion::cursor;
+use termion::{clear, cursor};
 
 const CRATE_ROW_OVERHEAD: u16 = 3 * 3;
 

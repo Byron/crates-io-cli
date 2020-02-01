@@ -53,18 +53,17 @@ impl Default for Dimension {
     }
 }
 
-struct WithCauses<'a>(&'a Error);
+struct WithCauses<'a>(&'a dyn Error);
 
 impl<'a> Display for WithCauses<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        try!(write!(f, "ERROR: {}", self.0));
+        write!(f, "ERROR: {}", self.0)?;
         let mut cursor = self.0;
         while let Some(err) = cursor.cause() {
-            try!(write!(f, "\ncaused by: \n{}", err));
+            write!(f, "\ncaused by: \n{}", err)?;
             cursor = err;
         }
-        try!(write!(f, "\n"));
-        Ok(())
+        write!(f, "\n")
     }
 }
 
@@ -129,7 +128,8 @@ where
 }
 
 pub type CallResult = (Arc<Mutex<Vec<u8>>>, Easy);
-pub type RemoteCallFuture = Box<futures::Future<Item = CallResult, Error = RemoteCallError> + Send>;
+pub type RemoteCallFuture =
+    Box<dyn futures::Future<Item = CallResult, Error = RemoteCallError> + Send>;
 
 pub fn remote_call<'a>(url: &str, session: Arc<Mutex<Session>>) -> RemoteCallFuture {
     let mut req = request_new();
@@ -178,7 +178,7 @@ quick_error! {
             from()
             cause(err)
         }
-        Any(err: Box<Error + Send + 'static>) {
+        Any(err: Box<dyn Error + Send + 'static>) {
             description("An error occurred")
             from()
             cause(&**err)
@@ -200,7 +200,7 @@ pub fn paged_crates_io_remote_call<T, M, E, Err>(
     session: Arc<Mutex<Session>>,
     merge: M,
     extract: E,
-) -> Box<futures::Future<Item = T, Error = RemoteCallError> + Send>
+) -> Box<dyn futures::Future<Item = T, Error = RemoteCallError> + Send>
 where
     T: Default + Send + 'static,
     Err: Error + Send + 'static,

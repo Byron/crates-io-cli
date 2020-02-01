@@ -1,16 +1,20 @@
 use super::error::Error;
+use crate::{
+    structs::{Crate, Meta, OutputKind},
+    utils::{json_to_stdout, paged_crates_io_remote_call, CallMetaData, CallResult},
+};
 use clap;
 use futures::{Future, IntoFuture};
 use prettytable::{format, Table};
 use rustc_serialize::json::{Decoder, DecoderError, Json};
 use rustc_serialize::Decodable;
-use std::str;
-use std::sync::{Arc, Mutex};
-use structs::{Crate, Meta, OutputKind};
+use std::{
+    str,
+    sync::{Arc, Mutex},
+};
 use tokio_core::reactor;
 use tokio_curl::Session;
 use urlencoding;
-use utils::{json_to_stdout, paged_crates_io_remote_call, CallMetaData, CallResult};
 
 const TOTAL_PATH: [&'static str; 2] = ["meta", "total"];
 const CRATES_PATH: [&'static str; 1] = ["crates"];
@@ -70,7 +74,7 @@ fn crates_extract(c: CallResult) -> Result<(CallMetaData, Vec<Crate>), Error> {
 pub fn by_user(
     args: &clap::ArgMatches,
     session: Arc<Mutex<Session>>,
-) -> Box<Future<Item = Vec<Crate>, Error = Error> + Send> {
+) -> Box<dyn Future<Item = Vec<Crate>, Error = Error> + Send> {
     let uid = args.value_of("user-id").expect("clap to work");
     Box::new(
         paged_crates_io_remote_call(

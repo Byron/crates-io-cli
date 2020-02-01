@@ -20,7 +20,7 @@ use tokio_core::reactor::{Core, Handle, Timeout};
 use tokio_curl::Session;
 use urlencoding;
 
-use utils::{
+use crate::utils::{
     paged_crates_io_remote_call, CallMetaData, CallResult, Dimension, DropOutdated, DroppedOrError,
 };
 
@@ -82,7 +82,7 @@ fn setup_future(
     session: Arc<Mutex<Session>>,
     handle: &Handle,
     version: &Arc<AtomicUsize>,
-) -> Box<Future<Item = ReducerDo, Error = Error> + Send> {
+) -> Box<dyn Future<Item = ReducerDo, Error = Error> + Send> {
     match cmd {
         Clear => Box::new(futures::finished(ReducerDo::Clear)),
         Open { force, number } => Box::new(futures::finished(ReducerDo::Open {
@@ -113,7 +113,7 @@ fn setup_future(
             info(&"searching ...");
             let default_timeout: Duration = Duration::from_millis(5000);
             let timeout = Timeout::new(default_timeout.clone(), handle)
-                .map(|f| Box::new(f) as Box<Future<Item = _, Error = _> + Send>)
+                .map(|f| Box::new(f) as Box<dyn Future<Item = _, Error = _> + Send>)
                 .unwrap_or_else(|_| Box::new(futures::empty()))
                 .map_err(Error::Timeout)
                 .map(move |_| {
@@ -412,7 +412,7 @@ fn usage() -> usize {
     info(&"(<ESC> to quit, <enter> to clear, Ctrl+o to open) Please enter your search term.")
 }
 
-fn info(item: &Display) -> usize {
+fn info(item: &dyn Display) -> usize {
     let buf = format!("{}", item);
     write!(
         io::stdout(),

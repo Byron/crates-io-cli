@@ -1,17 +1,15 @@
 use super::error::Error;
+use crate::structs::OutputKind;
 use futures::Future;
 use futures_cpupool::CpuPool;
-use std::time::Duration;
-use structs::OutputKind;
+use std::{self, io::Write, time::Duration};
 use tokio_core::reactor::{Core, Timeout};
 
+use crate::utils::json_to_stdout;
 use clap;
 use crates_index_diff::Index;
 use prettytable::{format, Table};
-use std;
-use std::io::Write;
 use tokio_core;
-use utils::json_to_stdout;
 
 enum ResultKind {
     ComputationDone,
