@@ -5,23 +5,20 @@ keywords = ["crates", "index", "search", "diff", "cli"]
 license = "MIT"
 name = "crates-io-cli"
 repository = "https://github.com/Byron/crates-io-cli-rs"
-version = "2.2.1"
+readme = "README.md"
+version = "3.0.0"
 
 [[bin]]
 name = "crates"
 path = "src/main.rs"
 
-[[bin]]
-name = "krates"
-path = "src/main.rs"
-
 [dependencies]
 clap = {version = "2", features = ["color"]}
-crates-index-diff = "3"
+crates-index-diff = "4"
 curl = "0.4.2"
 futures = "0.1.7"
 futures-cpupool = "0.1.2"
-git2 = "0.6.3"
+git2 = "0.10"
 open = "1.1.1"
 quick-error = "1.1.0"
 rustc-serialize = "0.3.22"
