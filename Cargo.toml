@@ -3,6 +3,7 @@ authors = ["Sebastian Thiel <byronimo@gmail.com>"]
 description = "Interact with crates.io from the command-line"
 keywords = ["crates", "index", "search", "diff", "cli"]
 license = "MIT"
+include = ["src/**/*", "Cargo.toml"]
 name = "crates-io-cli"
 repository = "https://github.com/Byron/crates-io-cli-rs"
 readme = "README.md"
