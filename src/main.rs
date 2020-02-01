@@ -17,17 +17,17 @@ extern crate tokio_core;
 extern crate tokio_curl;
 extern crate urlencoding;
 
-mod utils;
 mod scmds;
 mod structs;
+mod utils;
 
-use utils::ok_or_exit;
 use scmds::{by_user, handle_interactive_search, handle_list, handle_recent_changes};
 use structs::OutputKind;
+use utils::ok_or_exit;
 
+use clap::{AppSettings, Arg, SubCommand};
 use std::env;
 use std::path::PathBuf;
-use clap::{Arg, SubCommand, AppSettings};
 
 const CHANGES_SUBCOMMAND_DESCRIPTION: &'static str = r##"
 The output of this command is based on the state of the current crates.io repository clone.

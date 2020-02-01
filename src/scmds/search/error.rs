@@ -1,8 +1,8 @@
-use std::io;
+use super::structs::Command;
 use futures::sync::mpsc;
 use rustc_serialize::json;
+use std::io;
 use utils::RemoteCallError;
-use super::structs::Command;
 
 quick_error! {
     #[derive(Debug)]

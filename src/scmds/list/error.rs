@@ -1,6 +1,6 @@
+use rustc_serialize::json;
 use std::io;
 use utils::RemoteCallError;
-use rustc_serialize::json;
 
 quick_error! {
     #[derive(Debug)]

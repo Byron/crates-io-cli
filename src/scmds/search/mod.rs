@@ -1,7 +1,7 @@
 #[cfg(unix)]
-mod structs;
-#[cfg(unix)]
 mod interactive;
+#[cfg(unix)]
+mod structs;
 
 mod error;
 pub use self::error::Error;
@@ -11,8 +11,8 @@ pub use self::interactive::handle_interactive_search;
 
 #[cfg(windows)]
 mod imp {
-    use std;
     use clap;
+    use std;
 
     pub fn handle_interactive_search(_args: &clap::ArgMatches) {
         println!("Interactive search is not supported. Use --help to learn about alternatives.");

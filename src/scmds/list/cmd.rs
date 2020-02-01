@@ -1,16 +1,16 @@
-use clap;
 use super::error::Error;
-use structs::{Crate, Meta, OutputKind};
-use tokio_core::reactor;
+use clap;
 use futures::{Future, IntoFuture};
-use std::sync::{Arc, Mutex};
-use tokio_curl::Session;
 use prettytable::{format, Table};
-use utils::{json_to_stdout, paged_crates_io_remote_call, CallMetaData, CallResult};
-use urlencoding;
 use rustc_serialize::json::{Decoder, DecoderError, Json};
 use rustc_serialize::Decodable;
 use std::str;
+use std::sync::{Arc, Mutex};
+use structs::{Crate, Meta, OutputKind};
+use tokio_core::reactor;
+use tokio_curl::Session;
+use urlencoding;
+use utils::{json_to_stdout, paged_crates_io_remote_call, CallMetaData, CallResult};
 
 const TOTAL_PATH: [&'static str; 2] = ["meta", "total"];
 const CRATES_PATH: [&'static str; 1] = ["crates"];
@@ -34,7 +34,8 @@ fn crates_from_callresult_buf(buf: &[u8]) -> Result<(Vec<Crate>, Meta), Error> {
                 })
             })?;
             at_path(&json, &CRATES_PATH)?;
-            let crates = json.into_object()
+            let crates = json
+                .into_object()
                 .expect("top level object")
                 .remove("crates")
                 .expect("crates entry");
@@ -81,7 +82,8 @@ pub fn by_user(
             session.clone(),
             crates_merge,
             crates_extract,
-        ).map_err(Into::into),
+        )
+        .map_err(Into::into),
     )
 }
 
@@ -96,7 +98,8 @@ where
 {
     let mut reactor = reactor::Core::new().map_err(Error::ReactorInit)?;
     let session = Arc::new(Mutex::new(Session::new(reactor.handle())));
-    let output_kind: OutputKind = args.value_of("format")
+    let output_kind: OutputKind = args
+        .value_of("format")
         .expect("default to be set")
         .parse()
         .expect("clap to work");

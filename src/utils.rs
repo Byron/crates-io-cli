@@ -1,18 +1,18 @@
-use futures::{Future, IntoFuture, Poll, Stream};
 use curl::easy::Easy;
+use futures::{Future, IntoFuture, Poll, Stream};
 use tokio_curl::{PerformError, Session};
 
-use rustc_serialize::{json, Encodable};
-use std::io::{self, Write};
 use curl;
 use futures;
-use std::{cmp, process};
-use std::sync::Mutex;
-use std::fmt::{self, Display};
-use std::error::Error;
+use rustc_serialize::{json, Encodable};
 use std::default::Default;
-use std::sync::Arc;
+use std::error::Error;
+use std::fmt::{self, Display};
+use std::io::{self, Write};
 use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::Arc;
+use std::sync::Mutex;
+use std::{cmp, process};
 
 const MAX_ITEMS_PER_PAGE: u32 = 100;
 
@@ -160,7 +160,8 @@ pub fn remote_call<'a>(url: &str, session: Arc<Mutex<Session>>) -> RemoteCallFut
 
 fn request_new() -> Easy {
     let mut easy = Easy::new();
-    easy.useragent("crates.io-cli (https://crates.io/crates/crates-io-cli)").ok();
+    easy.useragent("crates.io-cli (https://crates.io/crates/crates-io-cli)")
+        .ok();
     easy
 }
 
@@ -254,7 +255,8 @@ where
         if {
             let mut encoder = json::Encoder::new(&mut buf);
             item.encode(&mut encoder)
-        }.is_ok()
+        }
+        .is_ok()
         {
             writeln!(channel, "{}", buf).ok();
         }

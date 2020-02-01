@@ -1,27 +1,28 @@
-use super::structs::{Command, Indexed, SearchResult, State};
 use super::error::Error;
+use super::structs::{Command, Indexed, SearchResult, State};
+use futures::sync::mpsc;
+use futures::{self, Future, Sink, Stream};
 use open;
-use urlencoding;
-use std::cmp::max;
 use std::cell::RefCell;
+use std::cmp::max;
+use std::fmt::Display;
+use std::io::{self, Write};
 use std::rc::Rc;
-use std::time::Duration;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
-use std::io::{self, Write};
-use std::fmt::Display;
 use std::thread;
+use std::time::Duration;
 use termion::event::Key;
-use termion::raw::IntoRawMode;
 use termion::input::TermRead;
+use termion::raw::IntoRawMode;
 use termion::{clear, cursor};
 use tokio_core::reactor::{Core, Handle, Timeout};
-use futures::{self, Future, Sink, Stream};
-use futures::sync::mpsc;
 use tokio_curl::Session;
+use urlencoding;
 
-use utils::{paged_crates_io_remote_call, CallMetaData, CallResult, Dimension, DropOutdated,
-            DroppedOrError};
+use utils::{
+    paged_crates_io_remote_call, CallMetaData, CallResult, Dimension, DropOutdated, DroppedOrError,
+};
 
 const INFO_LINE: cursor::Goto = cursor::Goto(1, 2);
 const CONTENT_LINE: cursor::Goto = cursor::Goto(1, 3);
@@ -35,7 +36,8 @@ fn search_result_from_callresult(c: CallResult) -> Result<SearchResult, Error> {
             io::stderr(),
             "Json decoder failed\n{}\n",
             String::from_utf8_lossy(&buf_slice)
-        ).ok();
+        )
+        .ok();
         Error::Decode(e)
     })
 }
@@ -122,13 +124,15 @@ fn setup_future(
                     ));
                     ReducerDo::Nothing
                 });
-            let req = req.map_err(move |e| {
-                info(&format!("Request to {} failed with error: '{}'", url, e));
-                e.into()
-            }).map(move |mut result| {
-                result.meta.term = Some(term);
-                ReducerDo::Show(result)
-            });
+            let req = req
+                .map_err(move |e| {
+                    info(&format!("Request to {} failed with error: '{}'", url, e));
+                    e.into()
+                })
+                .map(move |mut result| {
+                    result.meta.term = Some(term);
+                    ReducerDo::Show(result)
+                });
 
             let req = Box::new(req.select(timeout).then(|res| {
                 Ok(match res {
@@ -172,7 +176,8 @@ fn handle_future_result(
                 "{goto}{}",
                 Indexed(search),
                 goto = CONTENT_LINE
-            ).ok();
+            )
+            .ok();
         }
         (Open { .. }, None) => {
             info(&"There is nothing to open - conduct a search first");
@@ -234,7 +239,8 @@ fn handle_future_result(
                     "{gotolast} - nothing found.{suffix}",
                     suffix = suffix,
                     gotolast = cursor::Goto(last as u16, INFO_LINE.1)
-                ).ok();
+                )
+                .ok();
             } else {
                 write!(io::stdout(), "{goto}{}", result, goto = CONTENT_LINE).ok();
                 res = Some(Some(result));
@@ -282,7 +288,8 @@ fn handle_key(
             match state.mode {
                 Searching => &mut state.term,
                 Opening => &mut state.number,
-            }.pop();
+            }
+            .pop();
         }
         Key::Ctrl('o') => {
             state.mode = match state.mode {
@@ -397,7 +404,8 @@ fn reset_terminal() {
         cursor::Goto(1, 1),
         cursor::Show,
         clear::All
-    ).ok();
+    )
+    .ok();
 }
 
 fn usage() -> usize {
@@ -413,7 +421,8 @@ fn info(item: &Display) -> usize {
         hide = cursor::Hide,
         goto = INFO_LINE,
         clear = clear::CurrentLine
-    ).ok();
+    )
+    .ok();
     io::stdout().flush().ok();
     buf.len()
 }
@@ -427,7 +436,8 @@ fn promptf(state: &State) {
         show = cursor::Show,
         goto = cursor::Goto(1, 1),
         clear = clear::CurrentLine
-    ).ok();
+    )
+    .ok();
     io::stdout().flush().ok();
 }
 

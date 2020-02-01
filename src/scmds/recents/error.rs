@@ -1,6 +1,6 @@
+use git2;
 use std::io;
 use std::path::PathBuf;
-use git2;
 
 quick_error! {
     #[derive(Debug)]

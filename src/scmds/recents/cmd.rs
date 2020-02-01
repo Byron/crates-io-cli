@@ -1,17 +1,17 @@
 use super::error::Error;
-use futures_cpupool::CpuPool;
 use futures::Future;
+use futures_cpupool::CpuPool;
 use std::time::Duration;
-use tokio_core::reactor::{Core, Timeout};
 use structs::OutputKind;
+use tokio_core::reactor::{Core, Timeout};
 
 use clap;
-use std::io::Write;
-use utils::json_to_stdout;
+use crates_index_diff::Index;
 use prettytable::{format, Table};
 use std;
+use std::io::Write;
 use tokio_core;
-use crates_index_diff::Index;
+use utils::json_to_stdout;
 
 enum ResultKind {
     ComputationDone,
@@ -51,7 +51,8 @@ pub fn handle_recent_changes(args: &clap::ArgMatches) -> Result<(), Error> {
     let pool = CpuPool::new(1);
 
     let repo_path = args.value_of("repository").expect("default to be set");
-    let output_kind: OutputKind = args.value_of("format")
+    let output_kind: OutputKind = args
+        .value_of("format")
         .expect("default to be set")
         .parse()
         .expect("clap to work");
@@ -65,7 +66,8 @@ pub fn handle_recent_changes(args: &clap::ArgMatches) -> Result<(), Error> {
                 std::io::stderr(),
                 "Please wait while we check out or fetch the crates.io index at '{path}'",
                 path = owned_repo_path
-            ).ok();
+            )
+            .ok();
             ResultKind::Timeout
         })
         .map_err(Error::Timeout);

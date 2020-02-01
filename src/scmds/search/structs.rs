@@ -1,11 +1,11 @@
-use utils::Dimension;
 use structs::Crate;
+use utils::Dimension;
 
-use std::fmt::{self, Display};
+use std::cmp;
 use std::default::Default;
+use std::fmt::{self, Display};
 use std::iter;
 use std::str;
-use std::cmp;
 
 use rustc_serialize::json;
 use termion::clear;
@@ -61,30 +61,31 @@ pub fn desired_table_widths(items: &[Crate], dim: &Dimension) -> (usize, usize, 
 }
 
 fn desired_string_widths(items: &[Crate], max_width: u16) -> (usize, usize, usize, usize) {
-    let (nw, dw, vw, dlw) = items.iter().fold(
-        (0, 0, 0, 0),
-        |(mut nw, mut dw, mut vw, mut dlw), c| {
-            if c.name.len() > nw {
-                nw = c.name.len();
-            }
-            let dlen = c.description
-                .as_ref()
-                .map(|s| sanitize(&s))
-                .unwrap_or_else(String::new)
-                .len();
-            if dlen > dw {
-                dw = dlen;
-            }
-            if c.max_version.len() > vw {
-                vw = c.max_version.len();
-            }
-            let dllen = f64::log10(c.downloads as f64) as usize + 1;
-            if dllen > dlw {
-                dlw = dllen;
-            }
-            (nw, dw, vw, dlw)
-        },
-    );
+    let (nw, dw, vw, dlw) =
+        items
+            .iter()
+            .fold((0, 0, 0, 0), |(mut nw, mut dw, mut vw, mut dlw), c| {
+                if c.name.len() > nw {
+                    nw = c.name.len();
+                }
+                let dlen = c
+                    .description
+                    .as_ref()
+                    .map(|s| sanitize(&s))
+                    .unwrap_or_else(String::new)
+                    .len();
+                if dlen > dw {
+                    dw = dlen;
+                }
+                if c.max_version.len() > vw {
+                    vw = c.max_version.len();
+                }
+                let dllen = f64::log10(c.downloads as f64) as usize + 1;
+                if dllen > dlw {
+                    dlw = dllen;
+                }
+                (nw, dw, vw, dlw)
+            });
     let w = {
         let mut prio_widths = [dw, vw, dlw, nw];
         let max_width = max_width as usize;
@@ -136,7 +137,8 @@ impl Display for SearchResult {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let dim = self.meta.dimension.as_ref().expect("dimension to be set");
         let max_width = desired_table_widths(&self.crates, &dim);
-        for krate in self.crates
+        for krate in self
+            .crates
             .iter()
             .cloned()
             .chain(iter::repeat(Crate::default()))
