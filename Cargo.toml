@@ -26,6 +26,9 @@ rustc-serialize = "0.3.22"
 tokio-core = "0.1.2"
 tokio-curl = "0.1.7"
 urlencoding = "1.0.0"
+serde_json = "1.0.45"
+serde = "1.0.104"
+serde_derive = "1.0.104"
 
 [dependencies.prettytable-rs]
 default-features = false

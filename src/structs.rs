@@ -1,9 +1,11 @@
+use serde_derive::{Deserialize, Serialize};
+
 #[derive(Debug, Clone, Default)]
 pub struct Meta {
     pub total: u32,
 }
 
-#[derive(RustcDecodable, RustcEncodable, Debug, Clone, Default)]
+#[derive(RustcDecodable, RustcEncodable, Deserialize, Serialize, Debug, Clone, Default)]
 pub struct Crate {
     pub description: Option<String>,
     pub downloads: u32,

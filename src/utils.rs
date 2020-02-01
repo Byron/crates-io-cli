@@ -4,15 +4,17 @@ use tokio_curl::{PerformError, Session};
 
 use curl;
 use futures;
-use rustc_serialize::{json, Encodable};
-use std::default::Default;
-use std::error::Error;
-use std::fmt::{self, Display};
-use std::io::{self, Write};
-use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::Arc;
-use std::sync::Mutex;
-use std::{cmp, process};
+use std::{
+    cmp,
+    default::Default,
+    error::Error,
+    fmt::{self, Display},
+    io::{self},
+    process,
+    sync::atomic::{AtomicUsize, Ordering},
+    sync::Arc,
+    sync::Mutex,
+};
 
 const MAX_ITEMS_PER_PAGE: u32 = 100;
 
@@ -240,25 +242,9 @@ where
     )
 }
 
-pub fn json_to_stdout<T>(encodable: &[T])
+pub fn json_to_stdout<T>(items: &[T])
 where
-    T: Encodable,
+    T: serde::Serialize,
 {
-    let mut buf = String::with_capacity(256);
-    let stdout = io::stdout();
-    let mut channel = stdout.lock();
-
-    for item in encodable {
-        buf.clear();
-        // unfortunately io::Write cannot be used directly, the encoder needs fmt::Write
-        // To allow us reusing the buffer, we need to restrict its lifetime.
-        if {
-            let mut encoder = json::Encoder::new(&mut buf);
-            item.encode(&mut encoder)
-        }
-        .is_ok()
-        {
-            writeln!(channel, "{}", buf).ok();
-        }
-    }
+    serde_json::to_writer_pretty(io::stdout(), items).ok();
 }

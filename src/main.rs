@@ -1,21 +1,9 @@
 #[macro_use]
 extern crate clap;
-extern crate crates_index_diff;
-extern crate curl;
-extern crate futures;
-extern crate futures_cpupool;
-extern crate git2;
-extern crate open;
 #[macro_use]
 extern crate prettytable;
 #[macro_use]
 extern crate quick_error;
-extern crate rustc_serialize;
-#[cfg(unix)]
-extern crate termion;
-extern crate tokio_core;
-extern crate tokio_curl;
-extern crate urlencoding;
 
 mod scmds;
 mod structs;
