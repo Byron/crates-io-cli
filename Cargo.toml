@@ -32,6 +32,7 @@ futures-cpupool = "0.1.2"
 tokio-core = "0.1.2"
 tokio-curl = "0.1.7"
 structopt = "0.3.9"
+parking_lot = "0.10.0"
 
 [dependencies.prettytable-rs]
 default-features = false

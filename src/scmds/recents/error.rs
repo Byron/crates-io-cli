@@ -5,6 +5,10 @@ use std::path::PathBuf;
 quick_error! {
     #[derive(Debug)]
     pub enum Error {
+        ThreadingError(err: io::Error) {
+            description("Could not initialize tokio event loop in worker thread")
+            cause(err)
+        }
         ReactorInit(err: io::Error) {
             description("Could not initialize tokio event loop in worker thread")
             cause(err)
