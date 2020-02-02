@@ -1,7 +1,6 @@
 use super::structs::Command;
 use crate::utils::RemoteCallError;
 use futures::sync::mpsc;
-use rustc_serialize::json;
 use std::io;
 
 quick_error! {
@@ -23,7 +22,7 @@ quick_error! {
             description("A timeout could not be created or failed while being invoked")
             cause(err)
         }
-        Decode(err: json::DecoderError) {
+        DecodeJson(err: serde_json::Error) {
             description("Json from the server could not be decoded")
             cause(err)
             from()

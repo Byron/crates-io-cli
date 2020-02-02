@@ -38,7 +38,7 @@ fn search_result_from_callresult(c: CallResult) -> Result<SearchResult, Error> {
             String::from_utf8_lossy(&buf_slice)
         )
         .ok();
-        Error::Decode(e)
+        e.into()
     })
 }
 
@@ -365,8 +365,8 @@ pub fn handle_interactive_search() -> Result<(), Error> {
                     .then(|r| {
                         match r {
                             Ok(r) => Ok(r),
-                            Err(Error::Decode(_)) => Err(()), /*abort stream on decode error*/
-                            Err(_) => Ok(ReducerDo::Nothing), /*ignore other errors*/
+                            Err(Error::DecodeJson(_)) => Err(()), /*abort stream on decode error*/
+                            Err(_) => Ok(ReducerDo::Nothing),     /*ignore other errors*/
                         }
                     })
                     .and_then(move |result| {

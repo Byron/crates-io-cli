@@ -1,7 +1,7 @@
 use super::error::Error;
-use super::response;
 use crate::{
     structs::OutputKind,
+    structs::{Crate, Crates, Meta},
     utils::{json_to_stdout, paged_crates_io_remote_call, CallMetaData, CallResult},
 };
 use clap;
@@ -12,30 +12,23 @@ use tokio_core::reactor;
 use tokio_curl::Session;
 use urlencoding;
 
-fn crates_from_callresult_buf_new(
-    buf: &[u8],
-) -> Result<(Vec<response::Crate>, response::Meta), Error> {
-    let response::Crates { crates, meta } = serde_json::from_slice(buf)?;
+fn crates_from_callresult_buf_new(buf: &[u8]) -> Result<(Vec<Crate>, Meta), Error> {
+    let Crates { crates, meta } = serde_json::from_slice(buf)?;
     Ok((crates, meta))
 }
 
-fn crates_from_callresult_new(
-    c: CallResult,
-) -> Result<(Vec<response::Crate>, response::Meta), Error> {
+fn crates_from_callresult_new(c: CallResult) -> Result<(Vec<Crate>, Meta), Error> {
     crates_from_callresult_buf_new(&c.0.lock().unwrap())
 }
 
-fn crates_merge_new(
-    mut r: Vec<response::Crate>,
-    c: CallResult,
-) -> Result<Vec<response::Crate>, Error> {
+fn crates_merge_new(mut r: Vec<Crate>, c: CallResult) -> Result<Vec<Crate>, Error> {
     crates_from_callresult_new(c).map(|(mut res, _)| {
         r.append(&mut res);
         r
     })
 }
 
-fn crates_extract_new(c: CallResult) -> Result<(CallMetaData, Vec<response::Crate>), Error> {
+fn crates_extract_new(c: CallResult) -> Result<(CallMetaData, Vec<Crate>), Error> {
     crates_from_callresult_new(c).map(|(crates, meta)| {
         (
             CallMetaData {
@@ -50,7 +43,7 @@ fn crates_extract_new(c: CallResult) -> Result<(CallMetaData, Vec<response::Crat
 pub fn by_user_new(
     args: &clap::ArgMatches,
     session: Arc<Mutex<Session>>,
-) -> Box<dyn Future<Item = Vec<response::Crate>, Error = Error> + Send> {
+) -> Box<dyn Future<Item = Vec<Crate>, Error = Error> + Send> {
     let uid = args.value_of("user-id").expect("clap to work");
     Box::new(
         paged_crates_io_remote_call(
@@ -74,7 +67,7 @@ pub fn handle_list<F, R>(
 ) -> Result<(), Error>
 where
     F: FnOnce(&clap::ArgMatches, Arc<Mutex<Session>>) -> R,
-    R: IntoFuture<Item = Vec<response::Crate>, Error = Error>,
+    R: IntoFuture<Item = Vec<Crate>, Error = Error>,
 {
     let mut reactor = reactor::Core::new().map_err(Error::ReactorInit)?;
     let session = Arc::new(Mutex::new(Session::new(reactor.handle())));
@@ -83,8 +76,9 @@ where
         .expect("default to be set")
         .parse()
         .expect("clap to work");
-    let fut = do_work(scmd_args, session.clone()).into_future().and_then(
-        |crates: Vec<response::Crate>| {
+    let fut = do_work(scmd_args, session.clone())
+        .into_future()
+        .and_then(|crates: Vec<Crate>| {
             match output_kind {
                 OutputKind::human => {
                     if crates.is_empty() {
@@ -96,7 +90,12 @@ where
                         let mut total = 0;
                         let t = crates.into_iter().fold(t, |mut t, c| {
                             total += c.downloads;
-                            t.add_row(row![c.name, c.description, c.downloads, c.max_version]);
+                            t.add_row(row![
+                                c.name,
+                                c.description.unwrap_or_default(),
+                                c.downloads,
+                                c.max_version
+                            ]);
                             t
                         });
                         (
@@ -111,8 +110,7 @@ where
                 OutputKind::json => json_to_stdout(&crates),
             }
             Ok(())
-        },
-    );
+        });
     reactor.run(fut)
 }
 

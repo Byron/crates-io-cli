@@ -1,16 +1,21 @@
 use serde_derive::{Deserialize, Serialize};
-
-#[derive(Debug, Clone, Default)]
-pub struct Meta {
-    pub total: u32,
+#[derive(Serialize, Deserialize)]
+pub struct Crates {
+    pub crates: Vec<Crate>,
+    pub meta: Meta,
 }
 
-#[derive(RustcDecodable, RustcEncodable, Deserialize, Serialize, Debug, Clone, Default)]
+#[derive(Serialize, Deserialize, Clone, Default)]
 pub struct Crate {
     pub description: Option<String>,
-    pub downloads: u32,
+    pub downloads: i64,
     pub max_version: String,
     pub name: String,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct Meta {
+    pub total: u32,
 }
 
 arg_enum! {

@@ -1,4 +1,5 @@
 use crate::{structs::Crate, utils::Dimension};
+use serde_derive::Deserialize;
 
 use std::{
     cmp,
@@ -7,7 +8,6 @@ use std::{
     iter, str,
 };
 
-use rustc_serialize::json;
 use termion::{clear, cursor};
 
 const CRATE_ROW_OVERHEAD: u16 = 3 * 3;
@@ -19,7 +19,7 @@ fn sanitize(input: &str) -> String {
         .collect()
 }
 
-#[derive(RustcDecodable, Default)]
+#[derive(Deserialize, Default)]
 pub struct Meta {
     pub total: u32,
     pub term: Option<String>,
@@ -105,7 +105,7 @@ fn desired_string_widths(items: &[Crate], max_width: u16) -> (usize, usize, usiz
     (w[3], w[0], w[1], w[2])
 }
 
-#[derive(RustcDecodable, Default)]
+#[derive(Deserialize, Default)]
 pub struct SearchResult {
     pub crates: Vec<Crate>,
     pub meta: Meta,
@@ -121,14 +121,11 @@ impl SearchResult {
             ..Default::default()
         }
     }
-    pub fn from_data(buf: &[u8], dim: Dimension) -> Result<SearchResult, json::DecoderError> {
-        str::from_utf8(buf)
-            .map_err(|e| json::DecoderError::ApplicationError(format!("{}", e)))
-            .and_then(json::decode)
-            .map(|mut v: SearchResult| {
-                v.meta.dimension = Some(dim);
-                v
-            })
+    pub fn from_data(buf: &[u8], dim: Dimension) -> Result<SearchResult, serde_json::Error> {
+        serde_json::from_slice(buf).map(|mut v: SearchResult| {
+            v.meta.dimension = Some(dim);
+            v
+        })
     }
 }
 

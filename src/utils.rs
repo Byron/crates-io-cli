@@ -1,5 +1,6 @@
 use curl::easy::Easy;
 use futures::{Future, IntoFuture, Poll, Stream};
+use serde_derive::Deserialize;
 use tokio_curl::{PerformError, Session};
 
 use curl;
@@ -18,7 +19,7 @@ use std::{
 
 const MAX_ITEMS_PER_PAGE: u32 = 100;
 
-#[derive(RustcDecodable, Clone)]
+#[derive(Deserialize, Clone)]
 pub struct Dimension {
     pub width: u16,
     pub height: u16,
