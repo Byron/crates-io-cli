@@ -84,7 +84,6 @@ pub async fn run(
     res
 }
 
-#[cfg(feature = "with-executor")]
 /// For convenience, run the engine and block until done.
 pub fn run_blocking(
     db: impl AsRef<Path>,
