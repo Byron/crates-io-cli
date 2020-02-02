@@ -9,6 +9,10 @@ quick_error! {
             description("Could not initialize tokio event loop in worker thread")
             cause(err)
         }
+        EncodeError(err: serde_json::Error) {
+            cause(err)
+            from()
+        }
         ReactorInit(err: io::Error) {
             description("Could not initialize tokio event loop in worker thread")
             cause(err)

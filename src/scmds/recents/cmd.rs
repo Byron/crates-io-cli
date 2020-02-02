@@ -1,8 +1,13 @@
 use super::error::Error;
-use crate::structs::OutputKind;
-use std::{env, io::Write, ops::Add, path::PathBuf, time::Duration};
+use crate::args::OutputKind;
+use std::{
+    env,
+    io::{self, Write},
+    ops::Add,
+    path::PathBuf,
+    time::Duration,
+};
 
-use crate::utils::json_to_stdout;
 use crates_index_diff::Index;
 use parking_lot::{Condvar, Mutex};
 use prettytable::{format, Table};
@@ -27,10 +32,12 @@ fn show_changes(repo_path: PathBuf, output_kind: OutputKind) -> Result<(), Error
                 };
                 table.print_tty(false);
             }
+            Ok(())
         }
-        OutputKind::json => json_to_stdout(&changes),
+        OutputKind::json => {
+            serde_json::to_writer_pretty(io::stdout(), &changes).map_err(Into::into)
+        }
     }
-    Ok(())
 }
 
 fn default_repository_dir() -> PathBuf {

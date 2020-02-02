@@ -1,6 +1,14 @@
-use crate::structs::OutputKind;
 use std::path::PathBuf;
 use structopt::StructOpt;
+
+arg_enum! {
+    #[allow(non_camel_case_types)]
+    #[derive(Debug)]
+    pub enum OutputKind {
+        human,
+        json
+    }
+}
 
 #[derive(Debug, StructOpt)]
 #[structopt(about = "Interact with crates.io from the command-line")]
@@ -19,6 +27,7 @@ pub enum SubCommands {
     /// changed crates at all.
     /// Please note that the first query is likely to yield more than 40000 results!
     /// The first invocation may be slow as it might have to clone the crates.io index.
+    #[cfg(feature = "recent-changes")]
     #[structopt(display_order = 1)]
     RecentChanges {
         #[structopt(short = "r", long, name = "REPO")]
@@ -28,18 +37,18 @@ pub enum SubCommands {
         /// The type of output to produce
         output_format: OutputKind,
     },
-    /// search crates interactively
-    #[structopt(display_order = 2)]
-    Search,
-    /// list crates by a particular criterion
-    #[structopt(display_order = 3)]
-    List {
-        #[structopt(subcommand)]
-        cmd: ListCmd,
-        #[structopt(long, short = "o", possible_values = &OutputKind::variants())]
-        /// The type of output to produce
-        output_format: Option<OutputKind>,
-    },
+    //    /// search crates interactively
+    //    #[structopt(display_order = 2)]
+    //    Search,
+    //    /// list crates by a particular criterion
+    //    #[structopt(display_order = 3)]
+    //    List {
+    //        #[structopt(subcommand)]
+    //        cmd: ListCmd,
+    //        #[structopt(long, short = "o", possible_values = &OutputKind::variants())]
+    //        /// The type of output to produce
+    //        output_format: Option<OutputKind>,
+    //    },
 }
 
 #[derive(StructOpt, Debug)]

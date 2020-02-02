@@ -8,13 +8,15 @@ extern crate prettytable;
 extern crate quick_error;
 
 mod args;
+mod error;
 mod scmds;
-mod structs;
-mod utils;
+//mod structs;
+//mod utils;
 
+use error::ok_or_exit;
+#[cfg(feature = "recent-changes")]
 use scmds::handle_recent_changes;
 use structopt::StructOpt;
-use utils::ok_or_exit;
 
 use crate::args::Parsed;
 
@@ -22,12 +24,15 @@ fn main() {
     use args::SubCommands::*;
     let args: Parsed = args::Parsed::from_args();
 
-    match args.sub.unwrap_or(args::SubCommands::Search) {
-        RecentChanges {
+    match args.sub {
+        #[cfg(not(feature = "recent-changes"))]
+        Some(_) => {}
+        #[cfg(feature = "recent-changes")]
+        Some(RecentChanges {
             repository,
             output_format,
-        } => ok_or_exit(handle_recent_changes(repository, output_format)),
-        _ => unimplemented!(),
+        }) => ok_or_exit(handle_recent_changes(repository, output_format)),
+        None => {}
     }
 
     //    let matches = app.get_matches();
