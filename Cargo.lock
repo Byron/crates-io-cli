@@ -165,9 +165,9 @@ checksum = "245097e9a4535ee1e3e3931fcfcd55a796a44c643e8596ff6566d68f09b87bbc"
 
 [[package]]
 name = "crates-index-diff"
-version = "5.0.0"
+version = "5.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9766565a4f2bf765aef3f313dfc57c9cbf55620ea5442a6e214a6abd796d2868"
+checksum = "96415fd671c3b979149f8cc809bf2c86a70a15b9b205d14b8d0a96448579e170"
 dependencies = [
  "git2",
  "serde",
@@ -184,7 +184,6 @@ dependencies = [
  "criner",
  "curl",
  "futures",
- "git2",
  "humantime",
  "open",
  "parking_lot 0.10.0",
@@ -205,6 +204,7 @@ name = "criner"
 version = "0.1.0"
 dependencies = [
  "async-std",
+ "crates-index-diff",
  "quick-error",
 ]
 

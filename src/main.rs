@@ -54,7 +54,8 @@ fn main() {
             time_limit,
         }) => ok_or_exit(criner::run_blocking(
             db_path,
-            repository,
+            repository
+                .unwrap_or_else(|| std::env::temp_dir().join("criner-crates-io-bare-index.git")),
             time_limit.map(|d| *d),
         )),
         None =>

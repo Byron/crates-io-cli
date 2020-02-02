@@ -1,4 +1,4 @@
-use git2;
+use crates_index_diff::git2;
 use std::io;
 use std::path::PathBuf;
 

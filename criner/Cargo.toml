@@ -4,6 +4,10 @@ version = "0.1.0"
 authors = ["Sebastian Thiel <sebastian.thiel@icloud.com>"]
 edition = "2018"
 
+[lib]
+doctest = false
+
 [dependencies]
 quick-error = "1.2.3"
 async-std = "1.4.0"
+crates-index-diff = "5.0.1"
