@@ -13,7 +13,7 @@ $(bare_index_path):
 	git clone --bare https://github.com/rust-lang/crates.io-index $@
 
 $(EXECUTABLE): $(RUST_SRC_FILES)
-	cargo build
+	cargo build --all-features
 
 ##@ Testing
 
