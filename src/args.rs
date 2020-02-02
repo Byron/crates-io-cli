@@ -33,7 +33,7 @@ pub enum SubCommands {
         #[structopt(short = "r", long, name = "REPO")]
         /// Path to the possibly existing crates.io repository clone.
         repository: Option<PathBuf>,
-        #[structopt(long, short = "o", possible_values = &OutputKind::variants(), default_value = "human")]
+        #[structopt(long = "output", short = "o", possible_values = &OutputKind::variants(), default_value = "human")]
         /// The type of output to produce
         output_format: OutputKind,
     },
@@ -47,7 +47,7 @@ pub enum SubCommands {
     List {
         #[structopt(subcommand)]
         cmd: ListCmd,
-        #[structopt(long, short = "o", possible_values = &OutputKind::variants(), default_value = "human")]
+        #[structopt(long = "output", short = "o", possible_values = &OutputKind::variants(), default_value = "human")]
         /// The type of output to produce
         output_format: OutputKind,
     },
