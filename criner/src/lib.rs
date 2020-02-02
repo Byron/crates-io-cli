@@ -4,7 +4,11 @@ extern crate quick_error;
 pub mod error;
 
 use crate::error::{DeadlineFormat, Error};
-use async_std::{future, task};
+use async_std::{
+    future,
+    stream::{self, StreamExt},
+    task,
+};
 use crates_index_diff::{CrateVersion, Index};
 use log::info;
 use std::{future::Future, path::Path, time::SystemTime};
@@ -19,7 +23,7 @@ fn version_id(v: &CrateVersion) -> Vec<u8> {
     id
 }
 
-fn check(deadline: Option<SystemTime>) -> Result<()> {
+fn _check(deadline: Option<SystemTime>) -> Result<()> {
     deadline
         .map(|d| {
             if SystemTime::now() >= d {
@@ -76,18 +80,21 @@ pub async fn run(
 
         info!("Fetched {} changed crates", crate_versions.len());
         let check_interval = std::cmp::max(crate_versions.len() / 100, 1);
-        // TODO: can this loop be expressed as stream to be awaited? It's so fast, it's barely needed
-        for (versions_stored, version) in crate_versions.iter().enumerate() {
-            meta.insert(version_id(&version), rmp_serde::to_vec(&version)?)?;
-            if versions_stored % check_interval == 0 {
-                info!(
-                    "Stored {} of {} crate versions in database",
-                    versions_stored + 1,
-                    crate_versions.len()
-                );
-                check(deadline)?;
+        enforce(deadline, async {
+            let mut crates_stream = stream::from_iter(crate_versions.iter().enumerate());
+            while let Some((versions_stored, version)) = crates_stream.next().await {
+                meta.insert(version_id(&version), rmp_serde::to_vec(&version)?)?;
+                if versions_stored % check_interval == 0 {
+                    info!(
+                        "Stored {} of {} crate versions in database",
+                        versions_stored + 1,
+                        crate_versions.len()
+                    );
+                }
             }
-        }
+            Ok::<_, Error>(())
+        })
+        .await??;
         Ok(())
     }
     .await;
