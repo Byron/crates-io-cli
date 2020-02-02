@@ -6,7 +6,11 @@ pub mod error;
 use crate::error::{DeadlineFormat, Error};
 use crates_index_diff::{CrateVersion, Index};
 use log::info;
-use std::{path::Path, time::SystemTime};
+use std::{
+    time::Duration,
+    path::Path,
+    time::SystemTime
+};
 
 pub type Result<T> = std::result::Result<T, Error>;
 
@@ -39,32 +43,45 @@ pub async fn run(
     crates_io_path: impl AsRef<Path>,
     deadline: Option<SystemTime>,
 ) -> Result<()> {
-    info!("Potentially cloning crates index - this can take a while…");
-    // TODO: add timeout via 'tasks_blocking'
-    let index = Index::from_path_or_cloned(crates_io_path)?;
-    check(deadline)?;
-    let db = sled::open(db)?;
-    let meta = db.open_tree("crate_versions")?;
+    let start_of_computation = SystemTime::now();
+    let res = async {
+        info!("Potentially cloning crates index - this can take a while…");
+        // TODO: add timeout via 'tasks_blocking'
+        let index = Index::from_path_or_cloned(crates_io_path)?;
+        check(deadline)?;
+        let db = sled::open(db)?;
+        let meta = db.open_tree("crate_versions")?;
 
-    info!("Fetching crates index to see changes");
-    let crate_versions = index.fetch_changes()?;
-    check(deadline)?;
+        info!("Fetching crates index to see changes");
+        let crate_versions = index.fetch_changes()?;
+        check(deadline)?;
 
-    info!("Fetched {} changed crates", crate_versions.len());
-    let check_interval = std::cmp::max(crate_versions.len() / 100, 1);
-    // TODO: can this loop be expressed as stream to be awaited? It's so fast, it's barely needed
-    for (versions_stored, version) in crate_versions.iter().enumerate() {
-        meta.insert(version_id(&version), rmp_serde::to_vec(&version)?)?;
-        if versions_stored % check_interval == 0 {
-            info!(
-                "Stored {} of {} crate versions in database",
-                versions_stored + 1,
-                crate_versions.len()
-            );
-            check(deadline)?;
+        info!("Fetched {} changed crates", crate_versions.len());
+        let check_interval = std::cmp::max(crate_versions.len() / 100, 1);
+        // TODO: can this loop be expressed as stream to be awaited? It's so fast, it's barely needed
+        for (versions_stored, version) in crate_versions.iter().enumerate() {
+            meta.insert(version_id(&version), rmp_serde::to_vec(&version)?)?;
+            if versions_stored % check_interval == 0 {
+                info!(
+                    "Stored {} of {} crate versions in database",
+                    versions_stored + 1,
+                    crate_versions.len()
+                );
+                check(deadline)?;
+            }
         }
+        Ok(())
     }
-    Ok(())
+    .await;
+    info!(
+        "Wallclock elapsed: {}",
+        humantime::format_duration(
+            SystemTime::now()
+                .duration_since(start_of_computation)
+                .unwrap_or_else(|_| Duration::default())
+        )
+    );
+    res
 }
 
 #[cfg(feature = "with-executor")]
