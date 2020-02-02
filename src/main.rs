@@ -1,8 +1,11 @@
 #[macro_use]
 extern crate clap;
-#[macro_use]
+#[cfg_attr(any(feature = "recent-changes", feature = "list"), macro_use)]
 extern crate prettytable;
-#[macro_use]
+#[cfg_attr(
+    any(feature = "list", feature = "recent-changes", feature = "search"),
+    macro_use
+)]
 extern crate quick_error;
 
 mod args;
@@ -12,6 +15,8 @@ mod http_utils;
 mod scmds;
 mod structs;
 
+#[cfg(feature = "mine")]
+use criner;
 use error::ok_or_exit;
 #[cfg(feature = "search")]
 use scmds::handle_interactive_search;
@@ -42,6 +47,8 @@ fn main() {
         }
         #[cfg(feature = "search")]
         Some(Search) => ok_or_exit(handle_interactive_search()),
+        #[cfg(feature = "mine")]
+        Some(Mine) => ok_or_exit(criner::run_blocking()),
         None =>
         {
             #[cfg(feature = "search")]

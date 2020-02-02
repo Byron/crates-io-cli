@@ -1,0 +1,9 @@
+[package]
+name = "criner"
+version = "0.1.0"
+authors = ["Sebastian Thiel <sebastian.thiel@icloud.com>"]
+edition = "2018"
+
+[dependencies]
+quick-error = "1.2.3"
+async-std = "1.4.0"

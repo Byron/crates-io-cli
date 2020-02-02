@@ -1,3 +1,4 @@
+#[cfg(feature = "recent-changes")]
 use std::path::PathBuf;
 use structopt::StructOpt;
 
@@ -51,6 +52,10 @@ pub enum SubCommands {
         /// The type of output to produce
         output_format: OutputKind,
     },
+    /// Mine crates.io in an incorruptible and resumable fashion
+    #[cfg(feature = "mine")]
+    #[structopt(display_order = 2)]
+    Mine,
 }
 
 #[derive(StructOpt, Debug)]

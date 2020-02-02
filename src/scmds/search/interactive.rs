@@ -59,6 +59,19 @@ fn extract(c: CallResult) -> Result<(CallMetaData, SearchResult), Error> {
     })
 }
 
+impl<A> DropOutdated<A>
+where
+    A: Future,
+{
+    pub fn with_version(f: A, version: Arc<AtomicUsize>) -> DropOutdated<A> {
+        DropOutdated {
+            inner: Some(f),
+            version: version.load(Ordering::Relaxed),
+            current_version: version,
+        }
+    }
+}
+
 fn dimension() -> Dimension {
     Dimension::default().loose_heigth(NON_CONTENT_LINES)
 }

@@ -20,9 +20,9 @@ pub struct DropOutdated<A>
 where
     A: Future,
 {
-    inner: Option<A>,
-    version: usize,
-    current_version: Arc<AtomicUsize>,
+    pub(crate) inner: Option<A>,
+    pub(crate) version: usize,
+    pub(crate) current_version: Arc<AtomicUsize>,
 }
 
 pub enum DroppedOrError<T> {
@@ -45,19 +45,6 @@ where
         match self.inner {
             Some(ref mut f) => f.poll().map_err(|e| DroppedOrError::Err(e)),
             None => Err(DroppedOrError::Dropped),
-        }
-    }
-}
-
-impl<A> DropOutdated<A>
-where
-    A: Future,
-{
-    pub fn with_version(f: A, version: Arc<AtomicUsize>) -> DropOutdated<A> {
-        DropOutdated {
-            inner: Some(f),
-            version: version.load(Ordering::Relaxed),
-            current_version: version,
         }
     }
 }
