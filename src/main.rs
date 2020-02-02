@@ -9,7 +9,7 @@ mod scmds;
 mod structs;
 mod utils;
 
-use scmds::{by_user, handle_interactive_search, handle_list, handle_recent_changes};
+use scmds::{by_user_new, handle_interactive_search, handle_list, handle_recent_changes};
 use structs::OutputKind;
 use utils::ok_or_exit;
 
@@ -87,7 +87,7 @@ fn main() {
         ("search", Some(_)) => ok_or_exit(handle_interactive_search()),
         ("list", Some(list_args)) => {
             let (subcommand_handler, subcommand_args) = match list_args.subcommand() {
-                ("by-user", Some(args)) => (by_user, args),
+                ("by-user", Some(args)) => (by_user_new, args),
                 _ => invalid_subcommand(list_args),
             };
             ok_or_exit(handle_list(list_args, subcommand_args, subcommand_handler));
