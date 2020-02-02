@@ -5,17 +5,18 @@ extern crate prettytable;
 #[macro_use]
 extern crate quick_error;
 
+mod args;
 mod scmds;
 mod structs;
 mod utils;
 
 use scmds::{by_user, handle_interactive_search, handle_list, handle_recent_changes};
+use structopt::StructOpt;
 use structs::OutputKind;
 use utils::ok_or_exit;
 
 use clap::{AppSettings, Arg, SubCommand};
-use std::env;
-use std::path::PathBuf;
+use std::{env, path::PathBuf};
 
 const CHANGES_SUBCOMMAND_DESCRIPTION: &'static str = r##"
 The output of this command is based on the state of the current crates.io repository clone.
@@ -38,6 +39,7 @@ fn invalid_subcommand(matches: &clap::ArgMatches) -> ! {
 
 fn main() {
     let temp_dir = default_repository_dir();
+    let _args = args::Parsed::from_args();
     let temp_dir_str = temp_dir.to_string_lossy();
     let human_output = format!("{}", OutputKind::human);
     let format_arg = Arg::with_name("format")
