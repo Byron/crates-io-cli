@@ -77,7 +77,9 @@ pub async fn run(
         info!("Fetched {} changed crates", crate_versions.len());
         let check_interval = std::cmp::max(crate_versions.len() / 100, 1);
         enforce_blocking(deadline, move || {
-            // TODO: can this loop be expressed as stream to be awaited? It's so fast, it's barely needed
+            // NOTE: this loop can also be a stream, but that makes computation slower due to overhead
+            // Thus we just do this 'quickly' on the main thread, knowing that criner really needs its
+            // own executor or resources.
             for (versions_stored, version) in crate_versions.iter().enumerate() {
                 meta.insert(version_id(&version), rmp_serde::to_vec(&version)?)?;
                 if versions_stored % check_interval == 0 {
