@@ -142,7 +142,7 @@ dependencies = [
 
 [[package]]
 name = "crates-io-cli"
-version = "2.2.3-alpha.0"
+version = "3.0.1"
 dependencies = [
  "clap",
  "crates-index-diff",
