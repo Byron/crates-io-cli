@@ -48,7 +48,15 @@ fn main() {
         #[cfg(feature = "search")]
         Some(Search) => ok_or_exit(handle_interactive_search()),
         #[cfg(feature = "mine")]
-        Some(Mine) => ok_or_exit(criner::run_blocking()),
+        Some(Mine {
+            repository,
+            db_path,
+            time_limit,
+        }) => ok_or_exit(criner::run_blocking(
+            db_path,
+            repository,
+            time_limit.map(|d| *d),
+        )),
         None =>
         {
             #[cfg(feature = "search")]

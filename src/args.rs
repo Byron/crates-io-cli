@@ -1,4 +1,6 @@
-#[cfg(feature = "recent-changes")]
+#[cfg(feature = "mine")]
+use humantime;
+#[cfg(any(feature = "mine", feature = "recent-changes"))]
 use std::path::PathBuf;
 use structopt::StructOpt;
 
@@ -32,7 +34,7 @@ pub enum SubCommands {
     #[cfg(feature = "recent-changes")]
     RecentChanges {
         #[structopt(short = "r", long, name = "REPO")]
-        /// Path to the possibly existing crates.io repository clone.
+        /// Path to the possibly existing crates.io repository clone. If unset, it will be cloned to a temporary spot.
         repository: Option<PathBuf>,
         #[structopt(long = "output", short = "o", possible_values = &OutputKind::variants(), default_value = "human")]
         /// The type of output to produce
@@ -55,7 +57,16 @@ pub enum SubCommands {
     /// Mine crates.io in an incorruptible and resumable fashion
     #[cfg(feature = "mine")]
     #[structopt(display_order = 2)]
-    Mine,
+    Mine {
+        #[structopt(short = "r", long, name = "REPO")]
+        /// Path to the possibly existing crates.io repository clone. If unset, it will be cloned to a temporary spot.
+        repository: Option<PathBuf>,
+        /// The amount of time we can take for the computation. Specified in humantime, like 10s, 5min, or 2h, or '3h 2min 2s'
+        #[structopt(long, short = "t")]
+        time_limit: Option<humantime::Duration>,
+        /// Path to the possibly existing database. It's used to persist all mining results.
+        db_path: PathBuf,
+    },
 }
 
 #[derive(StructOpt, Debug)]
