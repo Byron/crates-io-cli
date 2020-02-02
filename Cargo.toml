@@ -8,7 +8,8 @@ name = "crates-io-cli"
 repository = "https://github.com/Byron/crates-io-cli-rs"
 readme = "README.md"
 edition = "2018"
-version = "3.0.1"
+publish = false
+version = "4.0.1-alpha"
 
 [[bin]]
 name = "crates"
