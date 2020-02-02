@@ -30,6 +30,7 @@ use crate::args::Parsed;
 use std::ops::Add;
 
 fn main() {
+    env_logger::init();
     use args::SubCommands::*;
     let args: Parsed = args::Parsed::from_args();
 
@@ -57,7 +58,7 @@ fn main() {
             db_path,
             repository
                 .unwrap_or_else(|| std::env::temp_dir().join("criner-crates-io-bare-index.git")),
-            time_limit.map(|d| std::time::Instant::now().add(*d)),
+            time_limit.map(|d| std::time::SystemTime::now().add(*d)),
         )),
         None =>
         {
