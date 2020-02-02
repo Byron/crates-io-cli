@@ -148,7 +148,6 @@ dependencies = [
  "crates-index-diff",
  "curl",
  "futures",
- "futures-cpupool",
  "git2",
  "open",
  "parking_lot 0.10.0",
@@ -292,16 +291,6 @@ name = "futures"
 version = "0.1.29"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1b980f2816d6ee8673b6517b52cb0e808a180efc92e5c19d02cdda79066703ef"
-
-[[package]]
-name = "futures-cpupool"
-version = "0.1.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ab90cde24b3319636588d0c35fe03b1333857621051837ed769faefb4c2162e4"
-dependencies = [
- "futures",
- "num_cpus",
-]
 
 [[package]]
 name = "getrandom"
