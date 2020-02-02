@@ -27,8 +27,8 @@ pub enum SubCommands {
     /// changed crates at all.
     /// Please note that the first query is likely to yield more than 40000 results!
     /// The first invocation may be slow as it might have to clone the crates.io index.
-    #[cfg(feature = "recent-changes")]
     #[structopt(display_order = 1)]
+    #[cfg(feature = "recent-changes")]
     RecentChanges {
         #[structopt(short = "r", long, name = "REPO")]
         /// Path to the possibly existing crates.io repository clone.
@@ -40,15 +40,16 @@ pub enum SubCommands {
     //    /// search crates interactively
     //    #[structopt(display_order = 2)]
     //    Search,
-    //    /// list crates by a particular criterion
-    //    #[structopt(display_order = 3)]
-    //    List {
-    //        #[structopt(subcommand)]
-    //        cmd: ListCmd,
-    //        #[structopt(long, short = "o", possible_values = &OutputKind::variants())]
-    //        /// The type of output to produce
-    //        output_format: Option<OutputKind>,
-    //    },
+    /// list crates by a particular criterion
+    #[structopt(display_order = 3)]
+    #[cfg(feature = "list")]
+    List {
+        #[structopt(subcommand)]
+        cmd: ListCmd,
+        #[structopt(long, short = "o", possible_values = &OutputKind::variants(), default_value = "human")]
+        /// The type of output to produce
+        output_format: OutputKind,
+    },
 }
 
 #[derive(StructOpt, Debug)]

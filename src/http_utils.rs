@@ -56,7 +56,6 @@ impl Default for Dimension {
     }
 }
 
-
 #[must_use = "futures do nothing unless polled"]
 pub struct DropOutdated<A>
 where

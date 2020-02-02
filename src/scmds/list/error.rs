@@ -1,4 +1,4 @@
-use crate::utils::RemoteCallError;
+use crate::http_utils::RemoteCallError;
 use std::io;
 
 quick_error! {

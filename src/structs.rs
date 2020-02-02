@@ -17,4 +17,3 @@ pub struct Crate {
 pub struct Meta {
     pub total: u32,
 }
-

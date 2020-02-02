@@ -1,8 +1,8 @@
 use super::error::Error;
 use crate::{
-    structs::OutputKind,
+    args::OutputKind,
+    http_utils::{json_to_stdout, paged_crates_io_remote_call, CallMetaData, CallResult},
     structs::{Crate, Crates, Meta},
-    utils::{json_to_stdout, paged_crates_io_remote_call, CallMetaData, CallResult},
 };
 use clap;
 use futures::{Future, IntoFuture};
@@ -41,15 +41,14 @@ fn crates_extract(c: CallResult) -> Result<(CallMetaData, Vec<Crate>), Error> {
 }
 
 pub fn by_user(
-    args: &clap::ArgMatches,
+    id: u32,
     session: Arc<Mutex<Session>>,
 ) -> Box<dyn Future<Item = Vec<Crate>, Error = Error> + Send> {
-    let uid = args.value_of("user-id").expect("clap to work");
     Box::new(
         paged_crates_io_remote_call(
             &format!(
                 "https://crates.io/api/v1/crates?user_id={}",
-                urlencoding::encode(uid)
+                urlencoding::encode(&format!("{}", id))
             ),
             None,
             session.clone(),
@@ -60,26 +59,17 @@ pub fn by_user(
     )
 }
 
-pub fn handle_list<F, R>(
-    args: &clap::ArgMatches,
-    scmd_args: &clap::ArgMatches,
-    do_work: F,
-) -> Result<(), Error>
+pub fn handle_list<F, R>(output_format: OutputKind, do_work: F) -> Result<(), Error>
 where
-    F: FnOnce(&clap::ArgMatches, Arc<Mutex<Session>>) -> R,
+    F: FnOnce(Arc<Mutex<Session>>) -> R,
     R: IntoFuture<Item = Vec<Crate>, Error = Error>,
 {
     let mut reactor = reactor::Core::new().map_err(Error::ReactorInit)?;
     let session = Arc::new(Mutex::new(Session::new(reactor.handle())));
-    let output_kind: OutputKind = args
-        .value_of("format")
-        .expect("default to be set")
-        .parse()
-        .expect("clap to work");
-    let fut = do_work(scmd_args, session.clone())
+    let fut = do_work(session.clone())
         .into_future()
         .and_then(|crates: Vec<Crate>| {
-            match output_kind {
+            match output_format {
                 OutputKind::human => {
                     if crates.is_empty() {
                         return Ok(());
