@@ -14,10 +14,7 @@ impl fmt::Display for DeadlineFormat {
         write!(
             f,
             "{} ago at {}",
-            humantime::format_duration(
-                now.duration_since(self.0)
-                    .unwrap_or_else(|_| time::Duration::default())
-            ),
+            humantime::format_duration(now.duration_since(self.0).unwrap_or_default()),
             humantime::format_rfc3339(now)
         )
     }

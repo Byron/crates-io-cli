@@ -7,7 +7,7 @@ use crate::error::{DeadlineFormat, Error};
 use async_std::{future, task};
 use crates_index_diff::{CrateVersion, Index};
 use log::info;
-use std::{path::Path, time::Duration, time::SystemTime};
+use std::{future::Future, path::Path, time::SystemTime};
 
 pub type Result<T> = std::result::Result<T, Error>;
 
@@ -31,6 +31,26 @@ fn check(deadline: Option<SystemTime>) -> Result<()> {
         .unwrap_or(Ok(()))
 }
 
+async fn enforce<F, T>(deadline: Option<SystemTime>, f: F) -> Result<T>
+where
+    F: Future<Output = T>,
+{
+    match deadline {
+        Some(d) => future::timeout(d.duration_since(SystemTime::now()).unwrap_or_default(), f)
+            .await
+            .map_err(|_| Error::DeadlineExceeded(DeadlineFormat(d))),
+        None => Ok(f.await),
+    }
+}
+
+async fn enforce_blocking<F, T>(deadline: Option<SystemTime>, f: F) -> Result<T>
+where
+    F: FnOnce() -> T + Send + 'static,
+    T: Send + 'static,
+{
+    enforce(deadline, task::spawn_blocking(f)).await
+}
+
 /// Runs the statistics and mining engine.
 /// May run for a long time unless a deadline is specified.
 /// Even though timeouts can be achieved from outside of the future, knowing the deadline may be used
@@ -43,18 +63,16 @@ pub async fn run(
     let start_of_computation = SystemTime::now();
     let res = async {
         info!("Potentially cloning crates index - this can take a while…");
-        let index = task::spawn_blocking({
+        let index = enforce_blocking(deadline, {
             let path = crates_io_path.as_ref().to_path_buf();
             || Index::from_path_or_cloned(path)
         })
-        .await?;
-        check(deadline)?;
+        .await??;
         let db = sled::open(db)?;
         let meta = db.open_tree("crate_versions")?;
 
         info!("Fetching crates index to see changes");
-        let crate_versions = index.fetch_changes()?;
-        check(deadline)?;
+        let crate_versions = enforce_blocking(deadline, move || index.fetch_changes()).await??;
 
         info!("Fetched {} changed crates", crate_versions.len());
         let check_interval = std::cmp::max(crate_versions.len() / 100, 1);
@@ -78,7 +96,7 @@ pub async fn run(
         humantime::format_duration(
             SystemTime::now()
                 .duration_since(start_of_computation)
-                .unwrap_or_else(|_| Duration::default())
+                .unwrap_or_default()
         )
     );
     res
