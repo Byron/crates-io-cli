@@ -27,6 +27,7 @@ use scmds::{by_user, handle_list};
 use structopt::StructOpt;
 
 use crate::args::Parsed;
+use std::ops::Add;
 
 fn main() {
     use args::SubCommands::*;
@@ -56,7 +57,7 @@ fn main() {
             db_path,
             repository
                 .unwrap_or_else(|| std::env::temp_dir().join("criner-crates-io-bare-index.git")),
-            time_limit.map(|d| *d),
+            time_limit.map(|d| std::time::Instant::now().add(*d)),
         )),
         None =>
         {
