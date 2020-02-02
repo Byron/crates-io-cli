@@ -4,13 +4,10 @@ extern crate quick_error;
 pub mod error;
 
 use crate::error::{DeadlineFormat, Error};
+use async_std::{future, task};
 use crates_index_diff::{CrateVersion, Index};
 use log::info;
-use std::{
-    time::Duration,
-    path::Path,
-    time::SystemTime
-};
+use std::{path::Path, time::Duration, time::SystemTime};
 
 pub type Result<T> = std::result::Result<T, Error>;
 
@@ -46,8 +43,11 @@ pub async fn run(
     let start_of_computation = SystemTime::now();
     let res = async {
         info!("Potentially cloning crates index - this can take a while…");
-        // TODO: add timeout via 'tasks_blocking'
-        let index = Index::from_path_or_cloned(crates_io_path)?;
+        let index = task::spawn_blocking({
+            let path = crates_io_path.as_ref().to_path_buf();
+            || Index::from_path_or_cloned(path)
+        })
+        .await?;
         check(deadline)?;
         let db = sled::open(db)?;
         let meta = db.open_tree("crate_versions")?;

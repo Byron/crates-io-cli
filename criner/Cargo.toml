@@ -11,7 +11,7 @@ doctest = false
 quick-error = "1.2.3"
 crates-index-diff = "5.0.1"
 sled = "0.31.0"
-async-std = "1.4.0"
+async-std = { version = "1.4.0", features = ["unstable"] }
 rmp-serde = "0.14.0"
 humantime = "2.0.0"
 log = "0.4.8"
