@@ -1,6 +1,3 @@
-.DS_Store
-*.rs.bk
 target/
-.idea/
 tests/fixtures/index-bare/
 tests/fixtures/index/
