@@ -58,9 +58,10 @@ env_logger = { version = "0.7.1", default-features = false, features = ["termcol
 [target."cfg(unix)".dependencies]
 termion = "1.1.4"
 
-[profile.dev.package."*"]
-debug = false
-opt-level = 1
+# Turn on when needed to have faster debug builds
+#[profile.dev.package."*"]
+#debug = false
+#opt-level = 1
 
 [workspace]
 members = ["criner"]
