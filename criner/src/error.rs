@@ -27,7 +27,7 @@ quick_error! {
     #[derive(Debug)]
     pub enum Error {
         DeadlineExceeded(d: DeadlineFormat) {
-            display("Stopped computation as deadline reached {}.", d)
+            display("Stopped computation as deadline was reached {}.", d)
         }
         RmpSerdeEncode(err: rmp_serde::encode::Error) {
             from()

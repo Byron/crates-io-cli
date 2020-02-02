@@ -21,7 +21,7 @@ fn version_id(v: &CrateVersion) -> Vec<u8> {
 fn check(deadline: Option<SystemTime>) -> Result<()> {
     deadline
         .map(|d| {
-            if d >= SystemTime::now() {
+            if SystemTime::now() >= d {
                 Err(Error::DeadlineExceeded(DeadlineFormat(d)))
             } else {
                 Ok(())
@@ -40,12 +40,15 @@ pub async fn run(
     deadline: Option<SystemTime>,
 ) -> Result<()> {
     info!("Potentially cloning crates index - this can take a while…");
+    // TODO: add timeout via 'tasks_blocking'
     let index = Index::from_path_or_cloned(crates_io_path)?;
+    check(deadline)?;
     let db = sled::open(db)?;
     let meta = db.open_tree("crate_versions")?;
 
     info!("Fetching crates index to see changes");
     let crate_versions = index.fetch_changes()?;
+    check(deadline)?;
 
     info!("Fetched {} changed crates", crate_versions.len());
     let check_interval = std::cmp::max(crate_versions.len() / 100, 1);
