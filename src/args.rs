@@ -13,14 +13,20 @@ pub struct Parsed {
 #[derive(Debug, StructOpt)]
 pub enum SubCommands {
     /// show all recently changed crates
+    ///
+    /// The output of this command is based on the state of the current crates.io repository clone.
+    /// It will remember the last result, so that the next invocation might yield different (or no)
+    /// changed crates at all.
+    /// Please note that the first query is likely to yield more than 40000 results!
+    /// The first invocation may be slow as it might have to clone the crates.io index.
     #[structopt(display_order = 1)]
     RecentChanges {
         #[structopt(short = "r", long, name = "REPO")]
         /// Path to the possibly existing crates.io repository clone.
         repository: Option<PathBuf>,
-        #[structopt(long, short = "o", possible_values = &OutputKind::variants())]
+        #[structopt(long, short = "o", possible_values = &OutputKind::variants(), default_value = "human")]
         /// The type of output to produce
-        output_format: Option<OutputKind>,
+        output_format: OutputKind,
     },
     /// search crates interactively
     #[structopt(display_order = 2)]
