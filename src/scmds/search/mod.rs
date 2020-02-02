@@ -10,15 +10,7 @@ pub use self::error::Error;
 pub use self::interactive::handle_interactive_search;
 
 #[cfg(windows)]
-mod imp {
-    use clap;
-    use std;
-
-    pub fn handle_interactive_search(_args: &clap::ArgMatches) {
-        println!("Interactive search is not supported. Use --help to learn about alternatives.");
-        std::process::exit(3);
-    }
+pub fn handle_interactive_search() -> Result<(), Error> {
+    println!("Interactive search is not supported. Use --help to learn about alternatives.");
+    std::process::exit(3);
 }
-
-#[cfg(windows)]
-pub use self::imp::handle_interactive_search;

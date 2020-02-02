@@ -1,5 +1,5 @@
 use super::structs::Command;
-use crate::utils::RemoteCallError;
+use crate::http_utils::RemoteCallError;
 use futures::sync::mpsc;
 use std::io;
 

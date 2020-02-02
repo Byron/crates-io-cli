@@ -1,6 +1,5 @@
 use curl::easy::Easy;
 use futures::{Future, IntoFuture, Poll, Stream};
-use serde_derive::Deserialize;
 use tokio_curl::{PerformError, Session};
 
 use curl;
@@ -9,52 +8,12 @@ use std::{
     cmp,
     default::Default,
     error::Error,
-    fmt::{self, Display},
-    io::{self},
-    process,
     sync::atomic::{AtomicUsize, Ordering},
     sync::Arc,
     sync::Mutex,
 };
 
 const MAX_ITEMS_PER_PAGE: u32 = 100;
-
-#[derive(Deserialize, Clone)]
-pub struct Dimension {
-    pub width: u16,
-    pub height: u16,
-}
-
-impl Dimension {
-    pub fn loose_heigth(mut self, h: u16) -> Dimension {
-        self.height -= h;
-        self
-    }
-}
-
-impl Default for Dimension {
-    fn default() -> Dimension {
-        #[cfg(windows)]
-        fn imp() -> Dimension {
-            Dimension {
-                width: 80,
-                height: 20,
-            }
-        }
-
-        #[cfg(unix)]
-        fn imp() -> Dimension {
-            use termion::terminal_size;
-            let (mw, mh) = terminal_size().unwrap_or((80, 20));
-            Dimension {
-                width: mw,
-                height: mh,
-            }
-        }
-
-        imp()
-    }
-}
 
 #[must_use = "futures do nothing unless polled"]
 pub struct DropOutdated<A>
@@ -214,11 +173,4 @@ where
             },
         ),
     )
-}
-
-pub fn json_to_stdout<T>(items: &[T])
-where
-    T: serde::Serialize,
-{
-    serde_json::to_writer_pretty(io::stdout(), items).ok();
 }

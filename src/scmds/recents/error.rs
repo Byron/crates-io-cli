@@ -13,14 +13,6 @@ quick_error! {
             cause(err)
             from()
         }
-        ReactorInit(err: io::Error) {
-            description("Could not initialize tokio event loop in worker thread")
-            cause(err)
-        }
-        Timeout(err: io::Error) {
-            description("A timeout could not be created or failed while being invoked")
-            cause(err)
-        }
         RepositoryDirectory(err: io::Error, path: PathBuf) {
             display("Could not create directory to contain crates.io repository at '{}'",
                      path.display())

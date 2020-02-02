@@ -18,9 +18,10 @@ $(EXECUTABLE): $(RUST_SRC_FILES)
 ##@ Testing
 
 feature-check: ## build features in commmon combination to be sure it all stays together
-	cargo check --no-default-features
 	cargo check --no-default-features --features recent-changes
 	cargo check --no-default-features --features list
+	cargo check --no-default-features --features search
+	cargo check --all-features
 
 tests: feature-check unit-tests journey-tests ## Run all tests we have
 

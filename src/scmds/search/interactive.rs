@@ -1,27 +1,25 @@
 use super::error::Error;
-use super::structs::{Command, Indexed, SearchResult, State};
-use futures::sync::mpsc;
-use futures::{self, Future, Sink, Stream};
+use super::structs::{Command, Dimension, Indexed, SearchResult, State};
+use futures::{self, sync::mpsc, Future, Sink, Stream};
 use open;
-use std::cell::RefCell;
-use std::cmp::max;
-use std::fmt::Display;
-use std::io::{self, Write};
-use std::rc::Rc;
-use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::{Arc, Mutex};
-use std::thread;
-use std::time::Duration;
-use termion::event::Key;
-use termion::input::TermRead;
-use termion::raw::IntoRawMode;
-use termion::{clear, cursor};
+use std::{
+    cell::RefCell,
+    cmp::max,
+    fmt::Display,
+    io::{self, Write},
+    rc::Rc,
+    sync::atomic::{AtomicUsize, Ordering},
+    sync::{Arc, Mutex},
+    thread,
+    time::Duration,
+};
+use termion::{clear, cursor, event::Key, input::TermRead, raw::IntoRawMode};
 use tokio_core::reactor::{Core, Handle, Timeout};
 use tokio_curl::Session;
 use urlencoding;
 
-use crate::utils::{
-    paged_crates_io_remote_call, CallMetaData, CallResult, Dimension, DropOutdated, DroppedOrError,
+use crate::http_utils::{
+    paged_crates_io_remote_call, CallMetaData, CallResult, DropOutdated, DroppedOrError,
 };
 
 const INFO_LINE: cursor::Goto = cursor::Goto(1, 2);

@@ -1,13 +1,15 @@
 use super::error::Error;
 use crate::{
     args::OutputKind,
-    http_utils::{json_to_stdout, paged_crates_io_remote_call, CallMetaData, CallResult},
+    http_utils::{paged_crates_io_remote_call, CallMetaData, CallResult},
     structs::{Crate, Crates, Meta},
 };
-use clap;
 use futures::{Future, IntoFuture};
 use prettytable::{format, Table};
-use std::sync::{Arc, Mutex};
+use std::{
+    io,
+    sync::{Arc, Mutex},
+};
 use tokio_core::reactor;
 use tokio_curl::Session;
 use urlencoding;
@@ -68,38 +70,38 @@ where
     let session = Arc::new(Mutex::new(Session::new(reactor.handle())));
     let fut = do_work(session.clone())
         .into_future()
-        .and_then(|crates: Vec<Crate>| {
-            match output_format {
-                OutputKind::human => {
-                    if crates.is_empty() {
-                        return Ok(());
-                    }
-                    let (mut table, titles) = {
-                        let mut t = Table::new();
-                        t.set_format(*format::consts::FORMAT_NO_LINESEP_WITH_TITLE);
-                        let mut total = 0;
-                        let t = crates.into_iter().fold(t, |mut t, c| {
-                            total += c.downloads;
-                            t.add_row(row![
-                                c.name,
-                                c.description.unwrap_or_default(),
-                                c.downloads,
-                                c.max_version
-                            ]);
-                            t
-                        });
-                        (
-                            t,
-                            row![b -> "Name", b -> "Description", b ->
-                            format!("Downloads (total={})" , total), b -> "MaxVersion"],
-                        )
-                    };
-                    table.set_titles(titles);
-                    table.print_tty(false);
+        .and_then(|crates: Vec<Crate>| match output_format {
+            OutputKind::human => {
+                if crates.is_empty() {
+                    return Ok(());
                 }
-                OutputKind::json => json_to_stdout(&crates),
+                let (mut table, titles) = {
+                    let mut t = Table::new();
+                    t.set_format(*format::consts::FORMAT_NO_LINESEP_WITH_TITLE);
+                    let mut total = 0;
+                    let t = crates.into_iter().fold(t, |mut t, c| {
+                        total += c.downloads;
+                        t.add_row(row![
+                            c.name,
+                            c.description.unwrap_or_default(),
+                            c.downloads,
+                            c.max_version
+                        ]);
+                        t
+                    });
+                    (
+                        t,
+                        row![b -> "Name", b -> "Description", b ->
+                            format!("Downloads (total={})" , total), b -> "MaxVersion"],
+                    )
+                };
+                table.set_titles(titles);
+                table.print_tty(false);
+                Ok(())
             }
-            Ok(())
+            OutputKind::json => {
+                serde_json::to_writer_pretty(io::stdout(), &crates).map_err(Into::into)
+            }
         });
     reactor.run(fut)
 }

@@ -37,9 +37,10 @@ pub enum SubCommands {
         /// The type of output to produce
         output_format: OutputKind,
     },
-    //    /// search crates interactively
-    //    #[structopt(display_order = 2)]
-    //    Search,
+    /// search crates interactively
+    #[cfg(feature = "search")]
+    #[structopt(display_order = 2)]
+    Search,
     /// list crates by a particular criterion
     #[structopt(display_order = 3)]
     #[cfg(feature = "list")]

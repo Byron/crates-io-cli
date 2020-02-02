@@ -1,4 +1,4 @@
-use crate::{structs::Crate, utils::Dimension};
+use crate::structs::Crate;
 use serde_derive::Deserialize;
 
 use std::{
@@ -11,6 +11,43 @@ use std::{
 use termion::{clear, cursor};
 
 const CRATE_ROW_OVERHEAD: u16 = 3 * 3;
+
+#[derive(Deserialize, Clone)]
+pub struct Dimension {
+    pub width: u16,
+    pub height: u16,
+}
+
+impl Dimension {
+    pub fn loose_heigth(mut self, h: u16) -> Dimension {
+        self.height -= h;
+        self
+    }
+}
+
+impl Default for Dimension {
+    fn default() -> Dimension {
+        #[cfg(windows)]
+        fn imp() -> Dimension {
+            Dimension {
+                width: 80,
+                height: 20,
+            }
+        }
+
+        #[cfg(unix)]
+        fn imp() -> Dimension {
+            use termion::terminal_size;
+            let (mw, mh) = terminal_size().unwrap_or((80, 20));
+            Dimension {
+                width: mw,
+                height: mh,
+            }
+        }
+
+        imp()
+    }
+}
 
 fn sanitize(input: &str) -> String {
     input
