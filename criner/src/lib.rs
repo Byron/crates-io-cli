@@ -80,15 +80,26 @@ pub async fn run(
 
         info!("Fetched {} changed crates", crate_versions.len());
         let check_interval = std::cmp::max(crate_versions.len() / 100, 1);
+        let num_crate_versions = crate_versions.len();
         enforce(deadline, async {
-            let mut crates_stream = stream::from_iter(crate_versions.iter().enumerate());
+            let mut crates_stream = stream::from_iter(crate_versions.into_iter().enumerate());
             while let Some((versions_stored, version)) = crates_stream.next().await {
-                meta.insert(version_id(&version), rmp_serde::to_vec(&version)?)?;
+                task::spawn_blocking({
+                    let meta = meta.clone();
+                    move || {
+                        meta.insert(
+                            version_id(&version),
+                            rmp_serde::to_vec(&version).map_err(Error::from)?,
+                        )
+                        .map_err(Error::from)
+                    }
+                })
+                .await?;
                 if versions_stored % check_interval == 0 {
                     info!(
                         "Stored {} of {} crate versions in database",
                         versions_stored + 1,
-                        crate_versions.len()
+                        num_crate_versions
                     );
                 }
             }
