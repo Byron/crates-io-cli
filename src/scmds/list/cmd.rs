@@ -12,24 +12,24 @@ use tokio_core::reactor;
 use tokio_curl::Session;
 use urlencoding;
 
-fn crates_from_callresult_buf_new(buf: &[u8]) -> Result<(Vec<Crate>, Meta), Error> {
+fn crates_from_callresult_buf(buf: &[u8]) -> Result<(Vec<Crate>, Meta), Error> {
     let Crates { crates, meta } = serde_json::from_slice(buf)?;
     Ok((crates, meta))
 }
 
-fn crates_from_callresult_new(c: CallResult) -> Result<(Vec<Crate>, Meta), Error> {
-    crates_from_callresult_buf_new(&c.0.lock().unwrap())
+fn crates_from_callresult(c: CallResult) -> Result<(Vec<Crate>, Meta), Error> {
+    crates_from_callresult_buf(&c.0.lock().unwrap())
 }
 
-fn crates_merge_new(mut r: Vec<Crate>, c: CallResult) -> Result<Vec<Crate>, Error> {
-    crates_from_callresult_new(c).map(|(mut res, _)| {
+fn crates_merge(mut r: Vec<Crate>, c: CallResult) -> Result<Vec<Crate>, Error> {
+    crates_from_callresult(c).map(|(mut res, _)| {
         r.append(&mut res);
         r
     })
 }
 
-fn crates_extract_new(c: CallResult) -> Result<(CallMetaData, Vec<Crate>), Error> {
-    crates_from_callresult_new(c).map(|(crates, meta)| {
+fn crates_extract(c: CallResult) -> Result<(CallMetaData, Vec<Crate>), Error> {
+    crates_from_callresult(c).map(|(crates, meta)| {
         (
             CallMetaData {
                 total: meta.total,
@@ -40,7 +40,7 @@ fn crates_extract_new(c: CallResult) -> Result<(CallMetaData, Vec<Crate>), Error
     })
 }
 
-pub fn by_user_new(
+pub fn by_user(
     args: &clap::ArgMatches,
     session: Arc<Mutex<Session>>,
 ) -> Box<dyn Future<Item = Vec<Crate>, Error = Error> + Send> {
@@ -53,8 +53,8 @@ pub fn by_user_new(
             ),
             None,
             session.clone(),
-            crates_merge_new,
-            crates_extract_new,
+            crates_merge,
+            crates_extract,
         )
         .map_err(Into::into),
     )
@@ -117,7 +117,7 @@ where
 #[test]
 fn test_crates_from_callresult() {
     let buf = include_bytes!("../../../tests/fixtures/byrons-crates.json");
-    let (crates, meta) = crates_from_callresult_buf_new(buf).unwrap();
+    let (crates, meta) = crates_from_callresult_buf(buf).unwrap();
     assert_eq!(meta.total, 244);
     assert_eq!(crates.len(), 10);
 }
