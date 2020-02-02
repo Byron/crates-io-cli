@@ -61,7 +61,7 @@ impl<'a> Display for WithCauses<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "ERROR: {}", self.0)?;
         let mut cursor = self.0;
-        while let Some(err) = cursor.cause() {
+        while let Some(err) = cursor.source() {
             write!(f, "\ncaused by: \n{}", err)?;
             cursor = err;
         }
