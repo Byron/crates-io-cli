@@ -1,6 +1,6 @@
+use crate::persistence::Db;
 use crate::{
     error::{Error, Result},
-    model::version_id,
     utils::*,
 };
 use crates_index_diff::Index;
@@ -25,8 +25,8 @@ pub async fn run(
             || Index::from_path_or_cloned(path)
         })
         .await??;
-        let db = sled::open(db)?;
-        let meta = db.open_tree("crate_versions")?;
+        let db = Db::open(db)?;
+        let meta = db.open_crate_versions()?;
 
         info!("Fetching crates index to see changes");
         let crate_versions = enforce_blocking(deadline, move || index.fetch_changes()).await??;
@@ -39,7 +39,7 @@ pub async fn run(
             // own executor or resources.
             // We could chunk things, but that would only make the code harder to read. No gains here…
             for (versions_stored, version) in crate_versions.iter().enumerate() {
-                meta.insert(version_id(&version), rmp_serde::to_vec(&version)?)?;
+                meta.insert(&version)?;
                 if versions_stored % check_interval == 0 {
                     info!(
                         "Stored {} of {} crate versions in database",
