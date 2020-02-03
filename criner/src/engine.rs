@@ -80,6 +80,7 @@ pub async fn run(
     check(deadline)?;
 
     let db = Db::open(db)?;
+    let previous_context = db.context()?;
     let res = {
         let db = db.clone();
         process_changes(db, crates_io_path, deadline).await
@@ -93,6 +94,9 @@ pub async fn run(
         )
     );
     info!("{:#?}", db.context()?);
+    let mut deltas = db.insert_context_delta(previous_context)?;
+    info!("change since last run");
+    info!("{:#?}", deltas.pop());
     res
 }
 

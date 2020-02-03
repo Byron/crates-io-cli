@@ -5,6 +5,7 @@ use crate::{
 use crates_index_diff::CrateVersion;
 use serde_derive::{Deserialize, Serialize};
 use sled::IVec;
+use std::time::SystemTime;
 use std::{path::Path, time};
 
 /// Stores element counts of various kinds
@@ -30,6 +31,61 @@ pub struct Context {
     pub counts: Counts,
     /// Various kinds of time we took for computation
     pub durations: Durations,
+}
+
+impl Context {
+    fn change_since(&self, earlier: &Context) -> Context {
+        Context {
+            counts: Counts {
+                crate_versions: self.counts.crate_versions - earlier.counts.crate_versions,
+                crates: self.counts.crates - earlier.counts.crates,
+            },
+            durations: Durations {
+                fetch_crate_versions: self.durations.fetch_crate_versions
+                    - earlier.durations.fetch_crate_versions,
+            },
+        }
+    }
+}
+
+/// Represents the difference between a current context and an earlier one, at a time
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ContextDelta {
+    pub sample_time: time::SystemTime,
+    pub delta: Context,
+}
+
+impl From<ContextDeltaVec> for IVec {
+    fn from(c: ContextDeltaVec) -> Self {
+        rmp_serde::to_vec(&c)
+            .expect("serialization must never fail")
+            .into()
+    }
+}
+
+impl From<IVec> for ContextDeltaVec {
+    fn from(v: IVec) -> Self {
+        rmp_serde::from_read(v.as_ref()).expect("always valid decoding: TODO: migrations")
+    }
+}
+
+impl From<&[u8]> for ContextDeltaVec {
+    fn from(v: &[u8]) -> Self {
+        rmp_serde::from_read(v).expect("always valid decoding: TODO: migrations")
+    }
+}
+
+/// This structure is just for serialization
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ContextDeltaVec(Vec<ContextDelta>);
+
+impl From<(time::SystemTime, &Context, &Context)> for ContextDelta {
+    fn from((sample_time, now, earlier): (SystemTime, &Context, &Context)) -> Self {
+        ContextDelta {
+            sample_time,
+            delta: now.change_since(earlier),
+        }
+    }
 }
 
 impl From<Context> for IVec {
@@ -77,10 +133,13 @@ impl Db {
         })
     }
 
+    const CONTEXT_GLOBAL: &'static [u8] = b"context";
+    const CONTEXT_SERIES_PREFIX: &'static str = "context/";
+
     pub fn update_context(&self, f: impl Fn(&mut Context)) -> Result<Context> {
         self.meta
-            .update_and_fetch(b"context", |bytes: Option<&[u8]>| {
-                let ctx = match bytes {
+            .update_and_fetch(Self::CONTEXT_GLOBAL, |bytes: Option<&[u8]>| {
+                Some(match bytes {
                     Some(bytes) => {
                         // NOTE: We assume that a version can only be added once! They are immutable.
                         let mut ctx = bytes.into();
@@ -88,8 +147,7 @@ impl Db {
                         ctx
                     }
                     None => Context::default(),
-                };
-                Some(ctx)
+                })
             })?
             .map(From::from)
             .ok_or_else(|| Error::Bug("We always set a context"))
@@ -97,13 +155,48 @@ impl Db {
 
     pub fn context(&self) -> Result<Context> {
         self.meta
-            .get(b"context")
+            .get(Self::CONTEXT_GLOBAL)
             .map_err(From::from)
-            .and_then(|bytes| {
-                bytes
-                    .ok_or_else(|| Error::Bug("the context has been updated at least once"))
-                    .map(From::from)
-            })
+            .map(|bytes| bytes.map_or_else(Context::default, From::from))
+    }
+
+    pub fn insert_context_delta(&self, earlier: Context) -> Result<Vec<ContextDelta>> {
+        assert_eq!(
+            Self::CONTEXT_GLOBAL,
+            &Self::CONTEXT_SERIES_PREFIX.as_bytes()[..Self::CONTEXT_GLOBAL.len()]
+        );
+        assert_eq!(
+            Self::CONTEXT_SERIES_PREFIX.len() - 1,
+            Self::CONTEXT_GLOBAL.len()
+        );
+
+        let sample_time = SystemTime::now();
+        let key = format!(
+            "{}{}",
+            Self::CONTEXT_SERIES_PREFIX,
+            humantime::format_rfc3339(sample_time)
+                .to_string()
+                .get(..10)
+                .expect("YYYY-MM-DD - 10 bytes")
+        );
+        let current: Context = self.context()?;
+        self.meta
+            .update_and_fetch(key, move |bytes: Option<&[u8]>| {
+                let delta: ContextDelta = (sample_time, &current, &earlier).into();
+                Some(match bytes {
+                    Some(bytes) => {
+                        let mut samples: ContextDeltaVec = rmp_serde::from_read(bytes).expect(
+                            "deserialization of ContextDelta must not fail. Migration TODO",
+                        );
+                        samples.0.push(delta);
+                        samples
+                    }
+                    None => ContextDeltaVec(vec![delta]),
+                })
+            })?
+            .map(From::from)
+            .map(|ContextDeltaVec(v)| v)
+            .ok_or_else(|| Error::Bug("We always have at least one sample"))
     }
 }
 
