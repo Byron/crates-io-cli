@@ -1,9 +1,9 @@
-use crates_index_diff::CrateVersion;
+use serde_derive::{Deserialize, Serialize};
 
-pub fn version_id(v: &CrateVersion) -> Vec<u8> {
-    let mut id = Vec::with_capacity(v.name.len() + v.version.len() + 1);
-    id.extend_from_slice(&v.name.as_bytes());
-    id.push(b':');
-    id.extend_from_slice(&v.version.as_bytes());
-    id
+/// Represents a top-level crate and associated information
+#[derive(Serialize, Deserialize)]
+pub struct Crate {
+    /// All versions published to crates.io, guaranteed to be sorted so that the most recent version is last.
+    /// The format is as specified in Cargo.toml:version
+    pub versions: Vec<String>,
 }

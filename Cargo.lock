@@ -234,6 +234,8 @@ dependencies = [
  "log",
  "quick-error",
  "rmp-serde",
+ "serde",
+ "serde_derive",
  "sled",
 ]
 

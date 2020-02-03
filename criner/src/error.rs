@@ -25,6 +25,9 @@ pub type Result<T> = std::result::Result<T, Error>;
 quick_error! {
     #[derive(Debug)]
     pub enum Error {
+        Bug(d: &'static str) {
+            display("{}", d)
+        }
         DeadlineExceeded(d: DeadlineFormat) {
             display("Stopped computation as deadline was reached {}.", d)
         }

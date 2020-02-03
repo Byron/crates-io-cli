@@ -1,7 +1,7 @@
 use crate::{
-    persistence::Db,
     error::{Error, Result},
-    utils::*
+    persistence::Db,
+    utils::*,
 };
 use crates_index_diff::Index;
 use log::info;
@@ -26,29 +26,34 @@ pub async fn run(
         })
         .await??;
         let db = Db::open(db)?;
-        let meta = db.open_crate_versions()?;
 
         info!("Fetching crates index to see changes");
         let crate_versions = enforce_blocking(deadline, move || index.fetch_changes()).await??;
 
         info!("Fetched {} changed crates", crate_versions.len());
         let check_interval = std::cmp::max(crate_versions.len() / 100, 1);
-        enforce_blocking(deadline, move || {
-            // NOTE: this loop can also be a stream, but that makes computation slower due to overhead
-            // Thus we just do this 'quickly' on the main thread, knowing that criner really needs its
-            // own executor or resources.
-            // We could chunk things, but that would only make the code harder to read. No gains here…
-            for (versions_stored, version) in crate_versions.iter().enumerate() {
-                meta.insert(&version)?;
-                if versions_stored % check_interval == 0 {
-                    info!(
-                        "Stored {} of {} crate versions in database",
-                        versions_stored + 1,
-                        crate_versions.len()
-                    );
+        enforce_blocking(deadline, {
+            let db = db.clone();
+            move || {
+                let meta = db.open_crate_versions()?;
+                let krate = db.open_crates()?;
+                // NOTE: this loop can also be a stream, but that makes computation slower due to overhead
+                // Thus we just do this 'quickly' on the main thread, knowing that criner really needs its
+                // own executor or resources.
+                // We could chunk things, but that would only make the code harder to read. No gains here…
+                for (versions_stored, version) in crate_versions.iter().enumerate() {
+                    meta.insert(&version)?;
+                    krate.insert_version(&version)?;
+                    if versions_stored % check_interval == 0 {
+                        info!(
+                            "Stored {} of {} crate versions in database",
+                            versions_stored + 1,
+                            crate_versions.len()
+                        );
+                    }
                 }
+                Ok::<_, Error>(())
             }
-            Ok::<_, Error>(())
         })
         .await??;
         Ok(())
