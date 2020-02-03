@@ -1,3 +1,5 @@
+#![deny(unsafe_code)]
+
 #[macro_use]
 extern crate clap;
 #[cfg_attr(any(feature = "recent-changes", feature = "list"), macro_use)]

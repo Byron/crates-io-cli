@@ -3,6 +3,7 @@ use crate::{
     persistence::Db,
     utils::*,
 };
+use async_std;
 use crates_index_diff::Index;
 use log::info;
 use std::{path::Path, time::SystemTime};
@@ -41,6 +42,7 @@ pub async fn run(
                 // Thus we just do this 'quickly' on the main thread, knowing that criner really needs its
                 // own executor or resources.
                 // We could chunk things, but that would only make the code harder to read. No gains here…
+                // NOTE: Even chunks of 1000 were not faster, didn't even saturate a single core...
                 for (versions_stored, version) in crate_versions.iter().enumerate() {
                     meta.insert(&version)?;
                     krate.insert_version(&version)?;

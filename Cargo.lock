@@ -180,9 +180,9 @@ checksum = "245097e9a4535ee1e3e3931fcfcd55a796a44c643e8596ff6566d68f09b87bbc"
 
 [[package]]
 name = "crates-index-diff"
-version = "5.0.2"
+version = "5.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c80205375a52fe5fa715fab50b917435c784ffaf0470111bd34a439fcf1b1150"
+checksum = "e8d93360d6f3390f57d89482a932b294ed6743a6326ff37db96479cc95b8a1f9"
 dependencies = [
  "git2",
  "serde",
