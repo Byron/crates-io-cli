@@ -9,7 +9,7 @@ use std::time;
 pub struct DeadlineFormat(pub time::SystemTime);
 
 impl fmt::Display for DeadlineFormat {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> std::result::Result<(), fmt::Error> {
         let now = time::SystemTime::now();
         write!(
             f,
@@ -19,6 +19,8 @@ impl fmt::Display for DeadlineFormat {
         )
     }
 }
+
+pub type Result<T> = std::result::Result<T, Error>;
 
 quick_error! {
     #[derive(Debug)]
