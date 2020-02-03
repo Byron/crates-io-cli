@@ -6,13 +6,17 @@ use crate::{
 use async_std;
 use crates_index_diff::Index;
 use log::info;
-use std::{path::Path, time::SystemTime};
+use std::{
+    path::Path,
+    time::{Duration, SystemTime},
+};
 
 async fn process_changes(
     db: Db,
     crates_io_path: impl AsRef<Path>,
     deadline: Option<SystemTime>,
 ) -> Result<()> {
+    let start = SystemTime::now();
     info!("Potentially cloning crates index - this can take a while…");
     let index = enforce_blocking(deadline, {
         let path = crates_io_path.as_ref().to_path_buf();
@@ -38,10 +42,10 @@ async fn process_changes(
                 // NOTE: For now, not transactional, but we *could*!
                 {
                     meta.insert(&version)?;
-                    db.update_context(|ctx| ctx.num_crate_versions += 1)?;
+                    db.update_context(|c| c.counts.crate_versions += 1)?;
                 }
                 if krate.insert_version(&version)? {
-                    db.update_context(|ctx| ctx.num_crates += 1)?;
+                    db.update_context(|c| c.counts.crates += 1)?;
                 }
                 if versions_stored % check_interval == 0 {
                     info!(
@@ -51,6 +55,11 @@ async fn process_changes(
                     );
                 }
             }
+            db.update_context(|c| {
+                c.durations.fetch_crate_versions += SystemTime::now()
+                    .duration_since(start)
+                    .unwrap_or_else(|_| Duration::default())
+            })?;
             Ok::<_, Error>(())
         }
     })

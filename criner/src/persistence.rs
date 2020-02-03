@@ -5,16 +5,31 @@ use crate::{
 use crates_index_diff::CrateVersion;
 use serde_derive::{Deserialize, Serialize};
 use sled::IVec;
-use std::path::Path;
+use std::{path::Path, time};
+
+/// Stores element counts of various kinds
+#[derive(Default, Debug, Serialize, Deserialize)]
+pub struct Counts {
+    /// The amount of crate versions stored in the database
+    pub crate_versions: u64,
+
+    /// The amount of crates in the database
+    pub crates: u32,
+}
+
+/// Stores wall clock time that elapsed for various kinds of computation
+#[derive(Default, Debug, Serialize, Deserialize)]
+pub struct Durations {
+    pub fetch_crate_versions: time::Duration,
+}
 
 /// Stores information about the work we have performed thus far
 #[derive(Default, Debug, Serialize, Deserialize)]
 pub struct Context {
-    /// The amount of crate versions stored in the database
-    pub num_crate_versions: u64,
-
-    /// The amount of crates in the database
-    pub num_crates: u32,
+    /// Various elements counts
+    pub counts: Counts,
+    /// Various kinds of time we took for computation
+    pub durations: Durations,
 }
 
 impl From<Context> for IVec {
@@ -67,6 +82,7 @@ impl Db {
             .update_and_fetch(b"context", |bytes: Option<&[u8]>| {
                 let ctx = match bytes {
                     Some(bytes) => {
+                        // NOTE: We assume that a version can only be added once! They are immutable.
                         let mut ctx = bytes.into();
                         f(&mut ctx);
                         ctx
