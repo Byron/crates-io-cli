@@ -19,7 +19,7 @@ fn version_id(v: &CrateVersion) -> Vec<u8> {
     id
 }
 
-fn _check(deadline: Option<SystemTime>) -> Result<()> {
+fn check(deadline: Option<SystemTime>) -> Result<()> {
     deadline
         .map(|d| {
             if SystemTime::now() >= d {
@@ -61,6 +61,7 @@ pub async fn run(
     deadline: Option<SystemTime>,
 ) -> Result<()> {
     let start_of_computation = SystemTime::now();
+    check(deadline)?;
     let res = async {
         info!("Potentially cloning crates index - this can take a while…");
         let index = enforce_blocking(deadline, {
@@ -80,6 +81,7 @@ pub async fn run(
             // NOTE: this loop can also be a stream, but that makes computation slower due to overhead
             // Thus we just do this 'quickly' on the main thread, knowing that criner really needs its
             // own executor or resources.
+            // We could chunk things, but that would only make the code harder to read. No gains here…
             for (versions_stored, version) in crate_versions.iter().enumerate() {
                 meta.insert(version_id(&version), rmp_serde::to_vec(&version)?)?;
                 if versions_stored % check_interval == 0 {
