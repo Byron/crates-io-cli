@@ -3,19 +3,51 @@ use crate::{
     model::Crate,
 };
 use crates_index_diff::CrateVersion;
+use serde_derive::{Deserialize, Serialize};
 use sled::IVec;
 use std::path::Path;
+
+/// Stores information about the work we have performed thus far
+#[derive(Default, Debug, Serialize, Deserialize)]
+pub struct Context {
+    /// The amount of crate versions stored in the database
+    pub num_crate_versions: u64,
+
+    /// The amount of crates in the database
+    pub num_crates: u32,
+}
+
+impl From<Context> for IVec {
+    fn from(c: Context) -> Self {
+        rmp_serde::to_vec(&c)
+            .expect("serialization must never fail")
+            .into()
+    }
+}
+
+impl From<IVec> for Context {
+    fn from(v: IVec) -> Self {
+        rmp_serde::from_read(v.as_ref()).expect("always valid decoding: TODO: migrations")
+    }
+}
+
+impl From<&[u8]> for Context {
+    fn from(v: &[u8]) -> Self {
+        rmp_serde::from_read(v).expect("always valid decoding: TODO: migrations")
+    }
+}
 
 #[derive(Clone)]
 pub struct Db {
     inner: sled::Db,
+    meta: sled::Tree,
 }
 
 impl Db {
     pub fn open(path: impl AsRef<Path>) -> Result<Db> {
-        Ok(Db {
-            inner: sled::open(path)?,
-        })
+        let inner = sled::open(path)?;
+        let meta = inner.open_tree("meta")?;
+        Ok(Db { inner, meta })
     }
 
     pub fn open_crate_versions(&self) -> Result<CrateVersionsTree> {
@@ -28,6 +60,34 @@ impl Db {
         Ok(CratesTree {
             inner: self.inner.open_tree("crates")?,
         })
+    }
+
+    pub fn update_context(&self, f: impl Fn(&mut Context)) -> Result<Context> {
+        self.meta
+            .update_and_fetch(b"context", |bytes: Option<&[u8]>| {
+                let ctx = match bytes {
+                    Some(bytes) => {
+                        let mut ctx = bytes.into();
+                        f(&mut ctx);
+                        ctx
+                    }
+                    None => Context::default(),
+                };
+                Some(ctx)
+            })?
+            .map(From::from)
+            .ok_or_else(|| Error::Bug("We always set a context"))
+    }
+
+    pub fn context(&self) -> Result<Context> {
+        self.meta
+            .get(b"context")
+            .map_err(From::from)
+            .and_then(|bytes| {
+                bytes
+                    .ok_or_else(|| Error::Bug("the context has been updated at least once"))
+                    .map(From::from)
+            })
     }
 }
 
@@ -69,7 +129,7 @@ impl From<IVec> for Crate {
 }
 
 impl CratesTree {
-    pub fn insert_version(&self, v: &CrateVersion) -> Result<Crate> {
+    pub fn insert_version(&self, v: &CrateVersion) -> Result<bool> {
         self.inner
             .update_and_fetch(crate_name(v), |bytes: Option<&[u8]>| {
                 Some(match bytes {
@@ -84,8 +144,9 @@ impl CratesTree {
                     },
                 })
             })?
+            .ok_or_else(|| Error::Bug("We always put a crate or update the existing one"))
             .map(Crate::from)
-            .ok_or_else(|| Error::Bug("We should always insert a crate, but didn't get any"))
+            .map(|c| c.versions.len() == 1)
     }
 }
 

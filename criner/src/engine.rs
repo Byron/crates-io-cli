@@ -35,8 +35,14 @@ async fn process_changes(
             // We could chunk things, but that would only make the code harder to read. No gains here…
             // NOTE: Even chunks of 1000 were not faster, didn't even saturate a single core...
             for (versions_stored, version) in crate_versions.iter().enumerate() {
-                meta.insert(&version)?;
-                krate.insert_version(&version)?;
+                // NOTE: For now, not transactional, but we *could*!
+                {
+                    meta.insert(&version)?;
+                    db.update_context(|ctx| ctx.num_crate_versions += 1)?;
+                }
+                if krate.insert_version(&version)? {
+                    db.update_context(|ctx| ctx.num_crates += 1)?;
+                }
                 if versions_stored % check_interval == 0 {
                     info!(
                         "Stored {} of {} crate versions in database",
@@ -65,7 +71,10 @@ pub async fn run(
     check(deadline)?;
 
     let db = Db::open(db)?;
-    let res = process_changes(db, crates_io_path, deadline).await;
+    let res = {
+        let db = db.clone();
+        process_changes(db, crates_io_path, deadline).await
+    };
     info!(
         "Wallclock elapsed: {}",
         humantime::format_duration(
@@ -74,6 +83,7 @@ pub async fn run(
                 .unwrap_or_default()
         )
     );
+    info!("{:#?}", db.context()?);
     res
 }
 
