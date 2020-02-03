@@ -1,7 +1,7 @@
-use crate::persistence::Db;
 use crate::{
+    persistence::Db,
     error::{Error, Result},
-    utils::*,
+    utils::*
 };
 use crates_index_diff::Index;
 use log::info;

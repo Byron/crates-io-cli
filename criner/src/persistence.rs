@@ -1,11 +1,13 @@
-use crate::error::{Error, Result};
-use crate::model::version_id;
+use crate::{
+    error::{Error, Result},
+    model::version_id,
+};
 use crates_index_diff::CrateVersion;
 use std::path::Path;
 
 #[derive(Clone)]
 pub struct Db {
-    pub inner: sled::Db,
+    inner: sled::Db,
 }
 
 impl Db {
@@ -24,7 +26,7 @@ impl Db {
 
 #[derive(Clone)]
 pub struct CrateVersionsTree {
-    pub inner: sled::Tree,
+    inner: sled::Tree,
 }
 
 impl CrateVersionsTree {
