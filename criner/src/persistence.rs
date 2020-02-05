@@ -52,7 +52,7 @@ pub trait TreeAccess {
     fn merge(
         &self,
         new_item: &Self::InsertItem,
-        existing_item: Option<&[u8]>,
+        existing_item: Option<Self::StorageItem>,
     ) -> Option<Self::StorageItem>;
 
     /// Update an existing item, or create it as default, returning the stored item
@@ -80,7 +80,7 @@ pub trait TreeAccess {
     fn upsert(&self, item: &Self::InsertItem) -> Result<Self::InsertResult> {
         self.tree()
             .update_and_fetch(self.key(item), |existing: Option<&[u8]>| {
-                self.merge(item, existing).map(Into::into)
+                self.merge(item, existing.map(From::from)).map(Into::into)
             })?
             .ok_or_else(|| Error::Bug("We always put a value or update the existing one"))
             .map(|v| self.map_insert_return_value(v))
@@ -98,6 +98,32 @@ pub struct ContextTree<'a> {
     inner: &'a sled::Tree,
 }
 
+impl<'a> TreeAccess for ContextTree<'a> {
+    type StorageItem = Context;
+    type InsertItem = Context;
+    type InsertResult = ();
+
+    fn tree(&self) -> &Tree {
+        self.inner
+    }
+
+    fn key(&self, _item: &Self::InsertItem) -> Vec<u8> {
+        Self::CONTEXT_GLOBAL.into()
+    }
+
+    fn map_insert_return_value(&self, _v: IVec) -> Self::InsertResult {
+        ()
+    }
+
+    fn merge(
+        &self,
+        new_item: &Context,
+        _existing_item: Option<Context>,
+    ) -> Option<Self::StorageItem> {
+        Some(new_item.clone())
+    }
+}
+
 impl<'a> ContextTree<'a> {
     const CONTEXT_GLOBAL: &'static [u8] = b"context";
     const CONTEXT_SERIES_PREFIX: &'static str = "context/";
@@ -110,19 +136,7 @@ impl<'a> ContextTree<'a> {
     }
 
     pub fn update(&self, f: impl Fn(&mut Context)) -> Result<Context> {
-        self.inner
-            .update_and_fetch(Self::CONTEXT_GLOBAL, |bytes: Option<&[u8]>| {
-                Some(match bytes {
-                    Some(bytes) => {
-                        let mut ctx = bytes.into();
-                        f(&mut ctx);
-                        ctx
-                    }
-                    None => Context::default(),
-                })
-            })?
-            .map(From::from)
-            .ok_or_else(|| Error::Bug("We always set a context"))
+        TreeAccess::update(self, Self::CONTEXT_GLOBAL, f)
     }
 
     pub fn add_delta(&self, earlier: Context) -> Result<Vec<ContextDelta>> {
@@ -191,11 +205,10 @@ impl TreeAccess for CratesTree {
     fn merge(
         &self,
         new_item: &crates_index_diff::CrateVersion,
-        existing_item: Option<&[u8]>,
+        existing_item: Option<Crate>,
     ) -> Option<Crate> {
         Some(match existing_item {
-            Some(bytes) => {
-                let mut c = Crate::from(bytes);
+            Some(mut c) => {
                 // NOTE: We assume that a version can only be added once! They are immutable.
                 // However, idempotence is more important
                 if !c.versions.contains(&new_item.version) {
@@ -240,7 +253,7 @@ impl TreeAccess for CrateVersionsTree {
     fn merge(
         &self,
         new_item: &Self::InsertItem,
-        _existing_item: Option<&[u8]>,
+        _existing_item: Option<CrateVersion>,
     ) -> Option<Self::StorageItem> {
         Some(new_item.into())
     }

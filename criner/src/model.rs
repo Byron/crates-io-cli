@@ -5,7 +5,7 @@ use std::{
 };
 
 /// Represents a top-level crate and associated information
-#[derive(Serialize, Deserialize, Default)]
+#[derive(Serialize, Deserialize, Default, Clone)]
 pub struct Crate {
     /// All versions published to crates.io, guaranteed to be sorted so that the most recent version is last.
     /// The format is as specified in Cargo.toml:version
