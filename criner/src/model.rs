@@ -13,7 +13,7 @@ pub struct Crate {
 }
 
 /// Stores element counts of various kinds
-#[derive(Default, Debug, Serialize, Deserialize)]
+#[derive(Default, Debug, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq, Clone)]
 pub struct Counts {
     /// The amount of crate versions stored in the database
     pub crate_versions: u64,
@@ -23,13 +23,13 @@ pub struct Counts {
 }
 
 /// Stores wall clock time that elapsed for various kinds of computation
-#[derive(Default, Debug, Serialize, Deserialize)]
+#[derive(Default, Debug, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq, Clone)]
 pub struct Durations {
     pub fetch_crate_versions: Duration,
 }
 
 /// Stores information about the work we have performed thus far
-#[derive(Default, Debug, Serialize, Deserialize)]
+#[derive(Default, Debug, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq, Clone)]
 pub struct Context {
     /// Various elements counts
     pub counts: Counts,
@@ -53,14 +53,14 @@ impl Context {
 }
 
 /// Represents the difference between a current context and an earlier one, at a time
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq, Clone)]
 pub struct ContextDelta {
     pub sample_time: SystemTime,
     pub delta: Context,
 }
 
 /// This structure is just for serialization
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq, Clone)]
 pub struct ContextDeltaVec(pub Vec<ContextDelta>);
 
 impl From<(SystemTime, &Context, &Context)> for ContextDelta {
@@ -73,7 +73,7 @@ impl From<(SystemTime, &Context, &Context)> for ContextDelta {
 }
 
 /// Pack all information we know about a change made to a version of a crate.
-#[derive(Debug, Serialize, Deserialize, Default)]
+#[derive(Debug, Serialize, Deserialize, Default, Clone)]
 pub struct CrateVersion {
     /// The crate name, i.e. `clap`.
     pub name: String,
