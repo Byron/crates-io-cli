@@ -12,6 +12,14 @@ pub struct Crate {
     pub versions: Vec<String>,
 }
 
+impl From<&crates_index_diff::CrateVersion> for Crate {
+    fn from(v: &crates_index_diff::CrateVersion) -> Self {
+        Crate {
+            versions: vec![v.version.to_owned()],
+        }
+    }
+}
+
 /// Stores element counts of various kinds
 #[derive(Default, Debug, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq, Clone)]
 pub struct Counts {

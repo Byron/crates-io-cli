@@ -217,9 +217,7 @@ impl TreeAccess for CratesTree {
                 c.versions.sort();
                 c
             }
-            None => Crate {
-                versions: vec![new_item.version.to_owned()],
-            },
+            None => Crate::from(new_item),
         })
     }
 }
