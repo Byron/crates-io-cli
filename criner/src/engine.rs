@@ -31,7 +31,7 @@ async fn process_changes(
     enforce_blocking(deadline, {
         let db = db.clone();
         move || {
-            let meta = db.open_crate_versions()?;
+            let versions = db.open_crate_versions()?;
             let krate = db.open_crates()?;
             let context = db.context()?;
             // NOTE: this loop can also be a stream, but that makes computation slower due to overhead
@@ -42,7 +42,7 @@ async fn process_changes(
             for (versions_stored, version) in crate_versions.iter().enumerate() {
                 // NOTE: For now, not transactional, but we *could*!
                 {
-                    meta.insert(&version)?;
+                    versions.insert(&version)?;
                     context.update(|c| c.counts.crate_versions += 1)?;
                 }
                 if krate.upsert(&version)? {

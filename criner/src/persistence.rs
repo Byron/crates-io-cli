@@ -1,11 +1,10 @@
+use crate::model::CrateVersion;
 use crate::{
     error::{Error, Result},
     model::{Context, ContextDelta, ContextDeltaVec, Crate},
 };
-use crates_index_diff::CrateVersion;
 use sled::{IVec, Tree};
-use std::path::Path;
-use std::time::SystemTime;
+use std::{path::Path, time::SystemTime};
 
 #[derive(Clone)]
 pub struct Db {
@@ -147,14 +146,14 @@ pub struct CratesTree {
 
 impl TreeAccess for CratesTree {
     type StorageItem = Crate;
-    type InsertItem = CrateVersion;
+    type InsertItem = crates_index_diff::CrateVersion;
     type InsertResult = bool;
 
     fn tree(&self) -> &Tree {
         &self.inner
     }
 
-    fn key(&self, item: &CrateVersion) -> Vec<u8> {
+    fn key(&self, item: &crates_index_diff::CrateVersion) -> Vec<u8> {
         item.name.clone().into_bytes()
     }
 
@@ -163,7 +162,11 @@ impl TreeAccess for CratesTree {
         c.versions.len() == 1
     }
 
-    fn merge(&self, new_item: &CrateVersion, existing_item: Option<&[u8]>) -> Option<Crate> {
+    fn merge(
+        &self,
+        new_item: &crates_index_diff::CrateVersion,
+        existing_item: Option<&[u8]>,
+    ) -> Option<Crate> {
         Some(match existing_item {
             Some(bytes) => {
                 let mut c = Crate::from(bytes);
@@ -183,17 +186,40 @@ pub struct CrateVersionsTree {
     inner: sled::Tree,
 }
 
+impl TreeAccess for CrateVersionsTree {
+    type StorageItem = CrateVersion;
+    type InsertItem = crates_index_diff::CrateVersion;
+    type InsertResult = ();
+
+    fn tree(&self) -> &Tree {
+        &self.inner
+    }
+
+    fn key(&self, v: &crates_index_diff::CrateVersion) -> Vec<u8> {
+        let mut id = Vec::with_capacity(v.name.len() + v.version.len() + 1);
+        id.extend_from_slice(&v.name.as_bytes());
+        id.push(b':');
+        id.extend_from_slice(&v.version.as_bytes());
+        id
+    }
+
+    fn map_insert_return_value(&self, _v: IVec) -> Self::InsertResult {
+        ()
+    }
+
+    fn merge(
+        &self,
+        new_item: &Self::InsertItem,
+        _existing_item: Option<&[u8]>,
+    ) -> Option<Self::StorageItem> {
+        Some(new_item.into())
+    }
+}
+
 impl CrateVersionsTree {
-    pub fn insert(&self, v: &CrateVersion) -> Result<()> {
-        fn version_id(v: &CrateVersion) -> Vec<u8> {
-            let mut id = Vec::with_capacity(v.name.len() + v.version.len() + 1);
-            id.extend_from_slice(&v.name.as_bytes());
-            id.push(b':');
-            id.extend_from_slice(&v.version.as_bytes());
-            id
-        }
+    pub fn insert(&self, v: &crates_index_diff::CrateVersion) -> Result<()> {
         self.inner
-            .insert(version_id(v), rmp_serde::to_vec(v)?)
+            .insert(self.key(v), rmp_serde::to_vec(v)?)
             .map_err(Error::from)
             .map(|_| ())
     }
@@ -222,5 +248,6 @@ macro_rules! impl_ivec_transform {
 }
 
 impl_ivec_transform!(Crate);
+impl_ivec_transform!(CrateVersion);
 impl_ivec_transform!(Context);
 impl_ivec_transform!(ContextDeltaVec);
