@@ -1,7 +1,7 @@
 use crate::model::CrateVersion;
 use crate::{
     error::{Error, Result},
-    model::{Context, ContextDelta, ContextDeltaVec, Crate},
+    model::{Context, Crate},
 };
 use sled::{IVec, Tree};
 use std::{path::Path, time::SystemTime};
@@ -108,74 +108,30 @@ impl<'a> TreeAccess for ContextTree<'a> {
     }
 
     fn key(&self, _item: &Self::InsertItem) -> Vec<u8> {
-        Self::CONTEXT_GLOBAL.into()
+        format!(
+            "context/{}",
+            humantime::format_rfc3339(SystemTime::now())
+                .to_string()
+                .get(..10)
+                .expect("YYYY-MM-DD - 10 bytes")
+        )
+        .into()
     }
 
     fn map_insert_return_value(&self, _v: IVec) -> Self::InsertResult {
         ()
     }
 
-    fn merge(
-        &self,
-        new_item: &Context,
-        _existing_item: Option<Context>,
-    ) -> Option<Self::StorageItem> {
-        Some(new_item.clone())
+    fn merge(&self, new: &Context, existing_item: Option<Context>) -> Option<Self::StorageItem> {
+        existing_item
+            .map(|existing| existing + new)
+            .or_else(|| Some(new.clone()))
     }
 }
 
 impl<'a> ContextTree<'a> {
-    const CONTEXT_GLOBAL: &'static [u8] = b"context";
-    const CONTEXT_SERIES_PREFIX: &'static str = "context/";
-
-    pub fn global(&self) -> Result<Context> {
-        self.inner
-            .get(Self::CONTEXT_GLOBAL)
-            .map_err(From::from)
-            .map(|bytes| bytes.map_or_else(Context::default, From::from))
-    }
-
-    pub fn update(&self, f: impl Fn(&mut Context)) -> Result<Context> {
-        TreeAccess::update(self, Self::CONTEXT_GLOBAL, f)
-    }
-
-    pub fn add_delta(&self, earlier: Context) -> Result<Vec<ContextDelta>> {
-        assert_eq!(
-            Self::CONTEXT_GLOBAL,
-            &Self::CONTEXT_SERIES_PREFIX.as_bytes()[..Self::CONTEXT_GLOBAL.len()]
-        );
-        assert_eq!(
-            Self::CONTEXT_SERIES_PREFIX.len() - 1,
-            Self::CONTEXT_GLOBAL.len()
-        );
-
-        let sample_time = SystemTime::now();
-        let key = format!(
-            "{}{}",
-            Self::CONTEXT_SERIES_PREFIX,
-            humantime::format_rfc3339(sample_time)
-                .to_string()
-                .get(..10)
-                .expect("YYYY-MM-DD - 10 bytes")
-        );
-        let current: Context = self.global()?;
-        self.inner
-            .update_and_fetch(key, move |bytes: Option<&[u8]>| {
-                let delta: ContextDelta = (sample_time, &current, &earlier).into();
-                Some(match bytes {
-                    Some(bytes) => {
-                        let mut samples: ContextDeltaVec = rmp_serde::from_read(bytes).expect(
-                            "deserialization of ContextDelta must not fail. Migration TODO",
-                        );
-                        samples.0.push(delta);
-                        samples
-                    }
-                    None => ContextDeltaVec(vec![delta]),
-                })
-            })?
-            .map(From::from)
-            .map(|ContextDeltaVec(v)| v)
-            .ok_or_else(|| Error::Bug("We always have at least one sample"))
+    pub fn update_today(&self, f: impl Fn(&mut Context)) -> Result<Context> {
+        self.update(self.key(&Context::default()), f)
     }
 }
 
@@ -282,4 +238,3 @@ macro_rules! impl_ivec_transform {
 impl_ivec_transform!(Crate);
 impl_ivec_transform!(CrateVersion);
 impl_ivec_transform!(Context);
-impl_ivec_transform!(ContextDeltaVec);

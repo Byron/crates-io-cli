@@ -1,8 +1,6 @@
 use serde_derive::{Deserialize, Serialize};
-use std::{
-    collections::HashMap,
-    time::{Duration, SystemTime},
-};
+use std::ops::Add;
+use std::{collections::HashMap, time::Duration};
 
 /// Represents a top-level crate and associated information
 #[derive(Serialize, Deserialize, Default, Clone)]
@@ -45,37 +43,19 @@ pub struct Context {
     pub durations: Durations,
 }
 
-impl Context {
-    fn change_since(&self, earlier: &Context) -> Context {
+impl Add<&Context> for Context {
+    type Output = Context;
+
+    fn add(self, rhs: &Context) -> Self::Output {
         Context {
             counts: Counts {
-                crate_versions: self.counts.crate_versions - earlier.counts.crate_versions,
-                crates: self.counts.crates - earlier.counts.crates,
+                crate_versions: self.counts.crate_versions + rhs.counts.crate_versions,
+                crates: self.counts.crates + rhs.counts.crates,
             },
             durations: Durations {
                 fetch_crate_versions: self.durations.fetch_crate_versions
-                    - earlier.durations.fetch_crate_versions,
+                    + rhs.durations.fetch_crate_versions,
             },
-        }
-    }
-}
-
-/// Represents the difference between a current context and an earlier one, at a time
-#[derive(Debug, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq, Clone)]
-pub struct ContextDelta {
-    pub sample_time: SystemTime,
-    pub delta: Context,
-}
-
-/// This structure is just for serialization
-#[derive(Debug, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq, Clone)]
-pub struct ContextDeltaVec(pub Vec<ContextDelta>);
-
-impl From<(SystemTime, &Context, &Context)> for ContextDelta {
-    fn from((sample_time, now, earlier): (SystemTime, &Context, &Context)) -> Self {
-        ContextDelta {
-            sample_time,
-            delta: now.change_since(earlier),
         }
     }
 }

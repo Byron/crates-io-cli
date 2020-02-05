@@ -43,10 +43,10 @@ async fn process_changes(
                 // NOTE: For now, not transactional, but we *could*!
                 {
                     versions.insert(&version)?;
-                    context.update(|c| c.counts.crate_versions += 1)?;
+                    context.update_today(|c| c.counts.crate_versions += 1)?;
                 }
                 if krate.upsert(&version)? {
-                    context.update(|c| c.counts.crates += 1)?;
+                    context.update_today(|c| c.counts.crates += 1)?;
                 }
                 if versions_stored % check_interval == 0 {
                     info!(
@@ -56,7 +56,7 @@ async fn process_changes(
                     );
                 }
             }
-            context.update(|c| {
+            context.update_today(|c| {
                 c.durations.fetch_crate_versions += SystemTime::now()
                     .duration_since(start)
                     .unwrap_or_else(|_| Duration::default())
@@ -81,7 +81,6 @@ pub async fn run(
     check(deadline)?;
 
     let db = Db::open(db)?;
-    let previous_context = db.context()?.global()?;
     let res = {
         let db = db.clone();
         process_changes(db, crates_io_path, deadline).await
@@ -94,10 +93,7 @@ pub async fn run(
                 .unwrap_or_default()
         )
     );
-    info!("{:#?}", db.context()?.global()?);
-    let mut deltas = db.context()?.add_delta(previous_context)?;
-    info!("change since last run");
-    info!("{:#?}", deltas.pop());
+    //    info!("{:#?}", db.context()?.global()?);
     res
 }
 
