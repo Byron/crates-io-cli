@@ -15,11 +15,12 @@ pub struct Db {
 
 impl Db {
     pub fn open(path: impl AsRef<Path>) -> Result<Db> {
-        let inner = sled::Config::new()
-            .print_profile_on_drop(true)
-            .use_compression(true)
-            .path(path)
-            .open()?;
+        // NOTE: Default compression achieves cutting disk space in half, but halfs the processing speed
+        // for our binary data as well.
+        // TODO: re-evaluate that for textual data - it might enable us to store all files, and when we
+        // have more read-based workloads. Maybe it's worth it to turn on.
+        // NOTE: Databases with and without compression need migration.
+        let inner = sled::Config::new().path(path).open()?;
         let meta = inner.open_tree("meta")?;
         Ok(Db { inner, meta })
     }
