@@ -4,9 +4,7 @@ use crate::{
 };
 use crates_index_diff::CrateVersion;
 use sled::IVec;
-use std::marker::PhantomData;
-use std::path::Path;
-use std::time::SystemTime;
+use std::{path::Path, time::SystemTime};
 
 #[derive(Clone)]
 pub struct Db {
@@ -113,19 +111,40 @@ pub struct CratesTree {
     inner: sled::Tree,
 }
 
-pub trait TreeAccess {
+pub trait TreeAccess<S> {
     fn tree(&self) -> &sled::Tree;
 
-    fn key(&self, item: &impl serde::Serialize) -> Vec<u8>;
+    fn key(&self, item: &S) -> Vec<u8>;
     fn map_insert_value<R>(&self, v: IVec) -> R;
+    fn bytes_to_ivec(&self, bytes: Option<&[u8]>) -> Option<IVec>;
 
-    fn insert<R>(&self, item: &impl serde::Serialize) -> Result<R> {
+    fn insert<R>(&self, item: &S) -> Result<R> {
         self.tree()
-            .update_and_fetch(self.key(item), |bytes: Option<&[u8]>| Some(b""))?
+            .update_and_fetch(self.key(item), |bytes: Option<&[u8]>| {
+                self.bytes_to_ivec(bytes)
+            })?
             .ok_or_else(|| Error::Bug("We always put a crate or update the existing one"))
             .map(|v| self.map_insert_value::<R>(v))
     }
 }
+
+//impl<S> TreeAccess<S> for CratesTree where S: CrateVersion{
+//    fn tree(&self) -> &sled::Tree {
+//        &self.inner
+//    }
+//
+//    fn key(&self, item: &) -> Vec<u8> {
+//        unimplemented!()
+//    }
+//
+//    fn map_insert_value<R>(&self, v: IVec) -> R {
+//        unimplemented!()
+//    }
+//
+//    fn bytes_to_ivec(&self, bytes: Option<&[u8]>) -> Option<IVec> {
+//        unimplemented!()
+//    }
+//}
 
 impl CratesTree {
     pub fn insert_version(&self, v: &CrateVersion) -> Result<bool> {
