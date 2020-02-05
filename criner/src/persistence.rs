@@ -43,7 +43,7 @@ impl Db {
 
 pub trait TreeAccess {
     type StorageItem: Into<IVec>;
-    type InsertItem;
+    type InsertItem: serde::Serialize;
     type InsertResult;
 
     fn tree(&self) -> &sled::Tree;
@@ -64,6 +64,13 @@ pub trait TreeAccess {
             .ok_or_else(|| Error::Bug("We always put a crate or update the existing one"))
             .map(|v| self.map_insert_return_value(v))
     }
+
+    fn insert(&self, v: &Self::InsertItem) -> Result<()> {
+        self.tree()
+            .insert(self.key(v), rmp_serde::to_vec(v)?)
+            .map_err(Error::from)
+            .map(|_| ())
+    }
 }
 
 pub struct ContextTree<'a> {
@@ -81,13 +88,11 @@ impl<'a> ContextTree<'a> {
             .map(|bytes| bytes.map_or_else(Context::default, From::from))
     }
 
-    // TODO: implement this in trait
     pub fn update(&self, f: impl Fn(&mut Context)) -> Result<Context> {
         self.inner
             .update_and_fetch(Self::CONTEXT_GLOBAL, |bytes: Option<&[u8]>| {
                 Some(match bytes {
                     Some(bytes) => {
-                        // NOTE: We assume that a version can only be added once! They are immutable.
                         let mut ctx = bytes.into();
                         f(&mut ctx);
                         ctx
@@ -170,7 +175,11 @@ impl TreeAccess for CratesTree {
         Some(match existing_item {
             Some(bytes) => {
                 let mut c = Crate::from(bytes);
-                c.versions.push(new_item.version.to_owned());
+                // NOTE: We assume that a version can only be added once! They are immutable.
+                // However, idempotence is more important
+                if !c.versions.contains(&new_item.version) {
+                    c.versions.push(new_item.version.to_owned());
+                }
                 c.versions.sort();
                 c
             }
@@ -213,15 +222,6 @@ impl TreeAccess for CrateVersionsTree {
         _existing_item: Option<&[u8]>,
     ) -> Option<Self::StorageItem> {
         Some(new_item.into())
-    }
-}
-
-impl CrateVersionsTree {
-    pub fn insert(&self, v: &crates_index_diff::CrateVersion) -> Result<()> {
-        self.inner
-            .insert(self.key(v), rmp_serde::to_vec(v)?)
-            .map_err(Error::from)
-            .map(|_| ())
     }
 }
 
