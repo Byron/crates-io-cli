@@ -1,5 +1,4 @@
 [![Build Status](https://travis-ci.org/Byron/crates-io-cli-rs.svg?branch=master)](https://travis-ci.org/Byron/crates-io-cli-rs)
-[![Build status windows](https://ci.appveyor.com/api/projects/status/jc917ovighvuxsqt/branch/master?svg=true&passingText=windows%20OK&failingText=windows%20failed)](https://ci.appveyor.com/project/Byron/crates-io-cli-rs/branch/master)
 [![crates.io version](https://img.shields.io/crates/v/crates-io-cli.svg)](https://crates.io/crates/crates-io-cli)
 
 A command-line interface to interact with [crates.io](https://crates.io/)
