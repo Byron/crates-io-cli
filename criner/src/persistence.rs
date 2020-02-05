@@ -113,19 +113,20 @@ pub struct CratesTree {
 }
 
 pub trait TreeAccess {
-    type Item;
+    type StorageItem;
+    type InsertItem;
     type InsertResult;
 
     fn tree(&self) -> &sled::Tree;
 
-    fn key(&self, item: &Self::Item) -> Vec<u8>;
+    fn key(&self, item: &Self::InsertItem) -> Vec<u8>;
     fn map_insert_return_value(&self, v: IVec) -> Self::InsertResult;
-    fn merge(&self, new_item: &Self::Item, existing_item: Option<&[u8]>) -> Option<IVec>;
+    fn merge(&self, new_item: &Self::InsertItem, existing_item: Option<&[u8]>) -> Option<IVec>;
 
-    fn insert(&self, item: &Self::Item) -> Result<Self::InsertResult> {
+    fn insert(&self, item: &Self::InsertItem) -> Result<Self::InsertResult> {
         self.tree()
-            .update_and_fetch(self.key(item), |bytes: Option<&[u8]>| {
-                self.merge(item, bytes)
+            .update_and_fetch(self.key(item), |existing: Option<&[u8]>| {
+                self.merge(item, existing)
             })?
             .ok_or_else(|| Error::Bug("We always put a crate or update the existing one"))
             .map(|v| self.map_insert_return_value(v))
@@ -133,7 +134,8 @@ pub trait TreeAccess {
 }
 
 impl TreeAccess for CratesTree {
-    type Item = CrateVersion;
+    type StorageItem = Crate;
+    type InsertItem = CrateVersion;
     type InsertResult = bool;
 
     fn tree(&self) -> &Tree {
