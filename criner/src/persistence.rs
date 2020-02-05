@@ -3,8 +3,9 @@ use crate::{
     model::{Context, ContextDelta, ContextDeltaVec, Crate},
 };
 use crates_index_diff::CrateVersion;
-use sled::IVec;
-use std::{path::Path, time::SystemTime};
+use sled::{IVec, Tree};
+use std::path::Path;
+use std::time::SystemTime;
 
 #[derive(Clone)]
 pub struct Db {
@@ -111,63 +112,56 @@ pub struct CratesTree {
     inner: sled::Tree,
 }
 
-pub trait TreeAccess<S> {
+pub trait TreeAccess {
+    type Item;
+    type InsertResult;
+
     fn tree(&self) -> &sled::Tree;
 
-    fn key(&self, item: &S) -> Vec<u8>;
-    fn map_insert_value<R>(&self, v: IVec) -> R;
-    fn bytes_to_ivec(&self, bytes: Option<&[u8]>) -> Option<IVec>;
+    fn key(&self, item: &Self::Item) -> Vec<u8>;
+    fn map_insert_return_value(&self, v: IVec) -> Self::InsertResult;
+    fn bytes_to_ivec(&self, item: &Self::Item, bytes: Option<&[u8]>) -> Option<IVec>;
 
-    fn insert<R>(&self, item: &S) -> Result<R> {
+    fn insert(&self, item: &Self::Item) -> Result<Self::InsertResult> {
         self.tree()
             .update_and_fetch(self.key(item), |bytes: Option<&[u8]>| {
-                self.bytes_to_ivec(bytes)
+                self.bytes_to_ivec(item, bytes)
             })?
             .ok_or_else(|| Error::Bug("We always put a crate or update the existing one"))
-            .map(|v| self.map_insert_value::<R>(v))
+            .map(|v| self.map_insert_return_value(v))
     }
 }
 
-//impl<S> TreeAccess<S> for CratesTree where S: CrateVersion{
-//    fn tree(&self) -> &sled::Tree {
-//        &self.inner
-//    }
-//
-//    fn key(&self, item: &) -> Vec<u8> {
-//        unimplemented!()
-//    }
-//
-//    fn map_insert_value<R>(&self, v: IVec) -> R {
-//        unimplemented!()
-//    }
-//
-//    fn bytes_to_ivec(&self, bytes: Option<&[u8]>) -> Option<IVec> {
-//        unimplemented!()
-//    }
-//}
+impl TreeAccess for CratesTree {
+    type Item = CrateVersion;
+    type InsertResult = bool;
 
-impl CratesTree {
-    pub fn insert_version(&self, v: &CrateVersion) -> Result<bool> {
-        fn crate_name(v: &CrateVersion) -> Vec<u8> {
-            v.name.clone().into_bytes()
-        }
-        self.inner
-            .update_and_fetch(crate_name(v), |bytes: Option<&[u8]>| {
-                Some(match bytes {
-                    Some(bytes) => {
-                        let mut c = Crate::from(bytes);
-                        c.versions.push(v.version.to_owned());
-                        c.versions.sort();
-                        c
-                    }
-                    None => Crate {
-                        versions: vec![v.version.to_owned()],
-                    },
-                })
-            })?
-            .ok_or_else(|| Error::Bug("We always put a crate or update the existing one"))
-            .map(Crate::from)
-            .map(|c| c.versions.len() == 1)
+    fn tree(&self) -> &Tree {
+        &self.inner
+    }
+
+    fn key(&self, item: &CrateVersion) -> Vec<u8> {
+        item.name.clone().into_bytes()
+    }
+
+    fn map_insert_return_value(&self, v: IVec) -> Self::InsertResult {
+        let c = Crate::from(v);
+        c.versions.len() == 1
+    }
+
+    fn bytes_to_ivec(&self, item: &CrateVersion, bytes: Option<&[u8]>) -> Option<IVec> {
+        Some(match bytes {
+            Some(bytes) => {
+                let mut c = Crate::from(bytes);
+                c.versions.push(item.version.to_owned());
+                c.versions.sort();
+                c
+            }
+            None => Crate {
+                versions: vec![item.version.to_owned()],
+            },
+        })
+        .map(From::from)
     }
 }
 

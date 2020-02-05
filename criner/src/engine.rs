@@ -1,6 +1,7 @@
 use crate::{
     error::{Error, Result},
     persistence::Db,
+    persistence::TreeAccess,
     utils::*,
 };
 use async_std;
@@ -44,7 +45,7 @@ async fn process_changes(
                     meta.insert(&version)?;
                     db.update_context(|c| c.counts.crate_versions += 1)?;
                 }
-                if krate.insert_version(&version)? {
+                if krate.insert(&version)? {
                     db.update_context(|c| c.counts.crates += 1)?;
                 }
                 if versions_stored % check_interval == 0 {
