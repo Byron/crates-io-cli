@@ -113,22 +113,17 @@ pub struct CratesTree {
     inner: sled::Tree,
 }
 
-pub struct TreeAccess<'a, KFn, IRMapFn, Data> {
-    inner: &'a sled::Tree,
-    key_fn: KFn,
-    insert_return_map: IRMapFn,
-    _input_data: PhantomData<Data>,
-}
+pub trait TreeAccess {
+    fn tree(&self) -> &sled::Tree;
 
-impl<'a, KFn, IRMapFn, Data> TreeAccess<'a, KFn, IRMapFn, Data>
-where
-    KFn: Fn(&Data) -> Vec<u8>,
-    Data: serde::Serialize,
-{
-    fn insert<R>(&self, item: &Data) -> Result<R> {
-        self.inner
-            .update_and_fetch((self.key_fn)(item), |bytes: Option<&[u8]>| Some(b""));
-        unimplemented!()
+    fn key(&self, item: &impl serde::Serialize) -> Vec<u8>;
+    fn map_insert_value<R>(&self, v: IVec) -> R;
+
+    fn insert<R>(&self, item: &impl serde::Serialize) -> Result<R> {
+        self.tree()
+            .update_and_fetch(self.key(item), |bytes: Option<&[u8]>| Some(b""))?
+            .ok_or_else(|| Error::Bug("We always put a crate or update the existing one"))
+            .map(|v| self.map_insert_value::<R>(v))
     }
 }
 
