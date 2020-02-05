@@ -1,4 +1,3 @@
-use crate::model::Context;
 use crate::{
     error::{Error, Result},
     persistence::{Db, TreeAccess},
@@ -94,18 +93,7 @@ pub async fn run(
                 .unwrap_or_default()
         )
     );
-    info!(
-        "{:#?}",
-        db.context()?
-            .tree()
-            .iter()
-            .next_back()
-            .expect("one")
-            .map(|(k, v)| (
-                String::from_utf8(k.as_ref().to_vec()).unwrap(),
-                Context::from(v)
-            ))
-    );
+    info!("{:#?}", db.context()?.iter().next_back().expect("one")?);
     res
 }
 

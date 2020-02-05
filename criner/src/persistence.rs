@@ -133,6 +133,19 @@ impl<'a> ContextTree<'a> {
     pub fn update_today(&self, f: impl Fn(&mut Context)) -> Result<Context> {
         self.update(self.key(&Context::default()), f)
     }
+
+    // NOTE: impl iterator is not allowed in traits unfortunately, but one could implement one manually
+    pub fn iter(&self) -> impl DoubleEndedIterator<Item = Result<(String, Context)>> {
+        self.inner.iter().map(|r| {
+            r.map(|(k, v)| {
+                (
+                    String::from_utf8(k.as_ref().to_vec()).expect("utf8"),
+                    Context::from(v),
+                )
+            })
+            .map_err(Error::from)
+        })
+    }
 }
 
 #[derive(Clone)]
