@@ -9,13 +9,17 @@ use std::time::SystemTime;
 
 #[derive(Clone)]
 pub struct Db {
-    inner: sled::Db,
+    pub inner: sled::Db,
     meta: sled::Tree,
 }
 
 impl Db {
     pub fn open(path: impl AsRef<Path>) -> Result<Db> {
-        let inner = sled::open(path)?;
+        let inner = sled::Config::new()
+            .print_profile_on_drop(true)
+            .use_compression(true)
+            .path(path)
+            .open()?;
         let meta = inner.open_tree("meta")?;
         Ok(Db { inner, meta })
     }
