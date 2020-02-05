@@ -4,6 +4,7 @@ use crate::{
 };
 use crates_index_diff::CrateVersion;
 use sled::IVec;
+use std::marker::PhantomData;
 use std::path::Path;
 use std::time::SystemTime;
 
@@ -110,6 +111,25 @@ fn version_id(v: &CrateVersion) -> Vec<u8> {
 #[derive(Clone)]
 pub struct CratesTree {
     inner: sled::Tree,
+}
+
+pub struct TreeAccess<'a, KFn, IRMapFn, Data> {
+    inner: &'a sled::Tree,
+    key_fn: KFn,
+    insert_return_map: IRMapFn,
+    _input_data: PhantomData<Data>,
+}
+
+impl<'a, KFn, IRMapFn, Data> TreeAccess<'a, KFn, IRMapFn, Data>
+where
+    KFn: Fn(&Data) -> Vec<u8>,
+    Data: serde::Serialize,
+{
+    fn insert<R>(&self, item: &Data) -> Result<R> {
+        self.inner
+            .update_and_fetch((self.key_fn)(item), |bytes: Option<&[u8]>| Some(b""));
+        unimplemented!()
+    }
 }
 
 impl CratesTree {
