@@ -113,7 +113,7 @@ pub struct CratesTree {
 }
 
 pub trait TreeAccess {
-    type StorageItem;
+    type StorageItem: Into<IVec>;
     type InsertItem;
     type InsertResult;
 
@@ -121,12 +121,16 @@ pub trait TreeAccess {
 
     fn key(&self, item: &Self::InsertItem) -> Vec<u8>;
     fn map_insert_return_value(&self, v: IVec) -> Self::InsertResult;
-    fn merge(&self, new_item: &Self::InsertItem, existing_item: Option<&[u8]>) -> Option<IVec>;
+    fn merge(
+        &self,
+        new_item: &Self::InsertItem,
+        existing_item: Option<&[u8]>,
+    ) -> Option<Self::StorageItem>;
 
     fn insert(&self, item: &Self::InsertItem) -> Result<Self::InsertResult> {
         self.tree()
             .update_and_fetch(self.key(item), |existing: Option<&[u8]>| {
-                self.merge(item, existing)
+                self.merge(item, existing).map(Into::into)
             })?
             .ok_or_else(|| Error::Bug("We always put a crate or update the existing one"))
             .map(|v| self.map_insert_return_value(v))
@@ -151,7 +155,7 @@ impl TreeAccess for CratesTree {
         c.versions.len() == 1
     }
 
-    fn merge(&self, new_item: &CrateVersion, existing_item: Option<&[u8]>) -> Option<IVec> {
+    fn merge(&self, new_item: &CrateVersion, existing_item: Option<&[u8]>) -> Option<Crate> {
         Some(match existing_item {
             Some(bytes) => {
                 let mut c = Crate::from(bytes);
@@ -163,7 +167,6 @@ impl TreeAccess for CratesTree {
                 versions: vec![new_item.version.to_owned()],
             },
         })
-        .map(IVec::from)
     }
 }
 
