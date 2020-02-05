@@ -42,12 +42,11 @@ impl Db {
 }
 
 pub trait TreeAccess {
-    type StorageItem: Into<IVec>;
+    type StorageItem: From<IVec> + Into<IVec> + for<'a> From<&'a [u8]> + Default;
     type InsertItem: serde::Serialize;
     type InsertResult;
 
     fn tree(&self) -> &sled::Tree;
-
     fn key(&self, item: &Self::InsertItem) -> Vec<u8>;
     fn map_insert_return_value(&self, v: IVec) -> Self::InsertResult;
     fn merge(
@@ -56,12 +55,34 @@ pub trait TreeAccess {
         existing_item: Option<&[u8]>,
     ) -> Option<Self::StorageItem>;
 
+    /// Update an existing item, or create it as default, returning the stored item
+    fn update(
+        &self,
+        key: impl AsRef<[u8]>,
+        f: impl Fn(&mut Self::StorageItem),
+    ) -> Result<Self::StorageItem> {
+        self.tree()
+            .update_and_fetch(key, |bytes: Option<&[u8]>| {
+                Some(match bytes {
+                    Some(bytes) => {
+                        let mut v = bytes.into();
+                        f(&mut v);
+                        v.into()
+                    }
+                    None => Self::StorageItem::default().into(),
+                })
+            })?
+            .map(From::from)
+            .ok_or_else(|| Error::Bug("We always set a value"))
+    }
+
+    /// Similar to 'update', but provides full control over the default
     fn upsert(&self, item: &Self::InsertItem) -> Result<Self::InsertResult> {
         self.tree()
             .update_and_fetch(self.key(item), |existing: Option<&[u8]>| {
                 self.merge(item, existing).map(Into::into)
             })?
-            .ok_or_else(|| Error::Bug("We always put a crate or update the existing one"))
+            .ok_or_else(|| Error::Bug("We always put a value or update the existing one"))
             .map(|v| self.map_insert_return_value(v))
     }
 

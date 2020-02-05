@@ -9,7 +9,7 @@ doctest = false
 
 [dependencies]
 quick-error = "1.2.3"
-crates-index-diff = "5.0.3"
+crates-index-diff = "5.0.4"
 sled = { version = "0.31.0", features = ["compression"] }
 async-std = { version = "1.4.0", features = ["unstable"] }
 rmp-serde = "0.14.0"

@@ -5,7 +5,7 @@ use std::{
 };
 
 /// Represents a top-level crate and associated information
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Default)]
 pub struct Crate {
     /// All versions published to crates.io, guaranteed to be sorted so that the most recent version is last.
     /// The format is as specified in Cargo.toml:version
@@ -73,7 +73,7 @@ impl From<(SystemTime, &Context, &Context)> for ContextDelta {
 }
 
 /// Pack all information we know about a change made to a version of a crate.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Default)]
 pub struct CrateVersion {
     /// The crate name, i.e. `clap`.
     pub name: String,
