@@ -120,12 +120,12 @@ pub trait TreeAccess {
 
     fn key(&self, item: &Self::Item) -> Vec<u8>;
     fn map_insert_return_value(&self, v: IVec) -> Self::InsertResult;
-    fn bytes_to_ivec(&self, item: &Self::Item, bytes: Option<&[u8]>) -> Option<IVec>;
+    fn merge(&self, new_item: &Self::Item, existing_item: Option<&[u8]>) -> Option<IVec>;
 
     fn insert(&self, item: &Self::Item) -> Result<Self::InsertResult> {
         self.tree()
             .update_and_fetch(self.key(item), |bytes: Option<&[u8]>| {
-                self.bytes_to_ivec(item, bytes)
+                self.merge(item, bytes)
             })?
             .ok_or_else(|| Error::Bug("We always put a crate or update the existing one"))
             .map(|v| self.map_insert_return_value(v))
@@ -149,19 +149,19 @@ impl TreeAccess for CratesTree {
         c.versions.len() == 1
     }
 
-    fn bytes_to_ivec(&self, item: &CrateVersion, bytes: Option<&[u8]>) -> Option<IVec> {
-        Some(match bytes {
+    fn merge(&self, new_item: &CrateVersion, existing_item: Option<&[u8]>) -> Option<IVec> {
+        Some(match existing_item {
             Some(bytes) => {
                 let mut c = Crate::from(bytes);
-                c.versions.push(item.version.to_owned());
+                c.versions.push(new_item.version.to_owned());
                 c.versions.sort();
                 c
             }
             None => Crate {
-                versions: vec![item.version.to_owned()],
+                versions: vec![new_item.version.to_owned()],
             },
         })
-        .map(From::from)
+        .map(IVec::from)
     }
 }
 
