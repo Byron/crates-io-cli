@@ -3,6 +3,7 @@
 
 * [x] Move data types to model module
 * [x] replace from traits with macro
-* [ ] tree-access can be generalized - do it for each type we store
+* [x] tree-access can be generalized - do it for each type we store
+* [ ] integrate 'context' tree into base trait as much as feasible
 * [ ] replace async-io with futures-rs for future-proofing
 * [ ] Add tree-based progress system based on a trait and callbacks

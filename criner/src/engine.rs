@@ -1,7 +1,6 @@
 use crate::{
     error::{Error, Result},
-    persistence::Db,
-    persistence::TreeAccess,
+    persistence::{Db, TreeAccess},
     utils::*,
 };
 use async_std;
@@ -34,6 +33,7 @@ async fn process_changes(
         move || {
             let meta = db.open_crate_versions()?;
             let krate = db.open_crates()?;
+            let context = db.context()?;
             // NOTE: this loop can also be a stream, but that makes computation slower due to overhead
             // Thus we just do this 'quickly' on the main thread, knowing that criner really needs its
             // own executor or resources.
@@ -43,10 +43,10 @@ async fn process_changes(
                 // NOTE: For now, not transactional, but we *could*!
                 {
                     meta.insert(&version)?;
-                    db.update_context(|c| c.counts.crate_versions += 1)?;
+                    context.update(|c| c.counts.crate_versions += 1)?;
                 }
-                if krate.insert(&version)? {
-                    db.update_context(|c| c.counts.crates += 1)?;
+                if krate.upsert(&version)? {
+                    context.update(|c| c.counts.crates += 1)?;
                 }
                 if versions_stored % check_interval == 0 {
                     info!(
@@ -56,7 +56,7 @@ async fn process_changes(
                     );
                 }
             }
-            db.update_context(|c| {
+            context.update(|c| {
                 c.durations.fetch_crate_versions += SystemTime::now()
                     .duration_since(start)
                     .unwrap_or_else(|_| Duration::default())
@@ -81,7 +81,7 @@ pub async fn run(
     check(deadline)?;
 
     let db = Db::open(db)?;
-    let previous_context = db.context()?;
+    let previous_context = db.context()?.global()?;
     let res = {
         let db = db.clone();
         process_changes(db, crates_io_path, deadline).await
@@ -94,8 +94,8 @@ pub async fn run(
                 .unwrap_or_default()
         )
     );
-    info!("{:#?}", db.context()?);
-    let mut deltas = db.insert_context_delta(previous_context)?;
+    info!("{:#?}", db.context()?.global()?);
+    let mut deltas = db.context()?.add_delta(previous_context)?;
     info!("change since last run");
     info!("{:#?}", deltas.pop());
     res

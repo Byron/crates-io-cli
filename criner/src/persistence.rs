@@ -37,20 +37,8 @@ impl Db {
         })
     }
 
-    pub fn context_tree(&self) -> Result<ContextTree> {
+    pub fn context(&self) -> Result<ContextTree> {
         Ok(ContextTree { inner: &self.meta })
-    }
-
-    pub fn update_context(&self, f: impl Fn(&mut Context)) -> Result<Context> {
-        self.context_tree()?.update(f)
-    }
-
-    pub fn context(&self) -> Result<Context> {
-        self.context_tree()?.context()
-    }
-
-    pub fn insert_context_delta(&self, earlier: Context) -> Result<Vec<ContextDelta>> {
-        self.context_tree()?.insert_context_delta(earlier)
     }
 }
 
@@ -69,7 +57,7 @@ pub trait TreeAccess {
         existing_item: Option<&[u8]>,
     ) -> Option<Self::StorageItem>;
 
-    fn insert(&self, item: &Self::InsertItem) -> Result<Self::InsertResult> {
+    fn upsert(&self, item: &Self::InsertItem) -> Result<Self::InsertResult> {
         self.tree()
             .update_and_fetch(self.key(item), |existing: Option<&[u8]>| {
                 self.merge(item, existing).map(Into::into)
@@ -87,13 +75,14 @@ impl<'a> ContextTree<'a> {
     const CONTEXT_GLOBAL: &'static [u8] = b"context";
     const CONTEXT_SERIES_PREFIX: &'static str = "context/";
 
-    pub fn context(&self) -> Result<Context> {
+    pub fn global(&self) -> Result<Context> {
         self.inner
             .get(Self::CONTEXT_GLOBAL)
             .map_err(From::from)
             .map(|bytes| bytes.map_or_else(Context::default, From::from))
     }
 
+    // TODO: implement this in trait
     pub fn update(&self, f: impl Fn(&mut Context)) -> Result<Context> {
         self.inner
             .update_and_fetch(Self::CONTEXT_GLOBAL, |bytes: Option<&[u8]>| {
@@ -111,7 +100,7 @@ impl<'a> ContextTree<'a> {
             .ok_or_else(|| Error::Bug("We always set a context"))
     }
 
-    pub fn insert_context_delta(&self, earlier: Context) -> Result<Vec<ContextDelta>> {
+    pub fn add_delta(&self, earlier: Context) -> Result<Vec<ContextDelta>> {
         assert_eq!(
             Self::CONTEXT_GLOBAL,
             &Self::CONTEXT_SERIES_PREFIX.as_bytes()[..Self::CONTEXT_GLOBAL.len()]
@@ -130,7 +119,7 @@ impl<'a> ContextTree<'a> {
                 .get(..10)
                 .expect("YYYY-MM-DD - 10 bytes")
         );
-        let current: Context = self.context()?;
+        let current: Context = self.global()?;
         self.inner
             .update_and_fetch(key, move |bytes: Option<&[u8]>| {
                 let delta: ContextDelta = (sample_time, &current, &earlier).into();
