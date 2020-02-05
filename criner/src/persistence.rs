@@ -18,7 +18,6 @@ impl Db {
         let inner = sled::Config::new()
             .print_profile_on_drop(true)
             .use_compression(true)
-            .compression_factor(22)
             .path(path)
             .open()?;
         let meta = inner.open_tree("meta")?;
