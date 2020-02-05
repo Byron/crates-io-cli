@@ -32,84 +32,21 @@ impl Db {
         })
     }
 
-    const CONTEXT_GLOBAL: &'static [u8] = b"context";
-    const CONTEXT_SERIES_PREFIX: &'static str = "context/";
+    pub fn context_tree(&self) -> Result<ContextTree> {
+        Ok(ContextTree { inner: &self.meta })
+    }
 
     pub fn update_context(&self, f: impl Fn(&mut Context)) -> Result<Context> {
-        self.meta
-            .update_and_fetch(Self::CONTEXT_GLOBAL, |bytes: Option<&[u8]>| {
-                Some(match bytes {
-                    Some(bytes) => {
-                        // NOTE: We assume that a version can only be added once! They are immutable.
-                        let mut ctx = bytes.into();
-                        f(&mut ctx);
-                        ctx
-                    }
-                    None => Context::default(),
-                })
-            })?
-            .map(From::from)
-            .ok_or_else(|| Error::Bug("We always set a context"))
+        self.context_tree()?.update(f)
     }
 
     pub fn context(&self) -> Result<Context> {
-        self.meta
-            .get(Self::CONTEXT_GLOBAL)
-            .map_err(From::from)
-            .map(|bytes| bytes.map_or_else(Context::default, From::from))
+        self.context_tree()?.context()
     }
 
     pub fn insert_context_delta(&self, earlier: Context) -> Result<Vec<ContextDelta>> {
-        assert_eq!(
-            Self::CONTEXT_GLOBAL,
-            &Self::CONTEXT_SERIES_PREFIX.as_bytes()[..Self::CONTEXT_GLOBAL.len()]
-        );
-        assert_eq!(
-            Self::CONTEXT_SERIES_PREFIX.len() - 1,
-            Self::CONTEXT_GLOBAL.len()
-        );
-
-        let sample_time = SystemTime::now();
-        let key = format!(
-            "{}{}",
-            Self::CONTEXT_SERIES_PREFIX,
-            humantime::format_rfc3339(sample_time)
-                .to_string()
-                .get(..10)
-                .expect("YYYY-MM-DD - 10 bytes")
-        );
-        let current: Context = self.context()?;
-        self.meta
-            .update_and_fetch(key, move |bytes: Option<&[u8]>| {
-                let delta: ContextDelta = (sample_time, &current, &earlier).into();
-                Some(match bytes {
-                    Some(bytes) => {
-                        let mut samples: ContextDeltaVec = rmp_serde::from_read(bytes).expect(
-                            "deserialization of ContextDelta must not fail. Migration TODO",
-                        );
-                        samples.0.push(delta);
-                        samples
-                    }
-                    None => ContextDeltaVec(vec![delta]),
-                })
-            })?
-            .map(From::from)
-            .map(|ContextDeltaVec(v)| v)
-            .ok_or_else(|| Error::Bug("We always have at least one sample"))
+        self.context_tree()?.insert_context_delta(earlier)
     }
-}
-
-fn version_id(v: &CrateVersion) -> Vec<u8> {
-    let mut id = Vec::with_capacity(v.name.len() + v.version.len() + 1);
-    id.extend_from_slice(&v.name.as_bytes());
-    id.push(b':');
-    id.extend_from_slice(&v.version.as_bytes());
-    id
-}
-
-#[derive(Clone)]
-pub struct CratesTree {
-    inner: sled::Tree,
 }
 
 pub trait TreeAccess {
@@ -135,6 +72,83 @@ pub trait TreeAccess {
             .ok_or_else(|| Error::Bug("We always put a crate or update the existing one"))
             .map(|v| self.map_insert_return_value(v))
     }
+}
+
+pub struct ContextTree<'a> {
+    inner: &'a sled::Tree,
+}
+
+impl<'a> ContextTree<'a> {
+    const CONTEXT_GLOBAL: &'static [u8] = b"context";
+    const CONTEXT_SERIES_PREFIX: &'static str = "context/";
+
+    pub fn context(&self) -> Result<Context> {
+        self.inner
+            .get(Self::CONTEXT_GLOBAL)
+            .map_err(From::from)
+            .map(|bytes| bytes.map_or_else(Context::default, From::from))
+    }
+
+    pub fn update(&self, f: impl Fn(&mut Context)) -> Result<Context> {
+        self.inner
+            .update_and_fetch(Self::CONTEXT_GLOBAL, |bytes: Option<&[u8]>| {
+                Some(match bytes {
+                    Some(bytes) => {
+                        // NOTE: We assume that a version can only be added once! They are immutable.
+                        let mut ctx = bytes.into();
+                        f(&mut ctx);
+                        ctx
+                    }
+                    None => Context::default(),
+                })
+            })?
+            .map(From::from)
+            .ok_or_else(|| Error::Bug("We always set a context"))
+    }
+
+    pub fn insert_context_delta(&self, earlier: Context) -> Result<Vec<ContextDelta>> {
+        assert_eq!(
+            Self::CONTEXT_GLOBAL,
+            &Self::CONTEXT_SERIES_PREFIX.as_bytes()[..Self::CONTEXT_GLOBAL.len()]
+        );
+        assert_eq!(
+            Self::CONTEXT_SERIES_PREFIX.len() - 1,
+            Self::CONTEXT_GLOBAL.len()
+        );
+
+        let sample_time = SystemTime::now();
+        let key = format!(
+            "{}{}",
+            Self::CONTEXT_SERIES_PREFIX,
+            humantime::format_rfc3339(sample_time)
+                .to_string()
+                .get(..10)
+                .expect("YYYY-MM-DD - 10 bytes")
+        );
+        let current: Context = self.context()?;
+        self.inner
+            .update_and_fetch(key, move |bytes: Option<&[u8]>| {
+                let delta: ContextDelta = (sample_time, &current, &earlier).into();
+                Some(match bytes {
+                    Some(bytes) => {
+                        let mut samples: ContextDeltaVec = rmp_serde::from_read(bytes).expect(
+                            "deserialization of ContextDelta must not fail. Migration TODO",
+                        );
+                        samples.0.push(delta);
+                        samples
+                    }
+                    None => ContextDeltaVec(vec![delta]),
+                })
+            })?
+            .map(From::from)
+            .map(|ContextDeltaVec(v)| v)
+            .ok_or_else(|| Error::Bug("We always have at least one sample"))
+    }
+}
+
+#[derive(Clone)]
+pub struct CratesTree {
+    inner: sled::Tree,
 }
 
 impl TreeAccess for CratesTree {
@@ -177,6 +191,13 @@ pub struct CrateVersionsTree {
 
 impl CrateVersionsTree {
     pub fn insert(&self, v: &CrateVersion) -> Result<()> {
+        fn version_id(v: &CrateVersion) -> Vec<u8> {
+            let mut id = Vec::with_capacity(v.name.len() + v.version.len() + 1);
+            id.extend_from_slice(&v.name.as_bytes());
+            id.push(b':');
+            id.extend_from_slice(&v.version.as_bytes());
+            id
+        }
         self.inner
             .insert(version_id(v), rmp_serde::to_vec(v)?)
             .map_err(Error::from)
