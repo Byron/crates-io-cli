@@ -4,7 +4,7 @@ use crate::{
     utils::*,
 };
 use crates_index_diff::Index;
-use futures::task::Spawn;
+use futures::{executor::ThreadPool, task::Spawn};
 use log::info;
 use std::{
     path::Path,
@@ -89,11 +89,17 @@ pub async fn run(
     let start_of_computation = SystemTime::now();
     check(deadline)?;
 
-    let pool = futures::executor::ThreadPool::new()?;
+    // NOTE: pool should be big enough to hold all possible blocking tasks running in parallel.
+    // The main thread is expected to pool non-blocking tasks.
+    // Of course, non-blocking tasks may also be scheduled there, which is when you probably want
+    // to have another free thread just for that.
+    // All this is theory.
+    let pool_size = 2;
+    let blocking_task_pool = ThreadPool::builder().pool_size(pool_size).create()?;
     let db = Db::open(db)?;
     let res = {
         let db = db.clone();
-        process_changes(db, crates_io_path, deadline, pool).await
+        process_changes(db, crates_io_path, deadline, blocking_task_pool).await
     };
     info!(
         "Wallclock elapsed: {}",
