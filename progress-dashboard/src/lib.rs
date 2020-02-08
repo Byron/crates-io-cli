@@ -1,15 +1,6 @@
 use dashmap::DashMap;
 use std::sync::Arc;
 
-#[derive(Clone, Default, Debug)]
-pub struct Config {}
-
-impl Config {
-    pub fn create(self) -> TreeRoot {
-        TreeRoot::new()
-    }
-}
-
 #[derive(Clone, Debug)]
 pub struct TreeRoot {
     title: String,
@@ -30,16 +21,26 @@ impl TreeRoot {
             title: String::new(),
             child_count: 0,
             key: Key((None, None, None)),
-            tree: Arc::new(DashMap::new()),
+            tree: Arc::new(DashMap::with_capacity(100)),
         }
     }
 
-    pub fn init(&mut self, max: Option<ProgressStep>) {
+    pub fn init(&mut self, max: Option<ProgressStep>, unit: Option<&'static str>) {
         self.tree.get_mut(&self.key).map(|mut r| {
             *r.value_mut() = Some(Progress {
-                step: 0,
                 done_at: max,
+                unit,
+                ..Default::default()
             })
+        });
+    }
+
+    pub fn set(&mut self, step: ProgressStep) {
+        self.tree.get_mut(&self.key).map(|mut r| {
+            r.value_mut()
+                .as_mut()
+                .expect("init() to be called first")
+                .step = step;
         });
     }
 
@@ -75,4 +76,5 @@ impl Key {
 struct Progress {
     step: ProgressStep,
     done_at: Option<ProgressStep>,
+    unit: Option<&'static str>,
 }

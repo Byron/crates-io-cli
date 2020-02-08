@@ -1,16 +1,32 @@
 use futures::task::{Spawn, SpawnExt};
 use futures_timer::Delay;
 use progress_dashboard::TreeRoot;
-use rand::random;
+use rand::prelude::*;
 use std::error::Error;
+use std::time::Duration;
+
+const MAX_STEPS: u8 = 100;
+const UNITS: &[&str] = &["Mb", "kb", "items", "files"];
 
 async fn work_item(mut progress: TreeRoot) -> () {
     let max: u8 = random();
-    progress.init(if max > 100 {
-        None
-    } else {
-        Some((max % 100).into())
-    });
+    progress.init(
+        if max > MAX_STEPS {
+            None
+        } else {
+            Some((max % MAX_STEPS).into())
+        },
+        if (max as usize % UNITS.len() + 1) == 0 {
+            None
+        } else {
+            UNITS.choose(&mut thread_rng()).map(|&s| s)
+        },
+    );
+
+    for step in 0..max {
+        progress.set(step as u32);
+        Delay::new(Duration::from_millis(100)).await;
+    }
     ()
 }
 
@@ -27,18 +43,17 @@ async fn find_work(
     }
 
     // one-off ambient tasks
-    for id in 0..max_level as usize * 10 {
+    for id in 0..max_level as usize * 2 {
         pool.spawn(work_item(tree.add_child(format!("work {}", id + 1))))
             .expect("spawn to work");
     }
 
     let subtree = tree.add_child(format!("Level {}", current + 1));
-
-    Ok(())
+    find_work(NestingLevel(current + 1), max, subtree, pool).await
 }
 
 async fn do_work(pool: impl Spawn + Clone + Send + 'static) -> Result {
-    let progress = progress_dashboard::Config::default().create();
+    let progress = progress_dashboard::TreeRoot::new();
     let local_work = find_work(
         NestingLevel(0),
         NestingLevel(2),
