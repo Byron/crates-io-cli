@@ -1,3 +1,4 @@
+use futures::future::AbortHandle;
 use futures::task::{Spawn, SpawnExt};
 use futures_timer::Delay;
 use log::info;
@@ -69,6 +70,16 @@ async fn do_work(pool: impl Spawn + Clone + Send + 'static) -> Result {
         abortable_render.await.ok();
     })
     .expect("GUI to be spawned");
+
+    abort_gui_on_signal(trigger.clone());
+    let res = futures::future::join(local_work, threaded_work).await.0;
+    trigger.abort();
+    res
+}
+
+// This only actually happens if someone sends a signal using Kill - the GUI
+// should handle input events to emulate Ctrl+C
+fn abort_gui_on_signal(trigger: AbortHandle) {
     let signals = Signals::new(&[signal_hook::SIGINT, signal_hook::SIGTERM])
         .expect("signals to be set successfully");
     std::thread::spawn({
@@ -77,7 +88,6 @@ async fn do_work(pool: impl Spawn + Clone + Send + 'static) -> Result {
             for signal in &signals {
                 match signal {
                     signal_hook::SIGINT | signal_hook::SIGTERM => {
-                        eprintln!("TRIGGERED");
                         trigger.abort()
                     }
                     _ => unreachable!(),
@@ -85,9 +95,6 @@ async fn do_work(pool: impl Spawn + Clone + Send + 'static) -> Result {
             }
         }
     });
-    let res = futures::future::join(local_work, threaded_work).await.0;
-    trigger.abort();
-    res
 }
 
 fn main() -> Result {
