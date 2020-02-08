@@ -57,13 +57,21 @@ async fn do_work(pool: impl Spawn + Clone + Send + 'static) -> Result {
         .expect("spawning to work - SpawnError cannot be ");
 
     // Now we should handle signals to be able to cleanup properly
-    pool.spawn(tui::render(
+    let (abortable_render, trigger) = futures::future::abortable(tui::render(
         progress,
         tui::Config {
             frames_per_second: 30,
         },
-    ))
+    ));
+    pool.spawn(async {
+        abortable_render.await.ok();
+    })
     .expect("GUI to be spawned");
+    pool.spawn(async move {
+        Delay::new(Duration::from_secs(2)).await;
+        trigger.abort();
+    })
+    .unwrap();
     let res = futures::future::join(local_work, threaded_work).await.0;
     res
 }
