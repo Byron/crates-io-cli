@@ -6,9 +6,9 @@ use std::fmt;
 use std::time;
 
 #[derive(Debug)]
-pub struct DeadlineFormat(pub time::SystemTime);
+pub struct FormatDeadline(pub time::SystemTime);
 
-impl fmt::Display for DeadlineFormat {
+impl fmt::Display for FormatDeadline {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> std::result::Result<(), fmt::Error> {
         let now = time::SystemTime::now();
         write!(
@@ -28,7 +28,7 @@ quick_error! {
         Bug(d: &'static str) {
             display("{}", d)
         }
-        DeadlineExceeded(d: DeadlineFormat) {
+        DeadlineExceeded(d: FormatDeadline) {
             display("Stopped computation as deadline was reached {}.", d)
         }
         RmpSerdeEncode(err: rmp_serde::encode::Error) {

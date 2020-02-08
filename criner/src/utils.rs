@@ -1,4 +1,4 @@
-use crate::error::{DeadlineFormat, Error, Result};
+use crate::error::{Error, FormatDeadline, Result};
 use async_std::{future, task};
 use std::{future::Future, time::SystemTime};
 
@@ -6,7 +6,7 @@ pub fn check(deadline: Option<SystemTime>) -> Result<()> {
     deadline
         .map(|d| {
             if SystemTime::now() >= d {
-                Err(Error::DeadlineExceeded(DeadlineFormat(d)))
+                Err(Error::DeadlineExceeded(FormatDeadline(d)))
             } else {
                 Ok(())
             }
@@ -21,7 +21,7 @@ where
     match deadline {
         Some(d) => future::timeout(d.duration_since(SystemTime::now()).unwrap_or_default(), f)
             .await
-            .map_err(|_| Error::DeadlineExceeded(DeadlineFormat(d))),
+            .map_err(|_| Error::DeadlineExceeded(FormatDeadline(d))),
         None => Ok(f.await),
     }
 }
