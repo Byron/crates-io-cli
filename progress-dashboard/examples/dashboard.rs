@@ -39,10 +39,12 @@ async fn find_work(max: NestingLevel, mut tree: TreeRoot, pool: impl Spawn) -> R
     let NestingLevel(max_level) = max;
     for level in 0..max_level {
         // one-off ambient tasks
+        tree.init(Some(max_level as u32), Some("work items"));
         for id in 0..max_level as usize * 2 {
             pool.spawn(work_item(tree.add_child(format!("work {}", id + 1))))
                 .expect("spawn to work");
             info!("spawn work: wait");
+            tree.set(id as u32);
             Delay::new(Duration::from_millis(SPAWN_DELAY_MS)).await;
         }
         tree = tree.add_child(format!("Level {}", level + 1));
@@ -51,30 +53,31 @@ async fn find_work(max: NestingLevel, mut tree: TreeRoot, pool: impl Spawn) -> R
     Ok(())
 }
 
-async fn do_work(pool: impl Spawn + Clone + Send + 'static) -> Result {
+async fn work_forever(pool: impl Spawn + Clone + Send + 'static) -> Result {
     let progress = progress_dashboard::TreeRoot::new();
-    let local_work = find_work(NestingLevel(2), progress.clone(), pool.clone());
-    let threaded_work = pool
-        .spawn_with_handle(find_work(NestingLevel(2), progress.clone(), pool.clone()))
-        .expect("spawning to work - SpawnError cannot be ");
-
     // Now we should handle signals to be able to cleanup properly
     let (abortable_render, trigger) = futures::future::abortable(tui::render(
-        progress,
+        progress.clone(),
         tui::Config {
             frames_per_second: 30,
         },
     ));
-
     pool.spawn(async {
         abortable_render.await.ok();
     })
     .expect("GUI to be spawned");
-
     abort_gui_on_signal(trigger.clone());
-    let res = futures::future::join(local_work, threaded_work).await.0;
+
+    for _ in 1..10 {
+        let local_work = find_work(NestingLevel(2), progress.clone(), pool.clone());
+        let threaded_work = pool
+            .spawn_with_handle(find_work(NestingLevel(2), progress.clone(), pool.clone()))
+            .expect("spawning to work - SpawnError cannot be ");
+
+        let _ = futures::future::join(local_work, threaded_work).await;
+    }
     trigger.abort();
-    res
+    Ok(())
 }
 
 // This only actually happens if someone sends a signal using Kill - the GUI
@@ -88,7 +91,8 @@ fn abort_gui_on_signal(trigger: AbortHandle) {
             for signal in &signals {
                 match signal {
                     signal_hook::SIGINT | signal_hook::SIGTERM => {
-                        trigger.abort()
+                        trigger.abort();
+                        return;
                     }
                     _ => unreachable!(),
                 }
@@ -103,7 +107,7 @@ fn main() -> Result {
         .pool_size(1)
         .create()
         .expect("pool creation to work (io-error is not Send");
-    futures::executor::block_on(do_work(pool))
+    futures::executor::block_on(work_forever(pool))
 }
 
 struct NestingLevel(u8);
