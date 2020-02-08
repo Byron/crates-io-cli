@@ -3,6 +3,7 @@ use futures_timer::Delay;
 use log::info;
 use progress_dashboard::{tui, TreeRoot};
 use rand::prelude::*;
+use signal_hook::iterator::Signals;
 use std::{error::Error, time::Duration};
 
 const MAX_STEPS: u8 = 100;
@@ -63,16 +64,29 @@ async fn do_work(pool: impl Spawn + Clone + Send + 'static) -> Result {
             frames_per_second: 30,
         },
     ));
+
     pool.spawn(async {
         abortable_render.await.ok();
     })
     .expect("GUI to be spawned");
-    pool.spawn(async move {
-        Delay::new(Duration::from_secs(2)).await;
-        trigger.abort();
-    })
-    .unwrap();
+    let signals = Signals::new(&[signal_hook::SIGINT, signal_hook::SIGTERM])
+        .expect("signals to be set successfully");
+    std::thread::spawn({
+        let trigger = trigger.clone();
+        move || {
+            for signal in &signals {
+                match signal {
+                    signal_hook::SIGINT | signal_hook::SIGTERM => {
+                        eprintln!("TRIGGERED");
+                        trigger.abort()
+                    }
+                    _ => unreachable!(),
+                }
+            }
+        }
+    });
     let res = futures::future::join(local_work, threaded_work).await.0;
+    trigger.abort();
     res
 }
 

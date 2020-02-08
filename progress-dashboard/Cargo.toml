@@ -32,4 +32,5 @@ futures = { version = "0.3.4", optional = true }
 futures = { version = "0.3.4", features = ["thread-pool"] }
 futures-timer = "3.0.1"
 rand = "0.7.3"
+signal-hook = "0.1.13"
 
