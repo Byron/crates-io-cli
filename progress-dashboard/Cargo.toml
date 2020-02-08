@@ -1,0 +1,18 @@
+[package]
+name = "progress-dashboard"
+version = "0.1.0"
+authors = ["Sebastian Thiel <sebastian.thiel@icloud.com>"]
+description = "A dashboard for highly asynchronous and possibly blocking tasks"
+edition = "2018"
+publish = false
+include = ["src/**/*", "Cargo.*"]
+license = "MIT"
+repository = "https://github.com/Byron/crates-io-cli-rs"
+readme = "README.md"
+
+[lib]
+doctest = false
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]

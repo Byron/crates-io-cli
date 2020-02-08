@@ -9,13 +9,3 @@
 * [ ] integrate async progress
 * [ ] downloads with backpressure
 * [ ] _(investigate)_ resumable downloads
-
-### Async Progress with TTY renderer
-
-* example-driven development for tree-interface and visualization
-  * [ ] blocking indicator
-  * [ ] unbounded progress
-  * [ ] tasks-done list
-  * [ ] tasks overview headline
-  * [ ] custom statistics window
-* [ ] document test-strategy (at least)

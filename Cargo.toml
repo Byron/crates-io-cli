@@ -1,10 +1,10 @@
 [package]
 authors = ["Sebastian Thiel <byronimo@gmail.com>"]
 description = "Interact with crates.io from the command-line"
-keywords = ["crates", "index", "search", "diff", "cli"]
-license = "MIT"
-include = ["src/**/*", "Cargo.*"]
+keywords = ["crates", "index", "search", "diff", "cli", "mine"]
 name = "crates-io-cli"
+include = ["src/**/*", "Cargo.*"]
+license = "MIT"
 repository = "https://github.com/Byron/crates-io-cli-rs"
 readme = "README.md"
 edition = "2018"
@@ -71,4 +71,4 @@ codegen-units = 1
 overflow-checks = true
 
 [workspace]
-members = ["criner"]
+members = ["criner", "progress-dashboard"]
