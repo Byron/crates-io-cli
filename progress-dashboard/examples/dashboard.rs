@@ -6,7 +6,11 @@ use std::error::Error;
 
 async fn work_item(mut progress: TreeRoot) -> () {
     let max: u8 = random();
-    progress.init(if max > 100 { None } else { Some(max.into()) });
+    progress.init(if max > 100 {
+        None
+    } else {
+        Some((max % 100).into())
+    });
     ()
 }
 

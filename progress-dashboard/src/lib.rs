@@ -46,7 +46,7 @@ impl TreeRoot {
     pub fn add_child(&mut self, title: impl Into<String>) -> TreeRoot {
         let child_key = self.key.add_child(self.child_count);
         self.tree.insert(child_key, None);
-        self.child_count += 1;
+        self.child_count = self.child_count.wrapping_add(1);
         TreeRoot {
             child_count: 0,
             title: title.into(),
