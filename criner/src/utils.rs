@@ -1,6 +1,6 @@
 use crate::error::{Error, FormatDeadline, Result};
 use async_std::task;
-use futures;
+use futures::future::{self, Either};
 use futures_timer::Delay;
 use std::{future::Future, time::SystemTime};
 
@@ -21,17 +21,16 @@ where
     F: Future<Output = T> + Unpin,
 {
     match deadline {
-        Some(d) => match futures::future::select(
-            Delay::new(d.duration_since(SystemTime::now()).unwrap_or_default()),
-            f,
-        )
-        .await
-        {
-            futures::future::Either::Left((_, _f)) => {
-                Err(Error::DeadlineExceeded(FormatDeadline(d)))
+        Some(d) => {
+            let selector = future::select(
+                Delay::new(d.duration_since(SystemTime::now()).unwrap_or_default()),
+                f,
+            );
+            match selector.await {
+                Either::Left((_, _f)) => Err(Error::DeadlineExceeded(FormatDeadline(d))),
+                Either::Right((r, _delay)) => Ok(r),
             }
-            futures::future::Either::Right((r, _delay)) => Ok(r),
-        },
+        }
         None => Ok(f.await),
     }
 }
