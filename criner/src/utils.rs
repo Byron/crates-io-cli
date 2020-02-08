@@ -1,6 +1,9 @@
 use crate::error::{Error, FormatDeadline, Result};
-use async_std::task;
-use futures::future::{self, Either};
+use futures::task::SpawnExt;
+use futures::{
+    future::{self, Either},
+    task::Spawn,
+};
 use futures_timer::Delay;
 use std::{future::Future, time::SystemTime};
 
@@ -35,10 +38,10 @@ where
     }
 }
 
-pub async fn enforce_blocking<F, T>(deadline: Option<SystemTime>, f: F) -> Result<T>
+pub async fn enforce_blocking<F, T>(deadline: Option<SystemTime>, f: F, s: impl Spawn) -> Result<T>
 where
     F: FnOnce() -> T + Send + 'static,
     T: Send + 'static,
 {
-    enforce(deadline, task::spawn_blocking(f)).await
+    enforce(deadline, s.spawn_with_handle(async { f() })?).await
 }

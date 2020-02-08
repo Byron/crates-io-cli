@@ -31,6 +31,10 @@ quick_error! {
         DeadlineExceeded(d: FormatDeadline) {
             display("Stopped computation as deadline was reached {}.", d)
         }
+        Spawn(err: futures::task::SpawnError) {
+            from()
+            cause(err)
+        }
         RmpSerdeEncode(err: rmp_serde::encode::Error) {
             from()
             cause(err)
@@ -40,6 +44,10 @@ quick_error! {
             cause(err)
         }
         Sled(err: sled::Error) {
+            from()
+            cause(err)
+        }
+        Io(err: std::io::Error) {
             from()
             cause(err)
         }
