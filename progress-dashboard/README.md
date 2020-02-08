@@ -1,3 +1,9 @@
+## Goals
+
+* fast insertions and updates
+
+## Non-Goals
+* fast reads
 
 ## Tasks
 
