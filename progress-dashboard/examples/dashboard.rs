@@ -1,12 +1,14 @@
 use futures::task::{Spawn, SpawnExt};
 use futures_timer::Delay;
+use log::info;
 use progress_dashboard::TreeRoot;
 use rand::prelude::*;
-use std::error::Error;
-use std::time::Duration;
+use std::{error::Error, time::Duration};
 
 const MAX_STEPS: u8 = 100;
 const UNITS: &[&str] = &["Mb", "kb", "items", "files"];
+const WORK_DELAY_MS: u64 = 100;
+const SPAWN_DELAY_MS: u64 = 500;
 
 async fn work_item(mut progress: TreeRoot) -> () {
     let max: u8 = random();
@@ -25,7 +27,8 @@ async fn work_item(mut progress: TreeRoot) -> () {
 
     for step in 0..max {
         progress.set(step as u32);
-        Delay::new(Duration::from_millis(100)).await;
+        info!("work-item: wait");
+        Delay::new(Duration::from_millis(WORK_DELAY_MS)).await;
     }
     ()
 }
@@ -37,6 +40,8 @@ async fn find_work(max: NestingLevel, mut tree: TreeRoot, pool: impl Spawn) -> R
         for id in 0..max_level as usize * 2 {
             pool.spawn(work_item(tree.add_child(format!("work {}", id + 1))))
                 .expect("spawn to work");
+            info!("spawn work: wait");
+            Delay::new(Duration::from_millis(SPAWN_DELAY_MS)).await;
         }
         tree = tree.add_child(format!("Level {}", level + 1));
     }
@@ -56,6 +61,7 @@ async fn do_work(pool: impl Spawn + Clone + Send + 'static) -> Result {
 }
 
 fn main() -> Result {
+    env_logger::init();
     // Use spawn as well to simulate Send futures
     let pool = futures::executor::ThreadPool::builder()
         .pool_size(1)

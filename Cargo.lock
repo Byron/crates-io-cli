@@ -954,8 +954,10 @@ name = "progress-dashboard"
 version = "0.1.0"
 dependencies = [
  "dashmap",
+ "env_logger",
  "futures 0.3.4",
  "futures-timer",
+ "log",
  "rand",
 ]
 
