@@ -67,7 +67,9 @@ impl Key {
     fn add_child(self, child_id: u8) -> Key {
         Key(match self {
             Key((None, None, None)) => (Some(child_id), None, None),
-            _ => unimplemented!(),
+            Key((a, None, None)) => (a, Some(child_id), None),
+            Key((a, b, None)) => (a, b, Some(child_id)),
+            Key((a, b, _c)) => (a, b, Some(child_id)),
         })
     }
 }

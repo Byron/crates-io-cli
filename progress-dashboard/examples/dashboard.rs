@@ -30,45 +30,29 @@ async fn work_item(mut progress: TreeRoot) -> () {
     ()
 }
 
-async fn find_work(
-    current: NestingLevel,
-    max: NestingLevel,
-    mut tree: TreeRoot,
-    pool: impl Spawn,
-) -> Result {
-    let NestingLevel(current) = current;
+async fn find_work(max: NestingLevel, mut tree: TreeRoot, pool: impl Spawn) -> Result {
     let NestingLevel(max_level) = max;
-    if current > max_level {
-        return Ok(());
+    for level in 0..max_level {
+        // one-off ambient tasks
+        for id in 0..max_level as usize * 2 {
+            pool.spawn(work_item(tree.add_child(format!("work {}", id + 1))))
+                .expect("spawn to work");
+        }
+        tree = tree.add_child(format!("Level {}", level + 1));
     }
 
-    // one-off ambient tasks
-    for id in 0..max_level as usize * 2 {
-        pool.spawn(work_item(tree.add_child(format!("work {}", id + 1))))
-            .expect("spawn to work");
-    }
-
-    let subtree = tree.add_child(format!("Level {}", current + 1));
-    find_work(NestingLevel(current + 1), max, subtree, pool).await
+    Ok(())
 }
 
 async fn do_work(pool: impl Spawn + Clone + Send + 'static) -> Result {
     let progress = progress_dashboard::TreeRoot::new();
-    let local_work = find_work(
-        NestingLevel(0),
-        NestingLevel(2),
-        progress.clone(),
-        pool.clone(),
-    );
+    let local_work = find_work(NestingLevel(2), progress.clone(), pool.clone());
     let threaded_work = pool
-        .spawn_with_handle(find_work(
-            NestingLevel(0),
-            NestingLevel(2),
-            progress,
-            pool.clone(),
-        ))
+        .spawn_with_handle(find_work(NestingLevel(2), progress.clone(), pool.clone()))
         .expect("spawning to work - SpawnError cannot be ");
-    futures::future::join(local_work, threaded_work).await.0
+    let res = futures::future::join(local_work, threaded_work).await.0;
+    dbg!(progress);
+    res
 }
 
 fn main() -> Result {
