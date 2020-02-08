@@ -1,7 +1,7 @@
 use futures::task::{Spawn, SpawnExt};
 use futures_timer::Delay;
 use log::info;
-use progress_dashboard::TreeRoot;
+use progress_dashboard::{tui, TreeRoot};
 use rand::prelude::*;
 use std::{error::Error, time::Duration};
 
@@ -55,13 +55,20 @@ async fn do_work(pool: impl Spawn + Clone + Send + 'static) -> Result {
     let threaded_work = pool
         .spawn_with_handle(find_work(NestingLevel(2), progress.clone(), pool.clone()))
         .expect("spawning to work - SpawnError cannot be ");
+
+    // Now we should handle signals to be able to cleanup properly
+    pool.spawn(tui::render(
+        progress,
+        tui::Config {
+            frames_per_second: 30,
+        },
+    ))
+    .expect("GUI to be spawned");
     let res = futures::future::join(local_work, threaded_work).await.0;
-    dbg!(progress);
     res
 }
 
 fn main() -> Result {
-    env_logger::init();
     // Use spawn as well to simulate Send futures
     let pool = futures::executor::ThreadPool::builder()
         .pool_size(1)
