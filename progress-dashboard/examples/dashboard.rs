@@ -65,9 +65,11 @@ async fn find_work(
 
             Delay::new(Duration::from_millis(SPAWN_DELAY_MS)).await;
         }
-        let tmp = level_progress.add_child(format!("Level {}", level + 1));
-        progresses.push(level_progress);
-        level_progress = tmp;
+        if level + 1 != max_level {
+            let tmp = level_progress.add_child(format!("Level {}", level + 1));
+            progresses.push(level_progress);
+            level_progress = tmp;
+        }
     }
 
     progresses.push(level_progress);
