@@ -3,7 +3,7 @@ use futures::{
     executor::{block_on, ThreadPool},
     future::{abortable, join},
     task::{Spawn, SpawnExt},
-    FutureExt, StreamExt,
+    FutureExt,
 };
 use futures_timer::Delay;
 use progress_dashboard::{tui, Key, Tree, TreeRoot};
@@ -14,7 +14,7 @@ use std::{error::Error, time::Duration};
 const WORK_STEPS_NEEDED_FOR_UNBOUNDED_TASK: u8 = 100;
 const UNITS: &[&str] = &["Mb", "kb", "items", "files"];
 const WORK_DELAY_MS: u64 = 100;
-const SPAWN_DELAY_MS: u64 = 200;
+const SPAWN_DELAY_MS: u64 = 500;
 
 async fn work_item(mut progress: Tree) -> () {
     let max: u8 = thread_rng().gen_range(25, 125);
@@ -47,7 +47,7 @@ async fn find_work(
     let NestingLevel(max_level) = max;
     let mut progresses = Vec::new();
     let mut level_progress =
-        tree.add_child(format!("{}: Level {} of {}", prefix.as_ref(), 1, max_level));
+        tree.add_child(format!("{}: level {} of {}", prefix.as_ref(), 1, max_level));
     let mut handles = Vec::new();
 
     for level in 0..max_level {
@@ -61,7 +61,7 @@ async fn find_work(
                 ))
                 .expect("spawn to work");
             handles.push(handle);
-            level_progress.set(id as u32);
+            level_progress.set(id as u32 + 1);
 
             Delay::new(Duration::from_millis(SPAWN_DELAY_MS)).await;
         }
@@ -71,7 +71,9 @@ async fn find_work(
     }
 
     progresses.push(level_progress);
-    futures::stream::iter(handles).collect::<Vec<_>>().await;
+    for handle in handles.into_iter() {
+        handle.await;
+    }
 
     Ok(())
 }
