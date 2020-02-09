@@ -108,9 +108,10 @@ fn draw_everything(
         false
     };
 
-    let max_prefix_len = draw_tree_prefix(&entries, buf, current);
+    let column_end = current.width / 2;
+    let max_prefix_len = draw_tree_prefix(&entries, buf, current, column_end);
 
-    let max_prefix_len = max_prefix_len.unwrap_or_default();
+    let max_prefix_len = max_prefix_len.unwrap_or_default().min(column_end);
     draw_progress(&entries, buf, current, max_prefix_len);
 
     if is_overflowing {
@@ -153,6 +154,7 @@ fn draw_tree_prefix(
     entries: &[(tree::Key, TreeValue)],
     buf: &mut Buffer,
     current: Rect,
+    _column_end: u16,
 ) -> Option<u16> {
     let mut max_prefix_len = None;
     for (line, (key, value)) in entries.iter().take(current.height as usize).enumerate() {
