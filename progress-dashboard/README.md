@@ -8,14 +8,22 @@
 ## Tasks
 
 * example-driven development for tree-interface and visualization
+  * [x] task tree with colored progress, proper resizing 
   * [x] title-only
   * [x] bounded progress
+    * [ ] with optional time-to-unblock
   * [x] unbounded progress
+  * [ ] fractional FPS
+  * [ ] use future streams as sole interface (one unified stream with Messages)
   * [ ] blocking indicator
-  * [ ] tasks-done list
   * [ ] tasks overview headline
-  * [ ] custom statistics window
-* [ ] document test-strategy (at least)
+    * [ ] FPS count
+    * [ ] 'last frame at' for FPS < 1.0
+  * [ ] define boundary on the fly using messages (allows incorporating it into other TUIs potentially)
+  * [ ] custom statistics window (data sent via message channel)
+    * [ ] overflow handling
+* [ ] run example as journey test
+* [ ] full documentation and maybe a few smaller examples
 
 ## Lessons Learned
 
