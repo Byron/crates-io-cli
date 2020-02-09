@@ -81,10 +81,10 @@ fn draw_everything(
         progress_pane.draw(window_size, buf);
         let current = progress_pane.inner(window_size);
 
-        for (line, (tree_id, _progress)) in
-            entries_buf.iter().take(current.height as usize).enumerate()
+        for (line, (key, _progress)) in entries_buf.iter().take(current.height as usize).enumerate()
         {
-            let tree_prefix = Text::Raw("hello".into());
+            let tree_prefix =
+                Text::Raw(format!("{:width$}", ' ', width = key.level() as usize).into());
             let progress = Text::Raw("progress".into());
             let line_rect = Rect {
                 y: line as u16,
