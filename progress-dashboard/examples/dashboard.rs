@@ -1,8 +1,10 @@
+use futures::future::Either;
 use futures::{
     channel::oneshot,
     executor::{block_on, ThreadPool},
     future::join,
     task::{Spawn, SpawnExt},
+    FutureExt,
 };
 use futures_timer::Delay;
 use log::info;
@@ -59,7 +61,7 @@ async fn find_work(max: NestingLevel, mut tree: TreeRoot, pool: impl Spawn) -> R
 async fn work_forever(pool: impl Spawn + Clone + Send + 'static) -> Result {
     let progress = progress_dashboard::TreeRoot::new();
     // Now we should handle signals to be able to cleanup properly
-    let (_gui_was_shutdown, tell_gui) = launch_ambient_gui(&pool, &progress).unwrap();
+    let (mut _gui_was_shutdown, tell_gui) = launch_ambient_gui(&pool, &progress).unwrap();
 
     for _ in 1..3 {
         let local_work = find_work(NestingLevel(2), progress.clone(), pool.clone());
@@ -67,11 +69,15 @@ async fn work_forever(pool: impl Spawn + Clone + Send + 'static) -> Result {
             .spawn_with_handle(find_work(NestingLevel(2), progress.clone(), pool.clone()))
             .expect("spawning to work - SpawnError cannot be ");
 
-        let _ = join(local_work, threaded_work).await;
-        //        match select(local_work, gui_was_shutdown).await {
-        //            Either::Left(_) => continue,
-        //            Either::Right(_gui_shutdown) => break,
-        //        }
+        match futures::future::select(
+            join(local_work.boxed_local(), threaded_work),
+            &mut _gui_was_shutdown,
+        )
+        .await
+        {
+            Either::Left(_) => continue,
+            Either::Right(_gui_shutdown) => break,
+        }
     }
     tell_gui.send(()).unwrap();
     Ok(())

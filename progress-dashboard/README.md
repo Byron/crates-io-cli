@@ -16,6 +16,14 @@
 * [ ] document test-strategy (at least)
 
 
+## Lessons Learned
+
+* `drop()` is not garantueed to be called when the future returns Ready and is in the futures::executor::ThreadPool
+  * Workaround: drop and cleanup explicitly, prone to forgetting it.
+  * This is also why `futures::future::abortable()` works (by stopping the polling), but doesn't as cleanup is not performed,
+    even though it clearly would be preferred.
+* `select()` might not work with complex futures - these should then be `boxed()` if `Unpin` isn't implemented.
+
 ## Limitations
 
 * If there are more than 2^16 tasks
