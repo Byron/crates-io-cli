@@ -59,7 +59,7 @@ pub fn render(
             match select(delay, key_receive.next()).await {
                 Either::Left(_delay_timed_out) => continue,
                 Either::Right((Some(key), _delay)) => match key {
-                    Key::Esc | Key::Ctrl('c') | Key::Ctrl('[') => {
+                    Key::Esc | Key::Char('q') | Key::Ctrl('c') | Key::Ctrl('[') => {
                         return ();
                     }
                     _ => continue,
@@ -141,8 +141,24 @@ fn draw_everything(
             height: 1,
             ..current
         };
-        let state = entries.fold(0, |state, _next| state + 1);
-        Paragraph::new([Text::Raw(format!("…and {} more", state).into())].iter())
-            .draw(overflow_rect, buf);
+        let (count, mut progress_percent) = entries.fold(
+            (0usize, 0f64),
+            |(count, progress_percent), (_key, value)| {
+                let progress = value
+                    .progress
+                    .and_then(|p| p.done_at.map(|d| (p.step, d)))
+                    .map(|(c, m)| (c as f64 / m as f64) * 100.0)
+                    .unwrap_or_default();
+                (count + 1, progress_percent + progress)
+            },
+        );
+        progress_percent /= count as f64;
+        Paragraph::new(
+            [Text::Raw(
+                format!("…and {} more -- {:.02}%", count, progress_percent).into(),
+            )]
+            .iter(),
+        )
+        .draw(overflow_rect, buf);
     }
 }
