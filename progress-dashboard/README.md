@@ -11,11 +11,11 @@
   * [x] task tree with colored progress, proper resizing 
   * [x] title-only
   * [x] bounded progress
-    * [ ] with optional time-to-unblock
   * [x] unbounded progress
+  * [ ] blocking indicator
+    * [ ] with optional time-to-unblock
   * [ ] fractional FPS
   * [ ] use future streams as sole interface (one unified stream with Messages)
-  * [ ] blocking indicator
   * [ ] tasks overview headline
     * [ ] FPS count
     * [ ] 'last frame at' for FPS < 1.0

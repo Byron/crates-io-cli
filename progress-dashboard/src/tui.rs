@@ -111,7 +111,11 @@ fn draw_everything(
     };
 
     let column_end = current.width / 2;
-    let max_prefix_len = draw_tree_prefix(&entries, buf, current, column_end);
+    let prefix_area = Rect {
+        width: column_end,
+        ..current
+    };
+    let max_prefix_len = draw_tree_prefix(&entries, buf, prefix_area);
 
     let max_prefix_len = max_prefix_len.unwrap_or_default().min(column_end);
     draw_progress(&entries, buf, current, max_prefix_len);
@@ -210,12 +214,11 @@ fn draw_progress_bar(
 fn draw_tree_prefix(
     entries: &[(tree::Key, TreeValue)],
     buf: &mut Buffer,
-    current: Rect,
-    column_end: u16,
+    bound: Rect,
 ) -> Option<u16> {
     let mut max_prefix_len = None;
     for (line, (key, TreeValue { progress, title })) in
-        entries.iter().take(current.height as usize).enumerate()
+        entries.iter().take(bound.height as usize).enumerate()
     {
         let mut tree_prefix = format!(
             "{:>width$} {}",
@@ -225,7 +228,6 @@ fn draw_tree_prefix(
                 if progress.is_none() {
                     "…"
                 } else {
-
                     "└"
                 }
             },
@@ -234,17 +236,17 @@ fn draw_tree_prefix(
         );
         tree_prefix = tree_prefix
             .graphemes(true)
-            .take(column_end.saturating_sub(1) as usize)
+            .take(bound.width.saturating_sub(1) as usize)
             .collect();
-        if tree_prefix.len() + 1 >= column_end as usize {
+        if tree_prefix.len() + 1 >= bound.width as usize {
             tree_prefix.push('…');
         }
         max_prefix_len = Some(max_prefix_len.unwrap_or(0).max(tree_prefix.len() as u16));
         let tree_prefix = Text::Raw(tree_prefix.into());
         let line_rect = Rect {
-            y: current.y + line as u16,
+            y: bound.y + line as u16,
             height: 1,
-            ..current
+            ..bound
         };
         Paragraph::new([tree_prefix].iter()).draw(line_rect, buf);
     }
