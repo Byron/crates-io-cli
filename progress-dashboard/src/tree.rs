@@ -57,14 +57,14 @@ impl TreeRoot {
     }
 }
 
-type TreeId = u8;
+type TreeId = u16;
 pub type ProgressStep = u32;
 
 #[derive(Copy, Clone, Default, Hash, Eq, PartialEq, Ord, PartialOrd, Debug)]
-struct Key((Option<u8>, Option<u8>, Option<u8>));
+struct Key((Option<TreeId>, Option<TreeId>, Option<TreeId>));
 
 impl Key {
-    fn add_child(self, child_id: u8) -> Key {
+    fn add_child(self, child_id: TreeId) -> Key {
         Key(match self {
             Key((None, None, None)) => (Some(child_id), None, None),
             Key((a, None, None)) => (a, Some(child_id), None),
