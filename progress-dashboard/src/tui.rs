@@ -3,6 +3,7 @@ use futures_timer::Delay;
 
 use futures::{future::select, future::Either, SinkExt, StreamExt};
 use std::{io, time::Duration};
+use termion::event::Key;
 use termion::{input::TermRead, raw::IntoRawMode, screen::AlternateScreen};
 use tui::{
     backend::TermionBackend,
@@ -33,9 +34,8 @@ pub fn render(
     };
 
     let duration_per_frame = Duration::from_secs(1) / frames_per_second as u32;
-    let (_send_gui_aborted, receive_gui_aborted) = futures::channel::oneshot::channel::<()>();
-    let (mut key_send, mut _key_receive) =
-        futures::channel::mpsc::channel::<termion::event::Key>(1);
+    let (send_gui_aborted, receive_gui_aborted) = futures::channel::oneshot::channel::<()>();
+    let (mut key_send, mut key_receive) = futures::channel::mpsc::channel::<Key>(1);
 
     std::thread::spawn(move || -> Result<(), io::Error> {
         for key in io::stdin().keys() {
@@ -57,9 +57,16 @@ pub fn render(
                 log::error!("{}", err);
                 return ();
             }
-            match select(Delay::new(duration_per_frame), _key_receive.next()).await {
+
+            match select(Delay::new(duration_per_frame), key_receive.next()).await {
                 Either::Left(_delay_timed_out) => {} // redraw
-                Either::Right((key, _delay)) => eprintln!("{:#?}", key),
+                Either::Right((key, _delay)) => match key {
+                    Some(Key::Esc) | Some(Key::Ctrl('c')) | Some(Key::Ctrl('[')) => {
+                        send_gui_aborted.send(()).ok();
+                        return ();
+                    }
+                    _ => {}
+                },
             }
         }
     };
