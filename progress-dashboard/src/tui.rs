@@ -1,7 +1,8 @@
 use crate::tree::TreeRoot;
 use futures_timer::Delay;
 
-use futures::{future::select, future::Either, SinkExt, StreamExt};
+use futures::channel::mpsc;
+use futures::{channel::oneshot, future::select, future::Either, SinkExt, StreamExt};
 use std::{io, time::Duration};
 use termion::event::Key;
 use termion::{input::TermRead, raw::IntoRawMode, screen::AlternateScreen};
@@ -19,13 +20,7 @@ pub struct Config {
 pub fn render(
     _progress: TreeRoot,
     Config { frames_per_second }: Config,
-) -> Result<
-    (
-        impl std::future::Future<Output = ()>,
-        futures::channel::oneshot::Receiver<()>,
-    ),
-    std::io::Error,
-> {
+) -> Result<(impl std::future::Future<Output = ()>, oneshot::Receiver<()>), std::io::Error> {
     let mut terminal = {
         let stdout = io::stdout().into_raw_mode()?;
         let stdout = AlternateScreen::from(stdout);
@@ -34,9 +29,10 @@ pub fn render(
     };
 
     let duration_per_frame = Duration::from_secs(1) / frames_per_second as u32;
-    let (send_gui_aborted, receive_gui_aborted) = futures::channel::oneshot::channel::<()>();
-    let (mut key_send, mut key_receive) = futures::channel::mpsc::channel::<Key>(1);
+    let (send_gui_aborted, receive_gui_aborted) = oneshot::channel::<()>();
+    let (mut key_send, mut key_receive) = mpsc::channel::<Key>(1);
 
+    // This brings blocking key-handling into the async world
     std::thread::spawn(move || -> Result<(), io::Error> {
         for key in io::stdin().keys() {
             let key = key?;
@@ -57,9 +53,9 @@ pub fn render(
                 log::error!("{}", err);
                 return ();
             }
-
-            match select(Delay::new(duration_per_frame), key_receive.next()).await {
-                Either::Left(_delay_timed_out) => {} // redraw
+            let delay = Delay::new(duration_per_frame);
+            match select(delay, key_receive.next()).await {
+                Either::Left(_delay_timed_out) => continue,
                 Either::Right((key, _delay)) => match key {
                     Some(Key::Esc) | Some(Key::Ctrl('c')) | Some(Key::Ctrl('[')) => {
                         send_gui_aborted.send(()).ok();

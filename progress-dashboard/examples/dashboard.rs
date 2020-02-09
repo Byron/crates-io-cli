@@ -1,4 +1,7 @@
 use futures::{
+    channel::oneshot,
+    executor::{block_on, ThreadPool},
+    future::AbortHandle,
     future::{abortable, join},
     task::{Spawn, SpawnExt},
 };
@@ -78,13 +81,7 @@ async fn work_forever(pool: impl Spawn + Clone + Send + 'static) -> Result {
 fn launch_ambient_gui(
     pool: &dyn Spawn,
     progress: &TreeRoot,
-) -> std::result::Result<
-    (
-        futures::channel::oneshot::Receiver<()>,
-        futures::future::AbortHandle,
-    ),
-    std::io::Error,
-> {
+) -> std::result::Result<(oneshot::Receiver<()>, AbortHandle), std::io::Error> {
     let (render_fut, gui_was_shutdown) = tui::render(
         progress.clone(),
         tui::Config {
@@ -103,11 +100,11 @@ fn launch_ambient_gui(
 fn main() -> Result {
     env_logger::init();
     // Use spawn as well to simulate Send futures
-    let pool = futures::executor::ThreadPool::builder()
+    let pool = ThreadPool::builder()
         .pool_size(1)
         .create()
         .expect("pool creation to work (io-error is not Send");
-    futures::executor::block_on(work_forever(pool))
+    block_on(work_forever(pool))
 }
 
 struct NestingLevel(u8);
