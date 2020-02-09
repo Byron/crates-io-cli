@@ -52,7 +52,7 @@ pub fn render(
             let buf = terminal.current_buffer_mut();
             progress.sorted_snapshot(&mut entries_buf);
 
-            draw_everything(entries_buf.drain(..), window_size, buf);
+            entries_buf = draw_everything(entries_buf, window_size, buf);
             terminal.post_render().expect("post render to work");
 
             let delay = Delay::new(duration_per_frame);
@@ -92,27 +92,26 @@ impl<'a> fmt::Display for ProgressFormat<'a> {
 }
 
 fn draw_everything(
-    entries: impl IntoIterator<Item = (tree::Key, TreeValue)>,
+    mut entries: Vec<(tree::Key, TreeValue)>,
     window_size: Rect,
     buf: &mut Buffer,
-) {
+) -> Vec<(tree::Key, TreeValue)> {
     let mut progress_pane = Block::default()
         .title("Progress Tree")
         .borders(Borders::ALL);
     progress_pane.draw(window_size, buf);
     let mut current = progress_pane.inner(window_size);
-    let mut entries = entries.into_iter();
-    let (_lower, upper) = entries.size_hint();
-    let mut is_overflowing = false;
-    if let Some(size) = upper {
-        if size > current.height as usize {
-            current.height = current.height.saturating_sub(1);
-            is_overflowing = true;
-        }
-    }
+    let is_overflowing = if entries.len() > current.height as usize {
+        current.height = current.height.saturating_sub(1);
+        true
+    } else {
+        false
+    };
 
-    let mut line = 0;
-    while let Some((key, value)) = entries.next() {
+    for (line, (key, value)) in entries
+        .drain(..std::cmp::min(entries.len(), current.height as usize))
+        .enumerate()
+    {
         let tree_prefix = format!(
             "{:>width$} {:<15}",
             '‧',
@@ -140,7 +139,6 @@ fn draw_everything(
         };
         Paragraph::new([progress].iter()).draw(progress_rect, buf);
 
-        line += 1;
         if line == current.height as usize {
             break;
         }
@@ -152,7 +150,7 @@ fn draw_everything(
             height: 1,
             ..current
         };
-        let (count, mut progress_percent) = entries.fold(
+        let (count, mut progress_percent) = entries.iter().fold(
             (0usize, 0f64),
             |(count, progress_percent), (_key, value)| {
                 let progress = value
@@ -172,4 +170,5 @@ fn draw_everything(
         )
         .draw(overflow_rect, buf);
     }
+    entries
 }
