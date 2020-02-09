@@ -18,7 +18,7 @@ pub struct Config {
 }
 
 pub fn render(
-    _progress: TreeRoot,
+    progress: TreeRoot,
     Config { frames_per_second }: Config,
 ) -> Result<impl std::future::Future<Output = ()>, std::io::Error> {
     let mut terminal = {
@@ -50,7 +50,10 @@ pub fn render(
                         .borders(Borders::ALL);
                     progress_pane.render(&mut f, size);
                     let _entries_rect = progress_pane.inner(size);
-                    //                    for (tree_id, progress) in progress.sorted_snapshot().into_iter() {}
+
+                    let mut entries_buf = Vec::new();
+                    progress.sorted_snapshot(&mut entries_buf);
+                    for (tree_id, progress) in entries_buf {}
                 })
                 .ok();
             let delay = Delay::new(duration_per_frame);

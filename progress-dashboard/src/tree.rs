@@ -13,7 +13,7 @@ impl TreeRoot {
         TreeRoot {
             inner: Arc::new(Mutex::new(Tree {
                 title: String::new(),
-                child_count: 0,
+                child_id: 0,
                 key: Key::default(),
                 tree: Arc::new(DashMap::with_capacity(100)),
             })),
@@ -22,13 +22,17 @@ impl TreeRoot {
     pub fn add_child(&self, title: impl Into<String>) -> Tree {
         self.inner.lock().add_child(title)
     }
+
+    pub fn sorted_snapshot(&self, out: &mut Vec<(Key, Progress)>) {
+        unimplemented!()
+    }
 }
 
 #[derive(Debug)]
 pub struct Tree {
     title: String,
     key: Key,
-    child_count: TreeId,
+    child_id: TreeId,
     tree: Arc<DashMap<Key, Option<Progress>>>,
 }
 
@@ -49,6 +53,10 @@ impl Tree {
         });
     }
 
+    pub fn title(&self) -> &str {
+        &self.title
+    }
+
     pub fn set(&mut self, step: ProgressStep) {
         self.tree.get_mut(&self.key).map(|mut r| {
             // NOTE: since we wrap around, if there are more tasks than we can have IDs for,
@@ -61,11 +69,11 @@ impl Tree {
     }
 
     pub fn add_child(&mut self, title: impl Into<String>) -> Tree {
-        let child_key = self.key.add_child(self.child_count);
+        let child_key = self.key.add_child(self.child_id);
         self.tree.insert(child_key, None);
-        self.child_count = self.child_count.wrapping_add(1);
+        self.child_id = self.child_id.wrapping_add(1);
         Tree {
-            child_count: 0,
+            child_id: 0,
             title: title.into(),
             key: child_key,
             tree: self.tree.clone(),
@@ -77,7 +85,7 @@ type TreeId = u32; // NOTE: This means we will show weird behaviour if there are
 pub type ProgressStep = u32;
 
 #[derive(Copy, Clone, Default, Hash, Eq, PartialEq, Ord, PartialOrd, Debug)]
-struct Key(
+pub struct Key(
     (
         Option<TreeId>,
         Option<TreeId>,
@@ -102,7 +110,7 @@ impl Key {
 }
 
 #[derive(Copy, Clone, Default, Hash, Eq, PartialEq, Ord, PartialOrd, Debug)]
-struct Progress {
+pub struct Progress {
     step: ProgressStep,
     done_at: Option<ProgressStep>,
     unit: Option<&'static str>,
