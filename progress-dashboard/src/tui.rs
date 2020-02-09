@@ -3,7 +3,6 @@ use futures_timer::Delay;
 
 use futures::channel::mpsc;
 use futures::{channel::oneshot, future::select, future::Either, SinkExt, StreamExt};
-use std::io::Write;
 use std::{io, time::Duration};
 use termion::event::Key;
 use termion::{input::TermRead, raw::IntoRawMode, screen::AlternateScreen};
@@ -60,15 +59,11 @@ pub fn render(
                 Either::Right((Either::Left((Some(key), _should_stop)), _delay)) => match key {
                     Key::Esc | Key::Ctrl('c') | Key::Ctrl('[') => {
                         send_gui_aborted.send(()).ok();
-                        drop(terminal);
-                        io::stdout().flush().ok();
                         return ();
                     }
                     _ => continue,
                 },
                 Either::Right((Either::Right((Ok(()), _key)), _delay)) => {
-                    drop(terminal);
-                    io::stdout().flush().ok();
                     return ();
                 }
                 _ => continue,

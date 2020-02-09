@@ -22,6 +22,8 @@
   * Workaround: drop and cleanup explicitly, prone to forgetting it.
   * This is also why `futures::future::abortable()` works (by stopping the polling), but doesn't as cleanup is not performed,
     even though it clearly would be preferred.
+  * fix
+    * Use a join handle and await it - this will drop the future properly
 * `select()` might not work with complex futures - these should then be `boxed()` if `Unpin` isn't implemented.
 
 ## Limitations
