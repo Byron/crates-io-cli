@@ -73,7 +73,7 @@ pub fn render(
     Ok(render_fut)
 }
 
-struct ProgressFormat<'a>(&'a Option<Progress>);
+struct ProgressFormat<'a>(&'a Option<Progress>, u16);
 
 impl<'a> fmt::Display for ProgressFormat<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -88,7 +88,7 @@ impl<'a> fmt::Display for ProgressFormat<'a> {
                 }
                 Ok(())
             }
-            None => Ok(()),
+            None => write!(f, "{:─<width$}", '─', width = self.1 as usize),
         }
     }
 }
@@ -141,12 +141,13 @@ fn draw_progress(
     for (line, (_, TreeValue { progress, .. })) in
         entries.iter().take(current.height as usize).enumerate()
     {
-        let progress_text = format!("{progress}", progress = ProgressFormat(progress));
+        let max_width = current.width.saturating_sub(x_offset);
+        let progress_text = format!("{progress}", progress = ProgressFormat(progress, max_width));
         let progress_text_blocks = progress_text.graphemes(true).count() as u16;
 
         let y = current.y + line as u16;
         let progress_style = if let Some(fraction) = progress.and_then(|p| p.fraction()) {
-            draw_progress_bar(buf, current, x_offset, y, fraction)
+            draw_progress_bar(buf, max_width, x_offset, y, fraction)
         } else {
             Style::default().bg(Color::Reset)
         };
@@ -172,12 +173,11 @@ fn draw_progress(
 
 fn draw_progress_bar(
     buf: &mut Buffer,
-    current: Rect,
+    max_width: u16,
     x_offset: u16,
     y: u16,
     fraction: f32,
 ) -> Style {
-    let max_width = current.width.saturating_sub(x_offset);
     let fractional_progress_rect = Rect {
         x: x_offset,
         y,

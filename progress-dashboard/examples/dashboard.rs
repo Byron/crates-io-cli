@@ -53,7 +53,6 @@ async fn new_chunk_of_work(
     for level in 0..max_level {
         // one-off ambient tasks
         let num_tasks = max_level as usize * 2;
-        level_progress.init(Some(num_tasks as u32), Some("work items"));
         for id in 0..num_tasks {
             let handle = pool
                 .spawn_with_handle(work_item(
@@ -61,7 +60,6 @@ async fn new_chunk_of_work(
                 ))
                 .expect("spawn to work");
             handles.push(handle);
-            level_progress.set(id as u32 + 1);
 
             Delay::new(Duration::from_millis(SPAWN_DELAY_MS)).await;
         }

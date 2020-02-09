@@ -8,8 +8,10 @@
 ## Tasks
 
 * example-driven development for tree-interface and visualization
+  * [ ] title-only
+  * [x] bounded progress
+  * [x] unbounded progress
   * [ ] blocking indicator
-  * [ ] unbounded progress
   * [ ] tasks-done list
   * [ ] tasks overview headline
   * [ ] custom statistics window
