@@ -113,23 +113,32 @@ fn draw_everything(
 
     let mut line = 0;
     while let Some((key, value)) = entries.next() {
-        let tree_prefix =
-            Text::Raw(format!("{:>width$}", '‧', width = key.level() as usize).into());
-        let progress = Text::Raw(
-            format!(
-                "{:<15} {progress}",
-                value.title,
-                progress = ProgressFormat(&value.progress)
-            )
-            .into(),
+        let tree_prefix = format!(
+            "{:>width$} {:<15}",
+            '‧',
+            value.title,
+            width = key.level() as usize
         );
+        let prefix_len = tree_prefix.len();
+        let tree_prefix = Text::Raw(tree_prefix.into());
+
+        let progress =
+            Text::Raw(format!("{progress}", progress = ProgressFormat(&value.progress)).into());
+
         let line_rect = Rect {
             y: current.y + line as u16,
             height: 1,
             ..current
         };
+        Paragraph::new([tree_prefix].iter()).draw(line_rect, buf);
+        let offset = std::cmp::max(line_rect.width / 6, (prefix_len + 3) as u16);
 
-        Paragraph::new([tree_prefix, progress].iter()).draw(line_rect, buf);
+        let progress_rect = Rect {
+            x: offset,
+            width: line_rect.width.saturating_sub(offset),
+            ..line_rect
+        };
+        Paragraph::new([progress].iter()).draw(progress_rect, buf);
 
         line += 1;
         if line == current.height as usize {

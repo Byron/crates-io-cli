@@ -35,4 +35,3 @@ futures = { version = "0.3.4", features = ["thread-pool"] }
 futures-timer = "3.0.1"
 rand = "0.7.3"
 env_logger = { version = "0.7.1", default-features = false, features = ["termcolor", "atty", "humantime"] }
-
