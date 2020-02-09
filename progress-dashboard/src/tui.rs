@@ -111,19 +111,7 @@ fn draw_everything(
     let max_prefix_len = draw_tree_prefix(&entries, buf, current);
 
     let max_prefix_len = max_prefix_len.unwrap_or_default();
-    for (line, (_, value)) in entries.iter().take(current.height as usize).enumerate() {
-        let progress =
-            Text::Raw(format!("{progress}", progress = ProgressFormat(&value.progress)).into());
-
-        let offset = max_prefix_len + 4;
-        let progress_rect = Rect {
-            x: offset,
-            y: current.y + line as u16,
-            width: current.width.saturating_sub(offset),
-            height: 1,
-        };
-        Paragraph::new([progress].iter()).draw(progress_rect, buf);
-    }
+    draw_progress(&entries, buf, current, max_prefix_len);
 
     if is_overflowing {
         let overflow_rect = Rect {
@@ -140,8 +128,29 @@ fn draw_everything(
     entries
 }
 
+fn draw_progress(
+    entries: &[(tree::Key, TreeValue)],
+    buf: &mut Buffer,
+    current: Rect,
+    max_prefix_len: u16,
+) {
+    for (line, (_, value)) in entries.iter().take(current.height as usize).enumerate() {
+        let progress =
+            Text::Raw(format!("{progress}", progress = ProgressFormat(&value.progress)).into());
+
+        let offset = max_prefix_len + 4;
+        let progress_rect = Rect {
+            x: offset,
+            y: current.y + line as u16,
+            width: current.width.saturating_sub(offset),
+            height: 1,
+        };
+        Paragraph::new([progress].iter()).draw(progress_rect, buf);
+    }
+}
+
 fn draw_tree_prefix(
-    entries: &Vec<(tree::Key, TreeValue)>,
+    entries: &[(tree::Key, TreeValue)],
     buf: &mut Buffer,
     current: Rect,
 ) -> Option<u16> {
