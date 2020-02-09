@@ -23,7 +23,7 @@ impl TreeRoot {
         self.inner.lock().add_child(title)
     }
 
-    pub fn sorted_snapshot(&self, out: &mut Vec<(Key, Progress)>) {
+    pub fn sorted_snapshot(&self, _out: &mut Vec<(Key, Progress)>) {
         unimplemented!()
     }
 }

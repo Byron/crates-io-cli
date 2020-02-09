@@ -9,8 +9,8 @@ use termion::{input::TermRead, raw::IntoRawMode, screen::AlternateScreen};
 use tui::{
     backend::TermionBackend,
     widgets::{Block, Borders, Widget},
-    Terminal,
 };
+use tui_react::Terminal;
 
 #[derive(Clone)]
 pub struct Config {
@@ -41,21 +41,22 @@ pub fn render(
     });
 
     let render_fut = async move {
+        let mut entries_buf = Vec::new();
         loop {
-            terminal
-                .draw(|mut f| {
-                    let size = f.size();
-                    let mut progress_pane = Block::default()
-                        .title("Progress Tree")
-                        .borders(Borders::ALL);
-                    progress_pane.render(&mut f, size);
-                    let _entries_rect = progress_pane.inner(size);
+            {
+                let window_size = terminal.pre_render().expect("pre-render to work");
+                let mut progress_pane = Block::default()
+                    .title("Progress Tree")
+                    .borders(Borders::ALL);
+                let buf = terminal.current_buffer_mut();
+                progress_pane.draw(window_size, buf);
+                let _entries_rect = progress_pane.inner(window_size);
 
-                    let mut entries_buf = Vec::new();
-                    progress.sorted_snapshot(&mut entries_buf);
-                    for (tree_id, progress) in entries_buf {}
-                })
-                .ok();
+                progress.sorted_snapshot(&mut entries_buf);
+                for (_tree_id, _progress) in entries_buf.iter() {}
+                terminal.post_render().expect("post render to work");
+            }
+
             let delay = Delay::new(duration_per_frame);
             match select(delay, key_receive.next()).await {
                 Either::Left(_delay_timed_out) => continue,

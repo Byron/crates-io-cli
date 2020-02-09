@@ -983,6 +983,7 @@ dependencies = [
  "rand",
  "termion",
  "tui",
+ "tui-react",
 ]
 
 [[package]]
@@ -1567,6 +1568,16 @@ dependencies = [
  "termion",
  "unicode-segmentation",
  "unicode-width",
+]
+
+[[package]]
+name = "tui-react"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0704ce982174d3f3c5250c3935172b3df129721384844e5b8090b7e2c89d90a3"
+dependencies = [
+ "log",
+ "tui",
 ]
 
 [[package]]
