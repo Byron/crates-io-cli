@@ -61,7 +61,7 @@ async fn find_work(max: NestingLevel, mut tree: TreeRoot, pool: impl Spawn) -> R
 async fn work_forever(pool: impl Spawn + Clone + Send + 'static) -> Result {
     let progress = progress_dashboard::TreeRoot::new();
     // Now we should handle signals to be able to cleanup properly
-    let (handle, mut gui_was_shutdown, tell_gui) = launch_ambient_gui(&pool, &progress).unwrap();
+    let (handle, mut gui_was_shutdown) = launch_ambient_gui(&pool, &progress).unwrap();
 
     for _ in 1..3 {
         let local_work = find_work(NestingLevel(2), progress.clone(), pool.clone());
@@ -80,7 +80,6 @@ async fn work_forever(pool: impl Spawn + Clone + Send + 'static) -> Result {
         }
     }
 
-    tell_gui.send(()).unwrap();
     // give it some time to respond - send doesn't allow to await it
     handle.await;
     Ok(())
@@ -89,26 +88,18 @@ async fn work_forever(pool: impl Spawn + Clone + Send + 'static) -> Result {
 fn launch_ambient_gui(
     pool: &dyn Spawn,
     progress: &TreeRoot,
-) -> std::result::Result<
-    (
-        futures::future::RemoteHandle<()>,
-        oneshot::Receiver<()>,
-        oneshot::Sender<()>,
-    ),
-    std::io::Error,
-> {
-    let (tell_gui_to_stop, gui_receive_stop) = oneshot::channel::<()>();
+) -> std::result::Result<(futures::future::RemoteHandle<()>, oneshot::Receiver<()>), std::io::Error>
+{
     let (render_fut, gui_was_shutdown) = tui::render(
         progress.clone(),
         tui::Config {
             frames_per_second: 30,
         },
-        gui_receive_stop,
     )?;
     let handle = pool
         .spawn_with_handle(render_fut)
         .expect("GUI to be spawned");
-    Ok((handle, gui_was_shutdown, tell_gui_to_stop))
+    Ok((handle, gui_was_shutdown))
 }
 
 fn main() -> Result {
