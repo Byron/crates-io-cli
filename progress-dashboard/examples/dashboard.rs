@@ -59,7 +59,7 @@ async fn work_forever(pool: impl Spawn + Clone + Send + 'static) -> Result {
     let trigger = launch_ambient_gui(&pool, &progress);
     abort_gui_on_signal(trigger.clone());
 
-    for _ in 1..10 {
+    for _ in 1..7 {
         let local_work = find_work(NestingLevel(2), progress.clone(), pool.clone());
         let threaded_work = pool
             .spawn_with_handle(find_work(NestingLevel(2), progress.clone(), pool.clone()))
@@ -97,6 +97,7 @@ fn abort_gui_on_signal(trigger: AbortHandle) {
                 match signal {
                     signal_hook::SIGINT | signal_hook::SIGTERM => {
                         trigger.abort();
+                        std::process::abort();
                         return;
                     }
                     _ => unreachable!(),

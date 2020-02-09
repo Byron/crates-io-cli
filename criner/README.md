@@ -9,3 +9,4 @@
 * [ ] integrate async progress
 * [ ] downloads with backpressure
 * [ ] _(investigate)_ resumable downloads
+* [ ] resilience: protect against ThreadPanics - they prevent the program from shutting down

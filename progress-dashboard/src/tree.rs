@@ -37,10 +37,9 @@ impl TreeRoot {
 
     pub fn set(&mut self, step: ProgressStep) {
         self.tree.get_mut(&self.key).map(|mut r| {
-            r.value_mut()
-                .as_mut()
-                .expect("init() to be called first")
-                .step = step;
+            // NOTE: even if people called init() before, value_mut() might yield None! Don't know why that is, but means
+            // we would lose an update here and there…
+            r.value_mut().as_mut().map(|p| p.step = step);
         });
     }
 
