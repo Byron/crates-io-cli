@@ -1,8 +1,7 @@
 use futures::{
     channel::oneshot,
     executor::{block_on, ThreadPool},
-    future::AbortHandle,
-    future::{abortable, join},
+    future::join,
     task::{Spawn, SpawnExt},
 };
 use futures_timer::Delay;
@@ -74,27 +73,24 @@ async fn work_forever(pool: impl Spawn + Clone + Send + 'static) -> Result {
         //            Either::Right(_gui_shutdown) => break,
         //        }
     }
-    tell_gui.abort();
+    tell_gui.send(()).unwrap();
     Ok(())
 }
 
 fn launch_ambient_gui(
     pool: &dyn Spawn,
     progress: &TreeRoot,
-) -> std::result::Result<(oneshot::Receiver<()>, AbortHandle), std::io::Error> {
+) -> std::result::Result<(oneshot::Receiver<()>, oneshot::Sender<()>), std::io::Error> {
+    let (tell_gui_to_stop, gui_receive_stop) = oneshot::channel::<()>();
     let (render_fut, gui_was_shutdown) = tui::render(
         progress.clone(),
         tui::Config {
             frames_per_second: 30,
         },
+        gui_receive_stop,
     )?;
-    let (render_fut, abort_handle) = abortable(render_fut);
-    pool.spawn(async move {
-        render_fut.await.ok();
-        ()
-    })
-    .expect("GUI to be spawned");
-    Ok((gui_was_shutdown, abort_handle))
+    pool.spawn(render_fut).expect("GUI to be spawned");
+    Ok((gui_was_shutdown, tell_gui_to_stop))
 }
 
 fn main() -> Result {

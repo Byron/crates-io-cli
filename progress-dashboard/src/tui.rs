@@ -20,6 +20,7 @@ pub struct Config {
 pub fn render(
     _progress: TreeRoot,
     Config { frames_per_second }: Config,
+    mut should_stop: oneshot::Receiver<()>,
 ) -> Result<(impl std::future::Future<Output = ()>, oneshot::Receiver<()>), std::io::Error> {
     let mut terminal = {
         let stdout = io::stdout().into_raw_mode()?;
@@ -54,16 +55,21 @@ pub fn render(
                 return ();
             }
             let delay = Delay::new(duration_per_frame);
-            match select(delay, key_receive.next()).await {
+            match select(delay, select(key_receive.next(), &mut should_stop)).await {
                 Either::Left(_delay_timed_out) => continue,
-                Either::Right((key, _delay)) => match key {
-                    Some(Key::Esc) | Some(Key::Ctrl('c')) | Some(Key::Ctrl('[')) => {
+                Either::Right((Either::Left((Some(key), _should_stop)), _delay)) => match key {
+                    Key::Esc | Key::Ctrl('c') | Key::Ctrl('[') => {
                         send_gui_aborted.send(()).ok();
                         return ();
                     }
-                    _ => {}
+                    _ => continue,
                 },
-            }
+                Either::Right((Either::Right((Ok(()), _key)), _delay)) => {
+                    log::info!("RECEIVED ABORT SIGNAL");
+                    return ();
+                }
+                _ => continue,
+            };
         }
     };
     Ok((render_fut, receive_gui_aborted))
