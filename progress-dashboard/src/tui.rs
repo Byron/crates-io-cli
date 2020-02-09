@@ -147,25 +147,37 @@ fn draw_everything(
             height: 1,
             ..current
         };
-        let (count, mut progress_percent) = entries.iter().skip(current.height as usize).fold(
-            (0usize, 0f64),
-            |(count, progress_percent), (_key, value)| {
-                let progress = value
-                    .progress
-                    .and_then(|p| p.done_at.map(|d| (p.step, d)))
-                    .map(|(c, m)| (c as f64 / m as f64) * 100.0)
-                    .unwrap_or_default();
-                (count + 1, progress_percent + progress)
-            },
+        draw_overflow(
+            entries.iter().skip(current.height as usize),
+            buf,
+            overflow_rect,
         );
-        progress_percent /= count as f64;
-        Paragraph::new(
-            [Text::Raw(
-                format!("…and {} more -- {:4.01}%", count, progress_percent).into(),
-            )]
-            .iter(),
-        )
-        .draw(overflow_rect, buf);
     }
     entries
+}
+
+fn draw_overflow<'a>(
+    entries: impl Iterator<Item = &'a (tree::Key, TreeValue)>,
+    buf: &mut Buffer,
+    overflow_rect: Rect,
+) {
+    let (count, mut progress_percent) = entries.fold(
+        (0usize, 0f64),
+        |(count, progress_percent), (_key, value)| {
+            let progress = value
+                .progress
+                .and_then(|p| p.done_at.map(|d| (p.step, d)))
+                .map(|(c, m)| (c as f64 / m as f64) * 100.0)
+                .unwrap_or_default();
+            (count + 1, progress_percent + progress)
+        },
+    );
+    progress_percent /= count as f64;
+    Paragraph::new(
+        [Text::Raw(
+            format!("…and {} more -- {:4.01}%", count, progress_percent).into(),
+        )]
+        .iter(),
+    )
+    .draw(overflow_rect, buf);
 }
