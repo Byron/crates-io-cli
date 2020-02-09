@@ -984,6 +984,7 @@ dependencies = [
  "termion",
  "tui",
  "tui-react",
+ "unicode-segmentation",
 ]
 
 [[package]]

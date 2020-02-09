@@ -16,6 +16,7 @@ use tui::{
     widgets::{Paragraph, Text},
 };
 use tui_react::Terminal;
+use unicode_segmentation::UnicodeSegmentation;
 
 #[derive(Clone)]
 pub struct Config {
@@ -137,9 +138,9 @@ fn draw_progress(
 ) {
     for (line, (_, value)) in entries.iter().take(current.height as usize).enumerate() {
         let progress =
-            Text::Raw(format!("{progress}", progress = ProgressFormat(&value.progress)).into());
+            Text::Raw(format!("│ {progress}", progress = ProgressFormat(&value.progress)).into());
 
-        let offset = max_prefix_len + 4;
+        let offset = max_prefix_len + 1;
         let progress_rect = Rect {
             x: offset,
             y: current.y + line as u16,
@@ -154,16 +155,23 @@ fn draw_tree_prefix(
     entries: &[(tree::Key, TreeValue)],
     buf: &mut Buffer,
     current: Rect,
-    _column_end: u16,
+    column_end: u16,
 ) -> Option<u16> {
     let mut max_prefix_len = None;
     for (line, (key, value)) in entries.iter().take(current.height as usize).enumerate() {
-        let tree_prefix = format!(
-            "{:>width$} {:<15}",
+        let mut tree_prefix = format!(
+            "{:>width$} {}",
             '‧',
             value.title,
             width = key.level() as usize
         );
+        tree_prefix = tree_prefix
+            .graphemes(true)
+            .take(column_end.saturating_sub(1) as usize)
+            .collect();
+        if tree_prefix.len() + 1 >= column_end as usize {
+            tree_prefix.push('…');
+        }
         max_prefix_len = Some(max_prefix_len.unwrap_or(0).max(tree_prefix.len() as u16));
         let tree_prefix = Text::Raw(tree_prefix.into());
         let line_rect = Rect {
