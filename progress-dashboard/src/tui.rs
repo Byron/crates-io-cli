@@ -1,9 +1,11 @@
-use crate::tree::{self, TreeRoot};
+use crate::{
+    tree::{self, TreeRoot},
+    Progress, TreeValue,
+};
 use futures_timer::Delay;
 
-use crate::Progress;
 use futures::{channel::mpsc, future::select, future::Either, SinkExt, StreamExt};
-use std::{io, time::Duration};
+use std::{fmt, io, time::Duration};
 use termion::event::Key;
 use termion::{input::TermRead, raw::IntoRawMode, screen::AlternateScreen};
 use tui::{
@@ -50,7 +52,7 @@ pub fn render(
             let buf = terminal.current_buffer_mut();
             progress.sorted_snapshot(&mut entries_buf);
 
-            draw_everything(entries_buf.as_slice(), window_size, buf);
+            draw_everything(entries_buf.drain(..), window_size, buf);
             terminal.post_render().expect("post render to work");
 
             let delay = Delay::new(duration_per_frame);
@@ -69,29 +71,56 @@ pub fn render(
     Ok(render_fut)
 }
 
+struct ProgressFormat<'a>(&'a Option<Progress>);
+
+impl<'a> fmt::Display for ProgressFormat<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self.0 {
+            Some(p) => {
+                match p.done_at {
+                    Some(done_at) => write!(f, "{} / {}", p.step, done_at),
+                    None => write!(f, "{}", p.step),
+                }?;
+                if let Some(unit) = p.unit {
+                    write!(f, " {}", unit)?;
+                }
+                Ok(())
+            }
+            None => Ok(()),
+        }
+    }
+}
+
 fn draw_everything(
-    entries_buf: &[(tree::Key, Option<Progress>)],
+    entries: impl IntoIterator<Item = (tree::Key, TreeValue)>,
     window_size: Rect,
     buf: &mut Buffer,
 ) {
-    {
-        let mut progress_pane = Block::default()
-            .title("Progress Tree")
-            .borders(Borders::ALL);
-        progress_pane.draw(window_size, buf);
-        let current = progress_pane.inner(window_size);
+    let mut progress_pane = Block::default()
+        .title("Progress Tree")
+        .borders(Borders::ALL);
+    progress_pane.draw(window_size, buf);
+    let current = progress_pane.inner(window_size);
 
-        for (line, (key, _progress)) in entries_buf.iter().take(current.height as usize).enumerate()
-        {
-            let tree_prefix =
-                Text::Raw(format!("{:width$}", ' ', width = key.level() as usize).into());
-            let progress = Text::Raw("progress".into());
-            let line_rect = Rect {
-                y: line as u16,
-                height: 1,
-                ..current
-            };
-            Paragraph::new([tree_prefix, progress].iter()).draw(line_rect, buf);
-        }
+    for (line, (key, value)) in entries
+        .into_iter()
+        .take(current.height as usize)
+        .enumerate()
+    {
+        let tree_prefix = Text::Raw(format!("{:width$}", ' ', width = key.level() as usize).into());
+        let progress = Text::Raw(
+            format!(
+                "{label} -- {progress}",
+                label = value.title,
+                progress = ProgressFormat(&value.progress)
+            )
+            .into(),
+        );
+        let line_rect = Rect {
+            y: line as u16,
+            height: 1,
+            ..current
+        };
+        Paragraph::new([tree_prefix, progress].iter()).draw(line_rect, buf);
     }
 }

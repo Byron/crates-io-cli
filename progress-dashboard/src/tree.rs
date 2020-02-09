@@ -12,7 +12,6 @@ impl TreeRoot {
     pub fn new() -> TreeRoot {
         TreeRoot {
             inner: Arc::new(Mutex::new(Tree {
-                title: String::new(),
                 child_id: 0,
                 key: Key::default(),
                 tree: Arc::new(DashMap::with_capacity(100)),
@@ -23,7 +22,7 @@ impl TreeRoot {
         self.inner.lock().add_child(title)
     }
 
-    pub fn sorted_snapshot(&self, out: &mut Vec<(Key, Option<Progress>)>) {
+    pub fn sorted_snapshot(&self, out: &mut Vec<(Key, TreeValue)>) {
         out.clear();
         out.extend(
             self.inner
@@ -38,10 +37,9 @@ impl TreeRoot {
 
 #[derive(Debug)]
 pub struct Tree {
-    title: String,
     key: Key,
     child_id: TreeId,
-    tree: Arc<DashMap<Key, Option<Progress>>>,
+    tree: Arc<DashMap<Key, TreeValue>>,
 }
 
 impl Drop for Tree {
@@ -53,16 +51,12 @@ impl Drop for Tree {
 impl Tree {
     pub fn init(&mut self, max: Option<ProgressStep>, unit: Option<&'static str>) {
         self.tree.get_mut(&self.key).map(|mut r| {
-            *r.value_mut() = Some(Progress {
+            r.value_mut().progress = Some(Progress {
                 done_at: max,
                 unit,
                 ..Default::default()
             })
         });
-    }
-
-    pub fn title(&self) -> &str {
-        &self.title
     }
 
     pub fn set(&mut self, step: ProgressStep) {
@@ -72,17 +66,22 @@ impl Tree {
             // when these go out of scope, they delete the key and the other tree will not find
             // its value anymore. Besides, it's probably weird to see tasks changing their progress
             // all the time…
-            r.value_mut().as_mut().map(|p| p.step = step);
+            r.value_mut().progress.as_mut().map(|p| p.step = step);
         });
     }
 
     pub fn add_child(&mut self, title: impl Into<String>) -> Tree {
         let child_key = self.key.add_child(self.child_id);
-        self.tree.insert(child_key, None);
+        self.tree.insert(
+            child_key,
+            TreeValue {
+                title: title.into(),
+                progress: None,
+            },
+        );
         self.child_id = self.child_id.wrapping_add(1);
         Tree {
             child_id: 0,
-            title: title.into(),
             key: child_key,
             tree: self.tree.clone(),
         }
@@ -134,7 +133,13 @@ impl Key {
 
 #[derive(Copy, Clone, Default, Hash, Eq, PartialEq, Ord, PartialOrd, Debug)]
 pub struct Progress {
-    step: ProgressStep,
-    done_at: Option<ProgressStep>,
-    unit: Option<&'static str>,
+    pub step: ProgressStep,
+    pub done_at: Option<ProgressStep>,
+    pub unit: Option<&'static str>,
+}
+
+#[derive(Clone, Default, Hash, Eq, PartialEq, Ord, PartialOrd, Debug)]
+pub struct TreeValue {
+    pub title: String,
+    pub progress: Option<Progress>,
 }
