@@ -137,7 +137,7 @@ fn draw_progress(
     current: Rect,
     max_prefix_len: u16,
 ) {
-    let offset = max_prefix_len + 1;
+    let x_offset = max_prefix_len + 1;
     for (line, (_, TreeValue { progress, .. })) in
         entries.iter().take(current.height as usize).enumerate()
     {
@@ -146,29 +146,14 @@ fn draw_progress(
 
         let y = current.y + line as u16;
         let progress_style = if let Some(fraction) = progress.and_then(|p| p.fraction()) {
-            let max_width = current.width.saturating_sub(offset);
-            let fractional_progress_rect = Rect {
-                x: offset,
-                y,
-                height: 1,
-                width: ((max_width as f32 * fraction) as u16).min(max_width),
-            };
-            let color = if fraction >= 1.0 {
-                Color::Green
-            } else {
-                Color::Yellow
-            };
-            tui_react::fill_background(fractional_progress_rect, buf, color);
-            Style::default()
-                .bg(color)
-                .fg(Color::Black)
+            draw_progress_bar(buf, current, x_offset, y, fraction)
         } else {
             Style::default().bg(Color::Reset)
         };
-        let width = (progress_text_blocks + 2).min(current.width.saturating_sub(offset));
+        let width = (progress_text_blocks + 2).min(current.width.saturating_sub(x_offset));
         let progress_text = Text::Styled(progress_text.into(), progress_style);
         let progress_rect = Rect {
-            x: offset,
+            x: x_offset,
             y,
             width,
             height: 1,
@@ -183,6 +168,29 @@ fn draw_progress(
         )
         .draw(progress_rect, buf);
     }
+}
+
+fn draw_progress_bar(
+    buf: &mut Buffer,
+    current: Rect,
+    x_offset: u16,
+    y: u16,
+    fraction: f32,
+) -> Style {
+    let max_width = current.width.saturating_sub(x_offset);
+    let fractional_progress_rect = Rect {
+        x: x_offset,
+        y,
+        height: 1,
+        width: ((max_width as f32 * fraction) as u16).min(max_width),
+    };
+    let color = if fraction >= 1.0 {
+        Color::Green
+    } else {
+        Color::Yellow
+    };
+    tui_react::fill_background(fractional_progress_rect, buf, color);
+    Style::default().bg(color).fg(Color::Black)
 }
 
 fn draw_tree_prefix(
