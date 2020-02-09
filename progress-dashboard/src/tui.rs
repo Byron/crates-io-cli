@@ -108,23 +108,7 @@ fn draw_everything(
         false
     };
 
-    let mut max_prefix_len = None;
-    for (line, (key, value)) in entries.iter().take(current.height as usize).enumerate() {
-        let tree_prefix = format!(
-            "{:>width$} {:<15}",
-            '‧',
-            value.title,
-            width = key.level() as usize
-        );
-        max_prefix_len = Some(max_prefix_len.unwrap_or(0).max(tree_prefix.len() as u16));
-        let tree_prefix = Text::Raw(tree_prefix.into());
-        let line_rect = Rect {
-            y: current.y + line as u16,
-            height: 1,
-            ..current
-        };
-        Paragraph::new([tree_prefix].iter()).draw(line_rect, buf);
-    }
+    let max_prefix_len = draw_tree_prefix(&entries, buf, current);
 
     let max_prefix_len = max_prefix_len.unwrap_or_default();
     for (line, (_, value)) in entries.iter().take(current.height as usize).enumerate() {
@@ -154,6 +138,31 @@ fn draw_everything(
         );
     }
     entries
+}
+
+fn draw_tree_prefix(
+    entries: &Vec<(tree::Key, TreeValue)>,
+    buf: &mut Buffer,
+    current: Rect,
+) -> Option<u16> {
+    let mut max_prefix_len = None;
+    for (line, (key, value)) in entries.iter().take(current.height as usize).enumerate() {
+        let tree_prefix = format!(
+            "{:>width$} {:<15}",
+            '‧',
+            value.title,
+            width = key.level() as usize
+        );
+        max_prefix_len = Some(max_prefix_len.unwrap_or(0).max(tree_prefix.len() as u16));
+        let tree_prefix = Text::Raw(tree_prefix.into());
+        let line_rect = Rect {
+            y: current.y + line as u16,
+            height: 1,
+            ..current
+        };
+        Paragraph::new([tree_prefix].iter()).draw(line_rect, buf);
+    }
+    max_prefix_len
 }
 
 fn draw_overflow<'a>(
