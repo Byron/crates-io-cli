@@ -17,7 +17,6 @@
   * [ ] custom statistics window
 * [ ] document test-strategy (at least)
 
-
 ## Lessons Learned
 
 * `drop()` is not garantueed to be called when the future returns Ready and is in the futures::executor::ThreadPool

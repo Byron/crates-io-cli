@@ -137,8 +137,9 @@ fn draw_progress(
     current: Rect,
     max_prefix_len: u16,
 ) {
+    // TODO: make current the only rect we need, remove max_prefix_len
     let x_offset = max_prefix_len + 1;
-    for (line, (_, TreeValue { progress, .. })) in
+    for (line, (_, TreeValue { progress, title })) in
         entries.iter().take(current.height as usize).enumerate()
     {
         let max_width = current.width.saturating_sub(x_offset);
@@ -151,6 +152,7 @@ fn draw_progress(
         } else {
             Style::default().bg(Color::Reset)
         };
+
         let width = (progress_text_blocks + 2).min(current.width.saturating_sub(x_offset));
         let progress_text = Text::Styled(progress_text.into(), progress_style);
         let progress_rect = Rect {
@@ -168,6 +170,18 @@ fn draw_progress(
             .iter(),
         )
         .draw(progress_rect, buf);
+
+        if progress.is_none() {
+            let title_len = title.graphemes(true).count() as u16;
+            let max_width = title_len.min(max_width);
+            let center_rect = Rect {
+                x: (x_offset + (width.saturating_sub(title_len)) / 2).max(x_offset),
+                y,
+                width: max_width,
+                height: 1,
+            };
+            Paragraph::new([Text::Raw(title.into())].iter()).draw(center_rect, buf);
+        }
     }
 }
 
