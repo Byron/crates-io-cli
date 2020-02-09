@@ -23,8 +23,16 @@ impl TreeRoot {
         self.inner.lock().add_child(title)
     }
 
-    pub fn sorted_snapshot(&self, _out: &mut Vec<(Key, Progress)>) {
-        unimplemented!()
+    pub fn sorted_snapshot(&self, out: &mut Vec<(Key, Option<Progress>)>) {
+        out.clear();
+        out.extend(
+            self.inner
+                .lock()
+                .tree
+                .iter()
+                .map(|r| (r.key().clone(), r.value().clone())),
+        );
+        out.sort_by_key(|t| t.0);
     }
 }
 

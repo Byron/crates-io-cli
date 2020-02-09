@@ -6,6 +6,8 @@ use futures::{future::select, future::Either, SinkExt, StreamExt};
 use std::{io, time::Duration};
 use termion::event::Key;
 use termion::{input::TermRead, raw::IntoRawMode, screen::AlternateScreen};
+use tui::layout::Rect;
+use tui::widgets::{Paragraph, Text};
 use tui::{
     backend::TermionBackend,
     widgets::{Block, Borders, Widget},
@@ -50,10 +52,21 @@ pub fn render(
                     .borders(Borders::ALL);
                 let buf = terminal.current_buffer_mut();
                 progress_pane.draw(window_size, buf);
-                let _entries_rect = progress_pane.inner(window_size);
+                let current = progress_pane.inner(window_size);
 
                 progress.sorted_snapshot(&mut entries_buf);
-                for (_tree_id, _progress) in entries_buf.iter() {}
+                for (line, (tree_id, _progress)) in
+                    entries_buf.iter().take(current.height as usize).enumerate()
+                {
+                    let tree_prefix = Text::Raw("hello".into());
+                    let progress = Text::Raw("progress".into());
+                    let line_rect = Rect {
+                        y: line as u16,
+                        height: 1,
+                        ..current
+                    };
+                    Paragraph::new([tree_prefix, progress].iter()).draw(line_rect, buf);
+                }
                 terminal.post_render().expect("post render to work");
             }
 
