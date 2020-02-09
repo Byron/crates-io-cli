@@ -45,15 +45,16 @@ async fn find_work(
     pool: impl Spawn,
 ) -> Result {
     let NestingLevel(max_level) = max;
-    let mut progresses = Vec::new();
+    let mut level_handles = Vec::new();
     let mut level_progress =
         tree.add_child(format!("{}: level {} of {}", prefix.as_ref(), 1, max_level));
-    let mut handles = Vec::new();
 
     for level in 0..max_level {
         // one-off ambient tasks
         let num_tasks = max_level as usize * 2;
         level_progress.init(Some(num_tasks as u32), Some("work items"));
+        let mut handles = Vec::new();
+
         for id in 0..num_tasks {
             let handle = pool
                 .spawn_with_handle(work_item(
@@ -65,14 +66,20 @@ async fn find_work(
 
             Delay::new(Duration::from_millis(SPAWN_DELAY_MS)).await;
         }
+
         let tmp = level_progress.add_child(format!("Level {}", level + 1));
-        progresses.push(level_progress);
+        level_handles.push((level_progress, handles));
         level_progress = tmp;
     }
 
-    progresses.push(level_progress);
-    for handle in handles.into_iter() {
-        handle.await;
+    for level_fut in level_handles.into_iter().map(|(_level, handles)| async move {
+        for h in handles {
+            // this works only on handles, similar to join handles, as the linked future
+            // makes progress on its own.
+            h.await;
+        }
+    }) {
+        level_fut.await
     }
 
     Ok(())
@@ -93,9 +100,9 @@ async fn work_forever(pool: impl Spawn + Clone + Send + 'static) -> Result {
             progress.clone(),
             pool.clone(),
         );
-        let pooled_work = (0..thread_rng().gen_range(3, 8usize)).map(|_| {
+        let pooled_work = (0..thread_rng().gen_range(3, 8usize)).map(|pid| {
             pool.spawn_with_handle(find_work(
-                format!("{}: pooled", iteration),
+                format!("{}-{}: pooled", iteration, pid),
                 NestingLevel(thread_rng().gen_range(0, Key::max_level())),
                 progress.clone(),
                 pool.clone(),
