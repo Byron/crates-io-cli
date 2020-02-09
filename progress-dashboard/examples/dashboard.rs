@@ -1,7 +1,7 @@
 use futures::future::{AbortHandle, Either};
 use futures::{
     executor::{block_on, ThreadPool},
-    future::{abortable, join},
+    future::{abortable, join_all},
     task::{Spawn, SpawnExt},
     FutureExt,
 };
@@ -14,7 +14,7 @@ use std::{error::Error, time::Duration};
 const WORK_STEPS_NEEDED_FOR_UNBOUNDED_TASK: u8 = 100;
 const UNITS: &[&str] = &["Mb", "kb", "items", "files"];
 const WORK_DELAY_MS: u64 = 100;
-const SPAWN_DELAY_MS: u64 = 500;
+const SPAWN_DELAY_MS: u64 = 200;
 
 async fn work_item(mut progress: Tree) -> () {
     let max: u8 = thread_rng().gen_range(25, 125);
@@ -93,17 +93,19 @@ async fn work_forever(pool: impl Spawn + Clone + Send + 'static) -> Result {
             progress.clone(),
             pool.clone(),
         );
-        let threaded_work = pool
-            .spawn_with_handle(find_work(
+        let pooled_work = (0..thread_rng().gen_range(3, 8usize)).map(|_| {
+            pool.spawn_with_handle(find_work(
                 format!("{}: pooled", iteration),
                 NestingLevel(thread_rng().gen_range(0, Key::max_level())),
                 progress.clone(),
                 pool.clone(),
             ))
-            .expect("spawning to work - SpawnError cannot be ");
+            .expect("spawning to work - SpawnError cannot be ")
+            .boxed_local()
+        });
 
         match futures::future::select(
-            join(local_work.boxed_local(), threaded_work),
+            join_all(std::iter::once(local_work.boxed_local()).chain(pooled_work)),
             gui_handle.take().expect("gui handle"),
         )
         .await
