@@ -7,7 +7,6 @@ use termion::raw::IntoRawMode;
 use termion::screen::AlternateScreen;
 use tui::{
     backend::TermionBackend,
-    layout::{Constraint, Direction, Layout},
     widgets::{Block, Borders, Widget},
     Terminal,
 };

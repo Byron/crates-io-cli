@@ -1,4 +1,4 @@
-use futures::future::AbortHandle;
+use futures::future::{abortable, join, AbortHandle};
 use futures::task::{Spawn, SpawnExt};
 use futures_timer::Delay;
 use log::info;
@@ -56,7 +56,23 @@ async fn find_work(max: NestingLevel, mut tree: TreeRoot, pool: impl Spawn) -> R
 async fn work_forever(pool: impl Spawn + Clone + Send + 'static) -> Result {
     let progress = progress_dashboard::TreeRoot::new();
     // Now we should handle signals to be able to cleanup properly
-    let (abortable_render, trigger) = futures::future::abortable(tui::render(
+    let trigger = launch_ambient_gui(&pool, &progress);
+    abort_gui_on_signal(trigger.clone());
+
+    for _ in 1..10 {
+        let local_work = find_work(NestingLevel(2), progress.clone(), pool.clone());
+        let threaded_work = pool
+            .spawn_with_handle(find_work(NestingLevel(2), progress.clone(), pool.clone()))
+            .expect("spawning to work - SpawnError cannot be ");
+
+        let _ = join(local_work, threaded_work).await;
+    }
+    trigger.abort();
+    Ok(())
+}
+
+fn launch_ambient_gui(pool: &dyn Spawn, progress: &TreeRoot) -> AbortHandle {
+    let (abortable_render, trigger) = abortable(tui::render(
         progress.clone(),
         tui::Config {
             frames_per_second: 30,
@@ -66,18 +82,7 @@ async fn work_forever(pool: impl Spawn + Clone + Send + 'static) -> Result {
         abortable_render.await.ok();
     })
     .expect("GUI to be spawned");
-    abort_gui_on_signal(trigger.clone());
-
-    for _ in 1..10 {
-        let local_work = find_work(NestingLevel(2), progress.clone(), pool.clone());
-        let threaded_work = pool
-            .spawn_with_handle(find_work(NestingLevel(2), progress.clone(), pool.clone()))
-            .expect("spawning to work - SpawnError cannot be ");
-
-        let _ = futures::future::join(local_work, threaded_work).await;
-    }
-    trigger.abort();
-    Ok(())
+    trigger
 }
 
 // This only actually happens if someone sends a signal using Kill - the GUI
@@ -102,6 +107,7 @@ fn abort_gui_on_signal(trigger: AbortHandle) {
 }
 
 fn main() -> Result {
+    env_logger::init();
     // Use spawn as well to simulate Send futures
     let pool = futures::executor::ThreadPool::builder()
         .pool_size(1)
