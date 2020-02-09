@@ -45,10 +45,12 @@ pub fn render(
             terminal
                 .draw(|mut f| {
                     let size = f.size();
-                    Block::default()
-                        .title("Block")
-                        .borders(Borders::ALL)
-                        .render(&mut f, size);
+                    let mut progress_pane = Block::default()
+                        .title("Progress Tree")
+                        .borders(Borders::ALL);
+                    progress_pane.render(&mut f, size);
+                    let _entries_rect = progress_pane.inner(size);
+                    //                    for (tree_id, progress) in progress.sorted_snapshot().into_iter() {}
                 })
                 .ok();
             let delay = Delay::new(duration_per_frame);

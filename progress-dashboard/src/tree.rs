@@ -1,30 +1,44 @@
 use dashmap::DashMap;
+use parking_lot::Mutex;
 use std::sync::Arc;
 
+/// The top-level of the progress tree
 #[derive(Clone, Debug)]
 pub struct TreeRoot {
+    inner: Arc<Mutex<Tree>>,
+}
+
+impl TreeRoot {
+    pub fn new() -> TreeRoot {
+        TreeRoot {
+            inner: Arc::new(Mutex::new(Tree {
+                title: String::new(),
+                child_count: 0,
+                key: Key::default(),
+                tree: Arc::new(DashMap::with_capacity(100)),
+            })),
+        }
+    }
+    pub fn add_child(&self, title: impl Into<String>) -> Tree {
+        self.inner.lock().add_child(title)
+    }
+}
+
+#[derive(Debug)]
+pub struct Tree {
     title: String,
     key: Key,
     child_count: TreeId,
     tree: Arc<DashMap<Key, Option<Progress>>>,
 }
 
-impl Drop for TreeRoot {
+impl Drop for Tree {
     fn drop(&mut self) {
         self.tree.remove(&self.key);
     }
 }
 
-impl TreeRoot {
-    pub fn new() -> TreeRoot {
-        TreeRoot {
-            title: String::new(),
-            child_count: 0,
-            key: Key::default(),
-            tree: Arc::new(DashMap::with_capacity(100)),
-        }
-    }
-
+impl Tree {
     pub fn init(&mut self, max: Option<ProgressStep>, unit: Option<&'static str>) {
         self.tree.get_mut(&self.key).map(|mut r| {
             *r.value_mut() = Some(Progress {
@@ -46,11 +60,11 @@ impl TreeRoot {
         });
     }
 
-    pub fn add_child(&mut self, title: impl Into<String>) -> TreeRoot {
+    pub fn add_child(&mut self, title: impl Into<String>) -> Tree {
         let child_key = self.key.add_child(self.child_count);
         self.tree.insert(child_key, None);
         self.child_count = self.child_count.wrapping_add(1);
-        TreeRoot {
+        Tree {
             child_count: 0,
             title: title.into(),
             key: child_key,

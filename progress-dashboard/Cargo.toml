@@ -20,6 +20,7 @@ tui-renderer = ["tui", "termion", "futures-timer", "futures"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
 dashmap = "3.4.3"
+parking_lot = "0.10.0"
 log = "0.4.8"
 
 # tui-renderer
