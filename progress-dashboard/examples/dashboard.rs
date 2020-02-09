@@ -1,6 +1,5 @@
 use futures::future::{AbortHandle, Either};
 use futures::{
-    channel::oneshot,
     executor::{block_on, ThreadPool},
     future::{abortable, join},
     task::{Spawn, SpawnExt},
@@ -62,22 +61,20 @@ async fn find_work(max: NestingLevel, mut tree: TreeRoot, pool: impl Spawn) -> R
 async fn work_forever(pool: impl Spawn + Clone + Send + 'static) -> Result {
     let progress = progress_dashboard::TreeRoot::new();
     // Now we should handle signals to be able to cleanup properly
-    let (gui_handle, mut should_stop_work, abort_gui) =
-        launch_ambient_gui(&pool, &progress).unwrap();
+    let (gui_handle, abort_gui) = launch_ambient_gui(&pool, &progress).unwrap();
+    let mut gui_handle = gui_handle.boxed();
 
-    for _ in 0..4 {
+    for _ in 0..1 {
         let local_work = find_work(NestingLevel(2), progress.clone(), pool.clone());
         let threaded_work = pool
             .spawn_with_handle(find_work(NestingLevel(2), progress.clone(), pool.clone()))
             .expect("spawning to work - SpawnError cannot be ");
 
-        match futures::future::select(
-            join(local_work.boxed_local(), threaded_work),
-            &mut should_stop_work,
-        )
-        .await
+        match futures::future::select(join(local_work.boxed_local(), threaded_work), gui_handle)
+            .await
         {
-            Either::Left((_workblock_result, _)) => {
+            Either::Left((_workblock_result, running_gui)) => {
+                gui_handle = running_gui;
                 continue;
             }
             Either::Right(_gui_shutdown) => break,
@@ -85,18 +82,18 @@ async fn work_forever(pool: impl Spawn + Clone + Send + 'static) -> Result {
     }
 
     abort_gui.abort();
-    gui_handle.await;
+    // As by now we have consumed our handle, we cannot await the gui to close after he hit the abort button.
+    // The reason is solely that, and ideally we can make it work without additional channels, like before, and
+    // without 'sleeping'.
+    Delay::new(Duration::from_millis(100)).await;
     Ok(())
 }
 
 fn launch_ambient_gui(
     pool: &dyn Spawn,
     progress: &TreeRoot,
-) -> std::result::Result<
-    (impl Future<Output = ()>, oneshot::Receiver<()>, AbortHandle),
-    std::io::Error,
-> {
-    let (render_fut, should_stop_work) = tui::render(
+) -> std::result::Result<(impl Future<Output = ()>, AbortHandle), std::io::Error> {
+    let render_fut = tui::render(
         progress.clone(),
         tui::Config {
             frames_per_second: 30,
@@ -111,7 +108,6 @@ fn launch_ambient_gui(
             handle.await.ok();
             ()
         },
-        should_stop_work,
         abort_handle,
     ))
 }

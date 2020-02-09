@@ -2,7 +2,7 @@ use crate::tree::TreeRoot;
 use futures_timer::Delay;
 
 use futures::channel::mpsc;
-use futures::{channel::oneshot, future::select, future::Either, SinkExt, StreamExt};
+use futures::{future::select, future::Either, SinkExt, StreamExt};
 use std::{io, time::Duration};
 use termion::event::Key;
 use termion::{input::TermRead, raw::IntoRawMode, screen::AlternateScreen};
@@ -20,7 +20,7 @@ pub struct Config {
 pub fn render(
     _progress: TreeRoot,
     Config { frames_per_second }: Config,
-) -> Result<(impl std::future::Future<Output = ()>, oneshot::Receiver<()>), std::io::Error> {
+) -> Result<impl std::future::Future<Output = ()>, std::io::Error> {
     let mut terminal = {
         let stdout = io::stdout().into_raw_mode()?;
         let stdout = AlternateScreen::from(stdout);
@@ -29,7 +29,6 @@ pub fn render(
     };
 
     let duration_per_frame = Duration::from_secs(1) / frames_per_second as u32;
-    let (send_gui_aborted, receive_gui_aborted) = oneshot::channel::<()>();
     let (mut key_send, mut key_receive) = mpsc::channel::<Key>(1);
 
     // This brings blocking key-handling into the async world
@@ -57,7 +56,6 @@ pub fn render(
                 Either::Left(_delay_timed_out) => continue,
                 Either::Right((Some(key), _delay)) => match key {
                     Key::Esc | Key::Ctrl('c') | Key::Ctrl('[') => {
-                        send_gui_aborted.send(()).ok();
                         return ();
                     }
                     _ => continue,
@@ -66,5 +64,5 @@ pub fn render(
             };
         }
     };
-    Ok((render_fut, receive_gui_aborted))
+    Ok(render_fut)
 }
