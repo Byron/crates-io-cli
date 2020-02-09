@@ -1,16 +1,17 @@
-use crate::tree::TreeRoot;
+use crate::tree::{self, TreeRoot};
 use futures_timer::Delay;
 
-use futures::channel::mpsc;
-use futures::{future::select, future::Either, SinkExt, StreamExt};
+use crate::Progress;
+use futures::{channel::mpsc, future::select, future::Either, SinkExt, StreamExt};
 use std::{io, time::Duration};
 use termion::event::Key;
 use termion::{input::TermRead, raw::IntoRawMode, screen::AlternateScreen};
-use tui::layout::Rect;
-use tui::widgets::{Paragraph, Text};
 use tui::{
     backend::TermionBackend,
+    buffer::Buffer,
+    layout::Rect,
     widgets::{Block, Borders, Widget},
+    widgets::{Paragraph, Text},
 };
 use tui_react::Terminal;
 
@@ -45,30 +46,12 @@ pub fn render(
     let render_fut = async move {
         let mut entries_buf = Vec::new();
         loop {
-            {
-                let window_size = terminal.pre_render().expect("pre-render to work");
-                let mut progress_pane = Block::default()
-                    .title("Progress Tree")
-                    .borders(Borders::ALL);
-                let buf = terminal.current_buffer_mut();
-                progress_pane.draw(window_size, buf);
-                let current = progress_pane.inner(window_size);
+            let window_size = terminal.pre_render().expect("pre-render to work");
+            let buf = terminal.current_buffer_mut();
+            progress.sorted_snapshot(&mut entries_buf);
 
-                progress.sorted_snapshot(&mut entries_buf);
-                for (line, (tree_id, _progress)) in
-                    entries_buf.iter().take(current.height as usize).enumerate()
-                {
-                    let tree_prefix = Text::Raw("hello".into());
-                    let progress = Text::Raw("progress".into());
-                    let line_rect = Rect {
-                        y: line as u16,
-                        height: 1,
-                        ..current
-                    };
-                    Paragraph::new([tree_prefix, progress].iter()).draw(line_rect, buf);
-                }
-                terminal.post_render().expect("post render to work");
-            }
+            draw_everything(entries_buf.as_slice(), window_size, buf);
+            terminal.post_render().expect("post render to work");
 
             let delay = Delay::new(duration_per_frame);
             match select(delay, key_receive.next()).await {
@@ -84,4 +67,31 @@ pub fn render(
         }
     };
     Ok(render_fut)
+}
+
+fn draw_everything(
+    entries_buf: &[(tree::Key, Option<Progress>)],
+    window_size: Rect,
+    buf: &mut Buffer,
+) {
+    {
+        let mut progress_pane = Block::default()
+            .title("Progress Tree")
+            .borders(Borders::ALL);
+        progress_pane.draw(window_size, buf);
+        let current = progress_pane.inner(window_size);
+
+        for (line, (tree_id, _progress)) in
+            entries_buf.iter().take(current.height as usize).enumerate()
+        {
+            let tree_prefix = Text::Raw("hello".into());
+            let progress = Text::Raw("progress".into());
+            let line_rect = Rect {
+                y: line as u16,
+                height: 1,
+                ..current
+            };
+            Paragraph::new([tree_prefix, progress].iter()).draw(line_rect, buf);
+        }
+    }
 }

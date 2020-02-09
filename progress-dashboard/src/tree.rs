@@ -89,7 +89,7 @@ impl Tree {
     }
 }
 
-type TreeId = u32; // NOTE: This means we will show weird behaviour if there are more than 2^16 tasks at the same time on a level
+type TreeId = u16; // NOTE: This means we will show weird behaviour if there are more than 2^16 tasks at the same time on a level
 pub type ProgressStep = u32;
 
 #[derive(Copy, Clone, Default, Hash, Eq, PartialEq, Ord, PartialOrd, Debug)]
@@ -114,6 +114,21 @@ impl Key {
                 (a, b, c, Some(child_id))
             }
         })
+    }
+
+    pub fn level(&self) -> u8 {
+        match self {
+            Key((None, None, None, None)) => 0,
+            Key((Some(_), None, None, None)) => 1,
+            Key((Some(_), Some(_), None, None)) => 2,
+            Key((Some(_), Some(_), Some(_), None)) => 3,
+            Key((Some(_), Some(_), Some(_), Some(_))) => 4,
+            _ => unreachable!("This is a bug - Keys follow a certain pattern"),
+        }
+    }
+
+    pub const fn max_level() -> u8 {
+        4
     }
 }
 
