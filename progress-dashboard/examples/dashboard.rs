@@ -57,7 +57,7 @@ async fn find_work(max: NestingLevel, mut tree: TreeRoot, pool: impl Spawn) -> R
 async fn work_forever(pool: impl Spawn + Clone + Send + 'static) -> Result {
     let progress = progress_dashboard::TreeRoot::new();
     // Now we should handle signals to be able to cleanup properly
-    let (_gui_was_shutdown, gui_abort_handle) = launch_ambient_gui(&pool, &progress).unwrap();
+    let (_gui_was_shutdown, tell_gui) = launch_ambient_gui(&pool, &progress).unwrap();
 
     for _ in 1..3 {
         let local_work = find_work(NestingLevel(2), progress.clone(), pool.clone());
@@ -71,7 +71,7 @@ async fn work_forever(pool: impl Spawn + Clone + Send + 'static) -> Result {
         //            Either::Right(_gui_shutdown) => break,
         //        }
     }
-    gui_abort_handle.abort();
+    tell_gui.abort();
     Ok(())
 }
 

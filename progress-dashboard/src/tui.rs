@@ -1,10 +1,9 @@
 use crate::tree::TreeRoot;
 use futures_timer::Delay;
 
-use std::io;
-use std::time::Duration;
-use termion::raw::IntoRawMode;
-use termion::screen::AlternateScreen;
+use futures::{future::select, future::Either, SinkExt, StreamExt};
+use std::{io, time::Duration};
+use termion::{input::TermRead, raw::IntoRawMode, screen::AlternateScreen};
 use tui::{
     backend::TermionBackend,
     widgets::{Block, Borders, Widget},
@@ -34,7 +33,17 @@ pub fn render(
     };
 
     let duration_per_frame = Duration::from_secs(1) / frames_per_second as u32;
-    let (_sender, receiver) = futures::channel::oneshot::channel::<()>();
+    let (_send_gui_aborted, receive_gui_aborted) = futures::channel::oneshot::channel::<()>();
+    let (mut key_send, mut _key_receive) =
+        futures::channel::mpsc::channel::<termion::event::Key>(1);
+
+    std::thread::spawn(move || -> Result<(), io::Error> {
+        for key in io::stdin().keys() {
+            let key = key?;
+            futures::executor::block_on(key_send.send(key)).ok();
+        }
+        Ok(())
+    });
 
     let render_fut = async move {
         loop {
@@ -48,8 +57,11 @@ pub fn render(
                 log::error!("{}", err);
                 return ();
             }
-            Delay::new(duration_per_frame).await;
+            match select(Delay::new(duration_per_frame), _key_receive.next()).await {
+                Either::Left(_delay_timed_out) => {} // redraw
+                Either::Right((key, _delay)) => eprintln!("{:#?}", key),
+            }
         }
     };
-    Ok((render_fut, receiver))
+    Ok((render_fut, receive_gui_aborted))
 }
