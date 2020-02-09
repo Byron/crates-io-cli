@@ -109,21 +109,14 @@ fn draw_everything(
     };
 
     let mut max_prefix_len = None;
-    for (line, (key, value)) in entries[..std::cmp::min(entries.len(), current.height as usize)]
-        .iter()
-        .enumerate()
-    {
+    for (line, (key, value)) in entries.iter().take(current.height as usize).enumerate() {
         let tree_prefix = format!(
             "{:>width$} {:<15}",
             '‧',
             value.title,
             width = key.level() as usize
         );
-        max_prefix_len = Some(
-            max_prefix_len
-                .unwrap_or(0)
-                .max(tree_prefix.len() as u16),
-        );
+        max_prefix_len = Some(max_prefix_len.unwrap_or(0).max(tree_prefix.len() as u16));
         let tree_prefix = Text::Raw(tree_prefix.into());
         let line_rect = Rect {
             y: current.y + line as u16,
@@ -134,10 +127,7 @@ fn draw_everything(
     }
 
     let max_prefix_len = max_prefix_len.unwrap_or_default();
-    for (line, (_, value)) in entries[..std::cmp::min(entries.len(), current.height as usize)]
-        .iter()
-        .enumerate()
-    {
+    for (line, (_, value)) in entries.iter().take(current.height as usize).enumerate() {
         let progress =
             Text::Raw(format!("{progress}", progress = ProgressFormat(&value.progress)).into());
 
