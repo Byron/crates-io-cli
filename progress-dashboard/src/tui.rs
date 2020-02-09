@@ -147,7 +147,7 @@ fn draw_everything(
             height: 1,
             ..current
         };
-        let (count, mut progress_percent) = entries.iter().fold(
+        let (count, mut progress_percent) = entries.iter().skip(current.height as usize).fold(
             (0usize, 0f64),
             |(count, progress_percent), (_key, value)| {
                 let progress = value
