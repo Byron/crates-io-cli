@@ -37,8 +37,11 @@ impl TreeRoot {
 
     pub fn set(&mut self, step: ProgressStep) {
         self.tree.get_mut(&self.key).map(|mut r| {
-            // NOTE: even if people called init() before, value_mut() might yield None! Don't know why that is, but means
-            // we would lose an update here and there…
+            // NOTE: since we wrap around, if there are more tasks than we can have IDs for,
+            // and if all these tasks are still alive, two progress trees may see the same ID
+            // when these go out of scope, they delete the key and the other tree will not find
+            // its value anymore. Besides, it's probably weird to see tasks changing their progress
+            // all the time…
             r.value_mut().as_mut().map(|p| p.step = step);
         });
     }
@@ -56,14 +59,14 @@ impl TreeRoot {
     }
 }
 
-type TreeId = u8;
+type TreeId = u32; // NOTE: This means we will show weird behaviour if there are more than 2^16 tasks at the same time on a level
 pub type ProgressStep = u32;
 
 #[derive(Copy, Clone, Default, Hash, Eq, PartialEq, Ord, PartialOrd, Debug)]
-struct Key((Option<u8>, Option<u8>, Option<u8>));
+struct Key((Option<TreeId>, Option<TreeId>, Option<TreeId>));
 
 impl Key {
-    fn add_child(self, child_id: u8) -> Key {
+    fn add_child(self, child_id: TreeId) -> Key {
         Key(match self {
             Key((None, None, None)) => (Some(child_id), None, None),
             Key((a, None, None)) => (a, Some(child_id), None),

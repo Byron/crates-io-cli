@@ -97,6 +97,7 @@ fn abort_gui_on_signal(trigger: AbortHandle) {
                 match signal {
                     signal_hook::SIGINT | signal_hook::SIGTERM => {
                         trigger.abort();
+                        // TODO: remove this
                         std::process::abort();
                         return;
                     }
