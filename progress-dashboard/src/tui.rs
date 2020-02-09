@@ -117,7 +117,7 @@ fn draw_everything(
             .into(),
         );
         let line_rect = Rect {
-            y: line as u16,
+            y: current.y + line as u16,
             height: 1,
             ..current
         };

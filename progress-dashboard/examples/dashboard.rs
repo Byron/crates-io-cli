@@ -3,26 +3,26 @@ use futures::{
     executor::{block_on, ThreadPool},
     future::{abortable, join},
     task::{Spawn, SpawnExt},
-    FutureExt,
+    FutureExt, StreamExt,
 };
 use futures_timer::Delay;
-use progress_dashboard::{tui, Tree, TreeRoot};
+use progress_dashboard::{tui, Key, Tree, TreeRoot};
 use rand::prelude::*;
 use std::future::Future;
 use std::{error::Error, time::Duration};
 
-const MAX_STEPS: u8 = 100;
+const WORK_STEPS_NEEDED_FOR_UNBOUNDED_TASK: u8 = 100;
 const UNITS: &[&str] = &["Mb", "kb", "items", "files"];
 const WORK_DELAY_MS: u64 = 100;
-const SPAWN_DELAY_MS: u64 = 500;
+const SPAWN_DELAY_MS: u64 = 200;
 
 async fn work_item(mut progress: Tree) -> () {
-    let max: u8 = random();
+    let max: u8 = thread_rng().gen_range(25, 125);
     progress.init(
-        if max > MAX_STEPS {
+        if max > WORK_STEPS_NEEDED_FOR_UNBOUNDED_TASK {
             None
         } else {
-            Some((max % MAX_STEPS).into())
+            Some(max.into())
         },
         if (max as usize % UNITS.len() + 1) == 0 {
             None
@@ -38,23 +38,40 @@ async fn work_item(mut progress: Tree) -> () {
     ()
 }
 
-async fn find_work(prefix: &str, max: NestingLevel, tree: TreeRoot, pool: impl Spawn) -> Result {
+async fn find_work(
+    prefix: impl AsRef<str>,
+    max: NestingLevel,
+    tree: TreeRoot,
+    pool: impl Spawn,
+) -> Result {
     let NestingLevel(max_level) = max;
-    let mut level_progress = tree.add_child(format!("{}: Level {}", prefix, 1));
+    let mut progresses = Vec::new();
+    let mut level_progress =
+        tree.add_child(format!("{}: Level {} of {}", prefix.as_ref(), 1, max_level));
+    let mut handles = Vec::new();
+
     for level in 0..max_level {
         // one-off ambient tasks
-        level_progress.init(Some(max_level as u32), Some("work items"));
         let num_tasks = max_level as usize * 2;
+        level_progress.init(Some(num_tasks as u32), Some("work items"));
         for id in 0..num_tasks {
-            pool.spawn(work_item(
-                level_progress.add_child(format!("work {}", id + 1)),
-            ))
-            .expect("spawn to work");
+            let handle = pool
+                .spawn_with_handle(work_item(
+                    level_progress.add_child(format!("work {}", id + 1)),
+                ))
+                .expect("spawn to work");
+            handles.push(handle);
             level_progress.set(id as u32);
+
             Delay::new(Duration::from_millis(SPAWN_DELAY_MS)).await;
         }
-        level_progress = level_progress.add_child(format!("Level {}", level + 1));
+        let tmp = level_progress.add_child(format!("Level {}", level + 1));
+        progresses.push(level_progress);
+        level_progress = tmp;
     }
+
+    progresses.push(level_progress);
+    futures::stream::iter(handles).collect::<Vec<_>>().await;
 
     Ok(())
 }
@@ -64,13 +81,20 @@ async fn work_forever(pool: impl Spawn + Clone + Send + 'static) -> Result {
     // Now we should handle signals to be able to cleanup properly
     let (gui_handle, abort_gui) = launch_ambient_gui(&pool, progress.clone()).unwrap();
     let mut gui_handle = Some(gui_handle.boxed());
+    let mut iteration = 0;
 
-    for _ in 0..1 {
-        let local_work = find_work("local", NestingLevel(2), progress.clone(), pool.clone());
+    loop {
+        iteration += 1;
+        let local_work = find_work(
+            format!("{}: local", iteration),
+            NestingLevel(thread_rng().gen_range(0, Key::max_level())),
+            progress.clone(),
+            pool.clone(),
+        );
         let threaded_work = pool
             .spawn_with_handle(find_work(
-                "pooled",
-                NestingLevel(4),
+                format!("{}: pooled", iteration),
+                NestingLevel(thread_rng().gen_range(0, Key::max_level())),
                 progress.clone(),
                 pool.clone(),
             ))
