@@ -1,10 +1,11 @@
-use futures::future::{abortable, join, AbortHandle};
-use futures::task::{Spawn, SpawnExt};
+use futures::{
+    future::{join, select, Either},
+    task::{Spawn, SpawnExt},
+};
 use futures_timer::Delay;
 use log::info;
 use progress_dashboard::{tui, TreeRoot};
 use rand::prelude::*;
-use signal_hook::iterator::Signals;
 use std::{error::Error, time::Duration};
 
 const MAX_STEPS: u8 = 100;
@@ -56,56 +57,35 @@ async fn find_work(max: NestingLevel, mut tree: TreeRoot, pool: impl Spawn) -> R
 async fn work_forever(pool: impl Spawn + Clone + Send + 'static) -> Result {
     let progress = progress_dashboard::TreeRoot::new();
     // Now we should handle signals to be able to cleanup properly
-    let trigger = launch_ambient_gui(&pool, &progress);
-    abort_gui_on_signal(trigger.clone());
+    let gui_was_shutdown = launch_ambient_gui(&pool, &progress);
 
-    for _ in 1..7 {
+    for _ in 1..3 {
         let local_work = find_work(NestingLevel(2), progress.clone(), pool.clone());
         let threaded_work = pool
             .spawn_with_handle(find_work(NestingLevel(2), progress.clone(), pool.clone()))
             .expect("spawning to work - SpawnError cannot be ");
 
         let _ = join(local_work, threaded_work).await;
+        //        match select(local_work, gui_was_shutdown).await {
+        //            Either::Left(_) => continue,
+        //            Either::Right(_gui_shutdown) => break,
+        //        }
     }
-    trigger.abort();
     Ok(())
 }
 
-fn launch_ambient_gui(pool: &dyn Spawn, progress: &TreeRoot) -> AbortHandle {
-    let (abortable_render, trigger) = abortable(tui::render(
+fn launch_ambient_gui(
+    pool: &dyn Spawn,
+    progress: &TreeRoot,
+) -> std::result::Result<futures::channel::oneshot::Receiver<()>, std::io::Error> {
+    let (render_fut, gui_was_shutdown) = tui::render(
         progress.clone(),
         tui::Config {
             frames_per_second: 30,
         },
-    ));
-    pool.spawn(async {
-        abortable_render.await.ok();
-    })
-    .expect("GUI to be spawned");
-    trigger
-}
-
-// This only actually happens if someone sends a signal using Kill - the GUI
-// should handle input events to emulate Ctrl+C
-fn abort_gui_on_signal(trigger: AbortHandle) {
-    let signals = Signals::new(&[signal_hook::SIGINT, signal_hook::SIGTERM])
-        .expect("signals to be set successfully");
-    std::thread::spawn({
-        let trigger = trigger.clone();
-        move || {
-            for signal in &signals {
-                match signal {
-                    signal_hook::SIGINT | signal_hook::SIGTERM => {
-                        trigger.abort();
-                        // TODO: remove this
-                        std::process::abort();
-                        return;
-                    }
-                    _ => unreachable!(),
-                }
-            }
-        }
-    });
+    )?;
+    pool.spawn(render_fut).expect("GUI to be spawned");
+    Ok(gui_was_shutdown)
 }
 
 fn main() -> Result {
