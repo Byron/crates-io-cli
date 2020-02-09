@@ -8,7 +8,7 @@
 ## Tasks
 
 * example-driven development for tree-interface and visualization
-  * [ ] title-only
+  * [x] title-only
   * [x] bounded progress
   * [x] unbounded progress
   * [ ] blocking indicator

@@ -214,11 +214,22 @@ fn draw_tree_prefix(
     column_end: u16,
 ) -> Option<u16> {
     let mut max_prefix_len = None;
-    for (line, (key, value)) in entries.iter().take(current.height as usize).enumerate() {
+    for (line, (key, TreeValue { progress, title })) in
+        entries.iter().take(current.height as usize).enumerate()
+    {
         let mut tree_prefix = format!(
             "{:>width$} {}",
-            '‧',
-            value.title,
+            if key.level() == 1 {
+                "‧"
+            } else {
+                if progress.is_none() {
+                    "…"
+                } else {
+
+                    "└"
+                }
+            },
+            if progress.is_none() { "" } else { &title },
             width = key.level() as usize
         );
         tree_prefix = tree_prefix
