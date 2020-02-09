@@ -138,6 +138,13 @@ pub struct Progress {
     pub unit: Option<&'static str>,
 }
 
+impl Progress {
+    pub fn fraction(&self) -> Option<f32> {
+        self.done_at
+            .map(|done_at| self.step as f32 / done_at as f32)
+    }
+}
+
 #[derive(Clone, Default, Hash, Eq, PartialEq, Ord, PartialOrd, Debug)]
 pub struct TreeValue {
     pub title: String,

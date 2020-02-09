@@ -8,6 +8,7 @@ use futures::{channel::mpsc, future::select, future::Either, SinkExt, StreamExt}
 use std::{fmt, io, time::Duration};
 use termion::event::Key;
 use termion::{input::TermRead, raw::IntoRawMode, screen::AlternateScreen};
+use tui::style::{Color, Style};
 use tui::{
     backend::TermionBackend,
     buffer::Buffer,
@@ -136,18 +137,51 @@ fn draw_progress(
     current: Rect,
     max_prefix_len: u16,
 ) {
-    for (line, (_, value)) in entries.iter().take(current.height as usize).enumerate() {
-        let progress =
-            Text::Raw(format!("│ {progress}", progress = ProgressFormat(&value.progress)).into());
+    let offset = max_prefix_len + 1;
+    for (line, (_, TreeValue { progress, .. })) in
+        entries.iter().take(current.height as usize).enumerate()
+    {
+        let progress_text = format!("{progress}", progress = ProgressFormat(progress));
+        let progress_text_blocks = progress_text.graphemes(true).count() as u16;
 
-        let offset = max_prefix_len + 1;
+        let y = current.y + line as u16;
+        let progress_style = if let Some(fraction) = progress.and_then(|p| p.fraction()) {
+            let max_width = current.width.saturating_sub(offset);
+            let fractional_progress_rect = Rect {
+                x: offset,
+                y,
+                height: 1,
+                width: ((max_width as f32 * fraction) as u16).min(max_width),
+            };
+            let color = if fraction >= 1.0 {
+                Color::Green
+            } else {
+                Color::Yellow
+            };
+            tui_react::fill_background(fractional_progress_rect, buf, color);
+            Style::default()
+                .bg(color)
+                .fg(Color::Black)
+        } else {
+            Style::default().bg(Color::Reset)
+        };
+        let width = (progress_text_blocks + 2).min(current.width.saturating_sub(offset));
+        let progress_text = Text::Styled(progress_text.into(), progress_style);
         let progress_rect = Rect {
             x: offset,
-            y: current.y + line as u16,
-            width: current.width.saturating_sub(offset),
+            y,
+            width,
             height: 1,
         };
-        Paragraph::new([progress].iter()).draw(progress_rect, buf);
+        Paragraph::new(
+            [
+                Text::Raw("│".into()),
+                Text::Styled(" ".into(), progress_style),
+                progress_text,
+            ]
+            .iter(),
+        )
+        .draw(progress_rect, buf);
     }
 }
 
@@ -190,17 +224,16 @@ fn draw_overflow<'a>(
     overflow_rect: Rect,
 ) {
     let (count, mut progress_percent) = entries.fold(
-        (0usize, 0f64),
+        (0usize, 0f32),
         |(count, progress_percent), (_key, value)| {
             let progress = value
                 .progress
-                .and_then(|p| p.done_at.map(|d| (p.step, d)))
-                .map(|(c, m)| (c as f64 / m as f64) * 100.0)
+                .and_then(|p| p.fraction().map(|f| f * 100.0))
                 .unwrap_or_default();
             (count + 1, progress_percent + progress)
         },
     );
-    progress_percent /= count as f64;
+    progress_percent /= count as f32;
     Paragraph::new(
         [Text::Raw(
             format!("…and {} more -- {:4.01}%", count, progress_percent).into(),
