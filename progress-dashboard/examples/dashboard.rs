@@ -1,5 +1,5 @@
 use futures::{
-    future::{join, select, Either},
+    future::{abortable, join},
     task::{Spawn, SpawnExt},
 };
 use futures_timer::Delay;
@@ -57,7 +57,7 @@ async fn find_work(max: NestingLevel, mut tree: TreeRoot, pool: impl Spawn) -> R
 async fn work_forever(pool: impl Spawn + Clone + Send + 'static) -> Result {
     let progress = progress_dashboard::TreeRoot::new();
     // Now we should handle signals to be able to cleanup properly
-    let gui_was_shutdown = launch_ambient_gui(&pool, &progress);
+    let (_gui_was_shutdown, gui_abort_handle) = launch_ambient_gui(&pool, &progress).unwrap();
 
     for _ in 1..3 {
         let local_work = find_work(NestingLevel(2), progress.clone(), pool.clone());
@@ -71,21 +71,33 @@ async fn work_forever(pool: impl Spawn + Clone + Send + 'static) -> Result {
         //            Either::Right(_gui_shutdown) => break,
         //        }
     }
+    gui_abort_handle.abort();
     Ok(())
 }
 
 fn launch_ambient_gui(
     pool: &dyn Spawn,
     progress: &TreeRoot,
-) -> std::result::Result<futures::channel::oneshot::Receiver<()>, std::io::Error> {
+) -> std::result::Result<
+    (
+        futures::channel::oneshot::Receiver<()>,
+        futures::future::AbortHandle,
+    ),
+    std::io::Error,
+> {
     let (render_fut, gui_was_shutdown) = tui::render(
         progress.clone(),
         tui::Config {
             frames_per_second: 30,
         },
     )?;
-    pool.spawn(render_fut).expect("GUI to be spawned");
-    Ok(gui_was_shutdown)
+    let (render_fut, abort_handle) = abortable(render_fut);
+    pool.spawn(async move {
+        render_fut.await.ok();
+        ()
+    })
+    .expect("GUI to be spawned");
+    Ok((gui_was_shutdown, abort_handle))
 }
 
 fn main() -> Result {
