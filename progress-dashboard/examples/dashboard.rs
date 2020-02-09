@@ -80,6 +80,8 @@ async fn work_forever(pool: impl Spawn + Clone + Send + 'static) -> Result {
         }
     }
     tell_gui.send(()).unwrap();
+    // give it some time to respond - send doesn't allow to await it
+    Delay::new(Duration::from_millis(100)).await;
     Ok(())
 }
 
