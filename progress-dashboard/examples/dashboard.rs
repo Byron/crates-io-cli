@@ -9,8 +9,8 @@ use std::{error::Error, time::Duration};
 
 const MAX_STEPS: u8 = 100;
 const UNITS: &[&str] = &["Mb", "kb", "items", "files"];
-const WORK_DELAY_MS: u64 = 100;
-const SPAWN_DELAY_MS: u64 = 500;
+const WORK_DELAY_MS: u64 = 50;
+const SPAWN_DELAY_MS: u64 = 150;
 
 async fn work_item(mut progress: TreeRoot) -> () {
     let max: u8 = random();
@@ -97,6 +97,8 @@ fn abort_gui_on_signal(trigger: AbortHandle) {
                 match signal {
                     signal_hook::SIGINT | signal_hook::SIGTERM => {
                         trigger.abort();
+                        // DEBUG: after a crash, you really want to abort the program, it's stuck
+                        std::process::abort();
                         return;
                     }
                     _ => unreachable!(),

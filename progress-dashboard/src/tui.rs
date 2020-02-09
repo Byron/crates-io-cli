@@ -17,6 +17,8 @@ pub struct Config {
 }
 
 pub async fn render(_progress: TreeRoot, Config { frames_per_second }: Config) -> () {
+    // DEBUG: no messing with the terminal for now
+    return ();
     let mut terminal = {
         let stdout = io::stdout().into_raw_mode().unwrap();
         let stdout = AlternateScreen::from(stdout);
