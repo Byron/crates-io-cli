@@ -3,6 +3,7 @@ use futures_timer::Delay;
 
 use futures::channel::mpsc;
 use futures::{channel::oneshot, future::select, future::Either, SinkExt, StreamExt};
+use std::io::Write;
 use std::{io, time::Duration};
 use termion::event::Key;
 use termion::{input::TermRead, raw::IntoRawMode, screen::AlternateScreen};
@@ -44,28 +45,30 @@ pub fn render(
 
     let render_fut = async move {
         loop {
-            if let Err(err) = terminal.draw(|mut f| {
-                let size = f.size();
-                Block::default()
-                    .title("Block")
-                    .borders(Borders::ALL)
-                    .render(&mut f, size);
-            }) {
-                log::error!("{}", err);
-                return ();
-            }
+            terminal
+                .draw(|mut f| {
+                    let size = f.size();
+                    Block::default()
+                        .title("Block")
+                        .borders(Borders::ALL)
+                        .render(&mut f, size);
+                })
+                .ok();
             let delay = Delay::new(duration_per_frame);
             match select(delay, select(key_receive.next(), &mut should_stop)).await {
                 Either::Left(_delay_timed_out) => continue,
                 Either::Right((Either::Left((Some(key), _should_stop)), _delay)) => match key {
                     Key::Esc | Key::Ctrl('c') | Key::Ctrl('[') => {
                         send_gui_aborted.send(()).ok();
+                        drop(terminal);
+                        io::stdout().flush().ok();
                         return ();
                     }
                     _ => continue,
                 },
                 Either::Right((Either::Right((Ok(()), _key)), _delay)) => {
-                    log::info!("RECEIVED ABORT SIGNAL");
+                    drop(terminal);
+                    io::stdout().flush().ok();
                     return ();
                 }
                 _ => continue,
