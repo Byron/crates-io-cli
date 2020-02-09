@@ -110,15 +110,24 @@ fn draw_everything(
         false
     };
 
-    let column_end = current.width / 2;
-    let prefix_area = Rect {
-        width: column_end,
-        ..current
+    let column_width = current.width / 2;
+    let max_prefix_width = {
+        let prefix_area = Rect {
+            width: column_width,
+            ..current
+        };
+        draw_tree_prefix(&entries, buf, prefix_area).map(|l| l.min(column_width))
     };
-    let max_prefix_len = draw_tree_prefix(&entries, buf, prefix_area);
 
-    let max_prefix_len = max_prefix_len.unwrap_or_default().min(column_end);
-    draw_progress(&entries, buf, current, max_prefix_len);
+    {
+        let max_prefix_len = max_prefix_width.unwrap_or_default();
+        let progress_area = Rect {
+            x: current.x + max_prefix_len,
+            width: current.width.saturating_sub(max_prefix_len),
+            ..current
+        };
+        draw_progress(&entries, buf, progress_area);
+    }
 
     if is_overflowing {
         let overflow_rect = Rect {
@@ -135,36 +144,37 @@ fn draw_everything(
     entries
 }
 
-fn draw_progress(
-    entries: &[(tree::Key, TreeValue)],
-    buf: &mut Buffer,
-    current: Rect,
-    max_prefix_len: u16,
-) {
-    // TODO: make current the only rect we need, remove max_prefix_len
-    let x_offset = max_prefix_len + 1;
+fn draw_progress(entries: &[(tree::Key, TreeValue)], buf: &mut Buffer, bound: Rect) {
+    let x_offset = 1;
     for (line, (_, TreeValue { progress, title })) in
-        entries.iter().take(current.height as usize).enumerate()
+        entries.iter().take(bound.height as usize).enumerate()
     {
-        let max_width = current.width.saturating_sub(x_offset);
+        let max_width = bound.width.saturating_sub(x_offset);
         let progress_text = format!("{progress}", progress = ProgressFormat(progress, max_width));
         let progress_text_blocks = progress_text.graphemes(true).count() as u16;
 
-        let y = current.y + line as u16;
+        let y = bound.y + line as u16;
         let progress_style = if let Some(fraction) = progress.and_then(|p| p.fraction()) {
-            draw_progress_bar(buf, max_width, x_offset, y, fraction)
+            let bar_bound = Rect {
+                x: bound.x + x_offset,
+                width: max_width,
+                y,
+                height: 1,
+            };
+            draw_progress_bar(buf, bar_bound, fraction)
         } else {
             Style::default().bg(Color::Reset)
         };
 
-        let width = (progress_text_blocks + 2).min(current.width.saturating_sub(x_offset));
+        let width = progress_text_blocks + 2;
         let progress_text = Text::Styled(progress_text.into(), progress_style);
         let progress_rect = Rect {
-            x: x_offset,
+            x: bound.x + x_offset,
             y,
             width,
             height: 1,
-        };
+        }
+        .intersection(bound);
         Paragraph::new(
             [
                 Text::Raw("│".into()),
@@ -177,30 +187,22 @@ fn draw_progress(
 
         if progress.is_none() {
             let title_len = title.graphemes(true).count() as u16;
-            let max_width = title_len.min(max_width);
             let center_rect = Rect {
-                x: (x_offset + (width.saturating_sub(title_len)) / 2).max(x_offset),
+                x: bound.x + (x_offset + (width.saturating_sub(title_len)) / 2),
                 y,
-                width: max_width,
+                width: title_len,
                 height: 1,
-            };
+            }
+            .intersection(bound);
             Paragraph::new([Text::Raw(title.into())].iter()).draw(center_rect, buf);
         }
     }
 }
 
-fn draw_progress_bar(
-    buf: &mut Buffer,
-    max_width: u16,
-    x_offset: u16,
-    y: u16,
-    fraction: f32,
-) -> Style {
+fn draw_progress_bar(buf: &mut Buffer, bound: Rect, fraction: f32) -> Style {
     let fractional_progress_rect = Rect {
-        x: x_offset,
-        y,
-        height: 1,
-        width: ((max_width as f32 * fraction) as u16).min(max_width),
+        width: ((bound.width as f32 * fraction) as u16).min(bound.width),
+        ..bound
     };
     let color = if fraction >= 1.0 {
         Color::Green
@@ -256,7 +258,7 @@ fn draw_tree_prefix(
 fn draw_overflow<'a>(
     entries: impl Iterator<Item = &'a (tree::Key, TreeValue)>,
     buf: &mut Buffer,
-    overflow_rect: Rect,
+    bound: Rect,
 ) {
     let (count, mut progress_percent) = entries.fold(
         (0usize, 0f32),
@@ -275,5 +277,5 @@ fn draw_overflow<'a>(
         )]
         .iter(),
     )
-    .draw(overflow_rect, buf);
+    .draw(bound, buf);
 }
