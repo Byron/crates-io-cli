@@ -100,13 +100,19 @@ fn draw_everything(
         .title("Progress Tree")
         .borders(Borders::ALL);
     progress_pane.draw(window_size, buf);
-    let current = progress_pane.inner(window_size);
+    let mut current = progress_pane.inner(window_size);
+    let mut entries = entries.into_iter();
+    let (_lower, upper) = entries.size_hint();
+    let mut is_overflowing = false;
+    if let Some(size) = upper {
+        if size > current.height as usize {
+            current.height = current.height.saturating_sub(1);
+            is_overflowing = true;
+        }
+    }
 
-    for (line, (key, value)) in entries
-        .into_iter()
-        .take(current.height as usize)
-        .enumerate()
-    {
+    let mut line = 0;
+    while let Some((key, value)) = entries.next() {
         let tree_prefix = Text::Raw(format!("{:width$}", ' ', width = key.level() as usize).into());
         let progress = Text::Raw(
             format!(
@@ -122,5 +128,21 @@ fn draw_everything(
             ..current
         };
         Paragraph::new([tree_prefix, progress].iter()).draw(line_rect, buf);
+
+        line += 1;
+        if line == current.height as usize {
+            break;
+        }
+    }
+
+    if is_overflowing {
+        let overflow_rect = Rect {
+            y: current.height + 1,
+            height: 1,
+            ..current
+        };
+        let state = entries.fold(0, |state, _next| state + 1);
+        Paragraph::new([Text::Raw(format!("…and {} more", state).into())].iter())
+            .draw(overflow_rect, buf);
     }
 }

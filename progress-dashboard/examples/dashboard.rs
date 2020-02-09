@@ -38,7 +38,7 @@ async fn work_item(mut progress: Tree) -> () {
     ()
 }
 
-async fn find_work(
+async fn new_chunk_of_work(
     prefix: impl AsRef<str>,
     max: NestingLevel,
     tree: TreeRoot,
@@ -89,14 +89,14 @@ async fn work_forever(pool: impl Spawn + Clone + Send + 'static) -> Result {
 
     loop {
         iteration += 1;
-        let local_work = find_work(
+        let local_work = new_chunk_of_work(
             format!("{}: local", iteration),
             NestingLevel(thread_rng().gen_range(0, Key::max_level())),
             progress.clone(),
             pool.clone(),
         );
         let pooled_work = (0..thread_rng().gen_range(3, 8usize)).map(|_| {
-            pool.spawn_with_handle(find_work(
+            pool.spawn_with_handle(new_chunk_of_work(
                 format!("{}: pooled", iteration),
                 NestingLevel(thread_rng().gen_range(0, Key::max_level())),
                 progress.clone(),
