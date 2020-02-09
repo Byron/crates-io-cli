@@ -84,8 +84,8 @@ async fn work_forever(pool: impl Spawn + Clone + Send + 'static) -> Result {
     abort_gui.abort();
     // As by now we have consumed our handle, we cannot await the gui to close after he hit the abort button.
     // The reason is solely that, and ideally we can make it work without additional channels, like before, and
-    // without 'sleeping'.
-    Delay::new(Duration::from_millis(100)).await;
+    // without 'sleeping'. Luckily the wakeup is real fast!
+    Delay::new(Duration::from_millis(1)).await;
     Ok(())
 }
 
