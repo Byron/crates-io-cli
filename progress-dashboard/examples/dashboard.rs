@@ -6,7 +6,6 @@ use futures::{
     FutureExt,
 };
 use futures_timer::Delay;
-use log::info;
 use progress_dashboard::{tui, TreeRoot};
 use rand::prelude::*;
 use std::future::Future;
@@ -34,7 +33,6 @@ async fn work_item(mut progress: TreeRoot) -> () {
 
     for step in 0..max {
         progress.set(step as u32);
-        info!("work-item: wait");
         Delay::new(Duration::from_millis(WORK_DELAY_MS)).await;
     }
     ()
@@ -48,7 +46,6 @@ async fn find_work(max: NestingLevel, mut tree: TreeRoot, pool: impl Spawn) -> R
         for id in 0..max_level as usize * 2 {
             pool.spawn(work_item(tree.add_child(format!("work {}", id + 1))))
                 .expect("spawn to work");
-            info!("spawn work: wait");
             tree.set(id as u32);
             Delay::new(Duration::from_millis(SPAWN_DELAY_MS)).await;
         }
@@ -67,7 +64,7 @@ async fn work_forever(pool: impl Spawn + Clone + Send + 'static) -> Result {
     for _ in 0..1 {
         let local_work = find_work(NestingLevel(2), progress.clone(), pool.clone());
         let threaded_work = pool
-            .spawn_with_handle(find_work(NestingLevel(2), progress.clone(), pool.clone()))
+            .spawn_with_handle(find_work(NestingLevel(4), progress.clone(), pool.clone()))
             .expect("spawning to work - SpawnError cannot be ");
 
         match futures::future::select(

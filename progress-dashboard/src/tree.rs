@@ -20,7 +20,7 @@ impl TreeRoot {
         TreeRoot {
             title: String::new(),
             child_count: 0,
-            key: Key((None, None, None)),
+            key: Key::default(),
             tree: Arc::new(DashMap::with_capacity(100)),
         }
     }
@@ -63,17 +63,25 @@ type TreeId = u32; // NOTE: This means we will show weird behaviour if there are
 pub type ProgressStep = u32;
 
 #[derive(Copy, Clone, Default, Hash, Eq, PartialEq, Ord, PartialOrd, Debug)]
-struct Key((Option<TreeId>, Option<TreeId>, Option<TreeId>));
+struct Key(
+    (
+        Option<TreeId>,
+        Option<TreeId>,
+        Option<TreeId>,
+        Option<TreeId>,
+    ),
+);
 
 impl Key {
     fn add_child(self, child_id: TreeId) -> Key {
         Key(match self {
-            Key((None, None, None)) => (Some(child_id), None, None),
-            Key((a, None, None)) => (a, Some(child_id), None),
-            Key((a, b, None)) => (a, b, Some(child_id)),
-            Key((a, b, _c)) => {
+            Key((None, None, None, None)) => (Some(child_id), None, None, None),
+            Key((a, None, None, None)) => (a, Some(child_id), None, None),
+            Key((a, b, None, None)) => (a, b, Some(child_id), None),
+            Key((a, b, c, None)) => (a, b, c, Some(child_id)),
+            Key((a, b, c, _d)) => {
                 log::warn!("Maximum nesting level reached. Adding tasks to current parent");
-                (a, b, Some(child_id))
+                (a, b, c, Some(child_id))
             }
         })
     }
