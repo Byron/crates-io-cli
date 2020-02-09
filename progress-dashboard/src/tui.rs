@@ -114,19 +114,22 @@ fn draw_everything(
     let mut line = 0;
     while let Some((key, value)) = entries.next() {
         let tree_prefix =
-            Text::Raw(format!("{:─>width$}", ' ', width = key.level() as usize).into());
-        let progress = format!("{}", ProgressFormat(&value.progress));
+            Text::Raw(format!("{:>width$}", '‧', width = key.level() as usize).into());
+        let progress = Text::Raw(
+            format!(
+                "{:<15} {progress}",
+                value.title,
+                progress = ProgressFormat(&value.progress)
+            )
+            .into(),
+        );
         let line_rect = Rect {
             y: current.y + line as u16,
             height: 1,
             ..current
         };
-        Paragraph::new([tree_prefix, Text::Raw(value.title.into())].iter()).draw(line_rect, buf);
-        let progress_rect = Rect {
-            x: line_rect.width.saturating_sub(progress.len() as u16),
-            ..line_rect
-        };
-        Paragraph::new([Text::Raw(progress.into())].iter()).draw(progress_rect, buf);
+
+        Paragraph::new([tree_prefix, progress].iter()).draw(line_rect, buf);
 
         line += 1;
         if line == current.height as usize {
