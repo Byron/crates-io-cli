@@ -1,12 +1,12 @@
 use futures::future::{AbortHandle, Either};
 use futures::{
     executor::{block_on, ThreadPool},
-    future::{abortable, join},
+    future::abortable,
     task::{Spawn, SpawnExt},
-    FutureExt,
+    FutureExt, SinkExt, StreamExt,
 };
 use futures_timer::Delay;
-use progress_dashboard::{tui, Key, Tree, TreeRoot};
+use progress_dashboard::{tui, Tree, TreeRoot};
 use rand::prelude::*;
 use std::future::Future;
 use std::{error::Error, time::Duration};
@@ -38,7 +38,7 @@ async fn work_item(mut progress: Tree) -> () {
     ()
 }
 
-async fn find_work(
+async fn make_work_chunk(
     prefix: impl AsRef<str>,
     max: NestingLevel,
     tree: TreeRoot,
@@ -84,35 +84,49 @@ async fn work_forever(pool: impl Spawn + Clone + Send + 'static) -> Result {
     let (gui_handle, abort_gui) = launch_ambient_gui(&pool, progress.clone()).unwrap();
     let mut gui_handle = Some(gui_handle.boxed());
     let mut iteration = 0;
+    {
+        let (mut produce, mut consume) = futures::channel::mpsc::channel::<usize>(1);
 
-    loop {
-        iteration += 1;
-        let local_work = find_work(
-            format!("{}: local", iteration),
-            NestingLevel(thread_rng().gen_range(0, Key::max_level())),
-            progress.clone(),
-            pool.clone(),
-        );
-        let threaded_work = pool
-            .spawn_with_handle(find_work(
-                format!("{}: pooled", iteration),
-                NestingLevel(thread_rng().gen_range(0, Key::max_level())),
-                progress.clone(),
-                pool.clone(),
-            ))
-            .expect("spawning to work - SpawnError cannot be ");
-
-        match futures::future::select(
-            join(local_work.boxed_local(), threaded_work),
-            gui_handle.take().expect("gui handle"),
-        )
-        .await
-        {
-            Either::Left((_workblock_result, running_gui)) => {
-                gui_handle = Some(running_gui);
-                continue;
+        let make_chunks = {
+            let pool = pool.clone();
+            async move {
+                while let Some(iteration) = consume.next().await {
+                    pool.spawn({
+                        let pool = pool.clone();
+                        let progress = progress.clone();
+                        async move {
+                            make_work_chunk(
+                                format!("g{}: ", iteration),
+                                //                        NestingLevel(thread_rng().gen_range(0, Key::max_level())),
+                                NestingLevel(4),
+                                progress.clone(),
+                                pool,
+                            )
+                            .await
+                            .ok();
+                        }
+                    })
+                    .expect("successful spawning");
+                }
             }
-            Either::Right(_gui_shutdown) => break,
+        };
+        pool.spawn(make_chunks).unwrap();
+
+        loop {
+            iteration += 1;
+            match futures::future::select(
+                produce.send(iteration),
+                gui_handle.take().expect("gui handle"),
+            )
+            .await
+            {
+                Either::Left((_workblock_result, running_gui)) => {
+                    gui_handle = Some(running_gui);
+                    Delay::new(Duration::from_secs(4)).await;
+                    continue;
+                }
+                Either::Right(_gui_shutdown) => break,
+            }
         }
     }
 
