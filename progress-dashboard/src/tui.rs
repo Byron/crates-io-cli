@@ -92,7 +92,7 @@ impl<'a> fmt::Display for ProgressFormat<'a> {
 }
 
 fn draw_everything(
-    mut entries: Vec<(tree::Key, TreeValue)>,
+    entries: Vec<(tree::Key, TreeValue)>,
     window_size: Rect,
     buf: &mut Buffer,
 ) -> Vec<(tree::Key, TreeValue)> {
@@ -108,8 +108,9 @@ fn draw_everything(
         false
     };
 
-    for (line, (key, value)) in entries
-        .drain(..std::cmp::min(entries.len(), current.height as usize))
+    let mut max_prefix_len = None;
+    for (line, (key, value)) in entries[..std::cmp::min(entries.len(), current.height as usize)]
+        .iter()
         .enumerate()
     {
         let tree_prefix = format!(
@@ -118,30 +119,36 @@ fn draw_everything(
             value.title,
             width = key.level() as usize
         );
-        let prefix_len = tree_prefix.len();
+        max_prefix_len = Some(
+            max_prefix_len
+                .unwrap_or(0)
+                .max(tree_prefix.len() as u16),
+        );
         let tree_prefix = Text::Raw(tree_prefix.into());
-
-        let progress =
-            Text::Raw(format!("{progress}", progress = ProgressFormat(&value.progress)).into());
-
         let line_rect = Rect {
             y: current.y + line as u16,
             height: 1,
             ..current
         };
         Paragraph::new([tree_prefix].iter()).draw(line_rect, buf);
-        let offset = std::cmp::max(line_rect.width / 6, (prefix_len + 3) as u16);
+    }
 
+    let max_prefix_len = max_prefix_len.unwrap_or_default();
+    for (line, (_, value)) in entries[..std::cmp::min(entries.len(), current.height as usize)]
+        .iter()
+        .enumerate()
+    {
+        let progress =
+            Text::Raw(format!("{progress}", progress = ProgressFormat(&value.progress)).into());
+
+        let offset = max_prefix_len + 4;
         let progress_rect = Rect {
             x: offset,
-            width: line_rect.width.saturating_sub(offset),
-            ..line_rect
+            y: current.y + line as u16,
+            width: current.width.saturating_sub(offset),
+            height: 1,
         };
         Paragraph::new([progress].iter()).draw(progress_rect, buf);
-
-        if line == current.height as usize {
-            break;
-        }
     }
 
     if is_overflowing {
