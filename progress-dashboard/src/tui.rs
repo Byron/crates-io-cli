@@ -146,7 +146,17 @@ fn draw_everything(
 
 fn draw_progress(entries: &[(tree::Key, TreeValue)], buf: &mut Buffer, bound: Rect) {
     let x_offset = 1;
-    for (line, (_, TreeValue { progress, title })) in
+    let title_spacing = 1 + 1 + 1;
+    let max_title_width = entries.iter().take(bound.height as usize).fold(
+        0,
+        |state, (key, TreeValue { progress, title })| match progress {
+            None => {
+                state.max(title.graphemes(true).count() + key.level() as usize + title_spacing)
+            }
+            Some(_) => state,
+        },
+    );
+    for (line, (key, TreeValue { progress, title })) in
         entries.iter().take(bound.height as usize).enumerate()
     {
         let max_width = bound.width.saturating_sub(x_offset);
@@ -186,15 +196,26 @@ fn draw_progress(entries: &[(tree::Key, TreeValue)], buf: &mut Buffer, bound: Re
         .draw(progress_rect, buf);
 
         if progress.is_none() {
-            let title_len = title.graphemes(true).count() as u16;
             let center_rect = Rect {
-                x: bound.x + (x_offset + (width.saturating_sub(title_len)) / 2),
+                x: bound.x + x_offset + 1 + (bound.width.saturating_sub(max_title_width as u16)) / 2,
                 y,
-                width: title_len,
+                width: max_title_width as u16,
                 height: 1,
             }
             .intersection(bound);
-            Paragraph::new([Text::Raw(title.into())].iter()).draw(center_rect, buf);
+            Paragraph::new(
+                [Text::Raw(
+                    format!(
+                        " {:‧<prefix_count$} {} ",
+                        "",
+                        title,
+                        prefix_count = key.level() as usize
+                    )
+                    .into(),
+                )]
+                .iter(),
+            )
+            .draw(center_rect, buf);
         }
     }
 }
