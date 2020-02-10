@@ -165,14 +165,16 @@ fn draw_progress(entries: &[(tree::Key, TreeValue)], buf: &mut Buffer, bound: Re
         );
 
         let y = bound.y + line as u16;
-        if let Some(fraction) = progress.and_then(|p| p.fraction()) {
+        let progress_bar_info = if let Some(fraction) = progress.and_then(|p| p.fraction()) {
             let bar_bound = Rect {
                 x: bound.x + x_offset + column_line_width + 1,
                 width: max_width,
                 y,
                 height: 1,
             };
-            draw_progress_bar(buf, bar_bound, fraction);
+            Some(draw_progress_bar(buf, bar_bound, fraction))
+        } else {
+            None
         };
 
         let mut progress_rect = Rect {
@@ -188,7 +190,19 @@ fn draw_progress(entries: &[(tree::Key, TreeValue)], buf: &mut Buffer, bound: Re
             ..progress_rect
         }
         .intersection(bound);
-        draw_text_nowrap(progress_rect, buf, progress_text, None);
+        if let Some(style_fn) = progress_bar_info.map(|(bound, style)| {
+            move |_t: &str, x: u16, _y: u16| {
+                if x < bound.right() {
+                    style
+                } else {
+                    Style::default()
+                }
+            }
+        }) {
+            draw_text_nowrap_fn(progress_rect, buf, progress_text, style_fn);
+        } else {
+            draw_text_nowrap(progress_rect, buf, progress_text, None);
+        }
 
         if progress.is_none() {
             let center_rect = Rect {
@@ -213,7 +227,7 @@ fn draw_progress(entries: &[(tree::Key, TreeValue)], buf: &mut Buffer, bound: Re
 }
 
 // TODO: put this in tui-react
-fn draw_text_nowrap(
+fn draw_text_nowrap<'a>(
     bound: Rect,
     buf: &mut Buffer,
     t: impl AsRef<str>,
@@ -229,7 +243,21 @@ fn draw_text_nowrap(
     }
 }
 
-fn draw_progress_bar(buf: &mut Buffer, bound: Rect, fraction: f32) -> Style {
+// TODO: put this in tui-react
+fn draw_text_nowrap_fn(
+    bound: Rect,
+    buf: &mut Buffer,
+    t: impl AsRef<str>,
+    mut s: impl FnMut(&str, u16, u16) -> Style,
+) {
+    for (g, x) in t.as_ref().graphemes(true).zip(bound.left()..bound.right()) {
+        let cell = buf.get_mut(x, bound.y);
+        cell.symbol = g.into();
+        cell.style = s(&cell.symbol, x, bound.y);
+    }
+}
+
+fn draw_progress_bar(buf: &mut Buffer, bound: Rect, fraction: f32) -> (Rect, Style) {
     let fractional_progress_rect = Rect {
         width: ((bound.width as f32 * fraction) as u16).min(bound.width),
         ..bound
@@ -240,7 +268,10 @@ fn draw_progress_bar(buf: &mut Buffer, bound: Rect, fraction: f32) -> Style {
         Color::Yellow
     };
     tui_react::fill_background(fractional_progress_rect, buf, color);
-    Style::default().bg(color).fg(Color::Black)
+    (
+        fractional_progress_rect,
+        Style::default().bg(color).fg(Color::Black)
+    )
 }
 
 fn draw_tree_prefix(
