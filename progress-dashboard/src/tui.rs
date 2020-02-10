@@ -1,13 +1,12 @@
 use crate::{
     tree::{self, TreeRoot},
-    Progress, TreeValue,
+    Progress, ProgressStep, TreeValue,
 };
 use futures_timer::Delay;
 
-use futures::{channel::mpsc, future::select, future::Either, SinkExt, StreamExt};
+use futures::{channel::mpsc, future::select, future::Either, io::Error, SinkExt, StreamExt};
 use std::{fmt, io, time::Duration};
-use termion::event::Key;
-use termion::{input::TermRead, raw::IntoRawMode, screen::AlternateScreen};
+use termion::{event::Key, input::TermRead, raw::IntoRawMode, screen::AlternateScreen};
 use tui::style::{Color, Style};
 use tui::{
     backend::TermionBackend,
@@ -148,6 +147,19 @@ fn draw_progress(entries: &[(tree::Key, TreeValue)], buf: &mut Buffer, bound: Re
     let x_offset = 1;
     let title_spacing = 1 + 1 + 1;
     let column_line_width = 1;
+    let max_progress_label_width = entries
+        .iter()
+        .take(bound.height as usize)
+        .map(|(_, TreeValue { progress, .. })| progress)
+        .fold(0, |state, progress| match progress {
+            progress @ Some(_) => {
+                use std::io::Write;
+                let mut w = GraphemeCountWriter::default();
+                write!(w, "{}", ProgressFormat(progress, 0)).expect("never fails");
+                state.max(w.0)
+            }
+            None => state,
+        });
     let max_title_width = entries.iter().take(bound.height as usize).fold(
         0,
         |state, (key, TreeValue { progress, title })| match progress {
@@ -202,6 +214,17 @@ fn draw_progress(entries: &[(tree::Key, TreeValue)], buf: &mut Buffer, bound: Re
             draw_text_nowrap_fn(progress_rect, buf, progress_text, style_fn);
         } else {
             draw_text_nowrap(progress_rect, buf, progress_text, None);
+            // we have progress, but no upper limit
+            if let Some((step, None)) = progress.as_ref().map(|p| (p.step, p.done_at.as_ref())) {
+                let bar_rect = Rect {
+                    x: bound.x + max_progress_label_width as u16,
+                    y,
+                    height: 1,
+                    ..bound
+                }
+                .intersection(bound);
+                draw_spinner(buf, bar_rect, step, line);
+            }
         }
 
         if progress.is_none() {
@@ -257,6 +280,10 @@ fn draw_text_nowrap_fn(
     }
 }
 
+fn draw_spinner(buf: &mut Buffer, bound: Rect, step: ProgressStep, seed: usize) {
+    tui_react::fill_background(bound, buf, Color::White);
+}
+
 fn draw_progress_bar(buf: &mut Buffer, bound: Rect, fraction: f32) -> (Rect, Style) {
     let fractional_progress_rect = Rect {
         width: ((bound.width as f32 * fraction) as u16).min(bound.width),
@@ -270,7 +297,7 @@ fn draw_progress_bar(buf: &mut Buffer, bound: Rect, fraction: f32) -> (Rect, Sty
     tui_react::fill_background(fractional_progress_rect, buf, color);
     (
         fractional_progress_rect,
-        Style::default().bg(color).fg(Color::Black)
+        Style::default().bg(color).fg(Color::Black),
     )
 }
 
@@ -338,4 +365,18 @@ fn draw_overflow<'a>(
         .iter(),
     )
     .draw(bound, buf);
+}
+
+#[derive(Default)]
+struct GraphemeCountWriter(usize);
+
+impl std::io::Write for GraphemeCountWriter {
+    fn write(&mut self, buf: &[u8]) -> Result<usize, Error> {
+        self.0 += String::from_utf8_lossy(buf).graphemes(true).count();
+        Ok(buf.len())
+    }
+
+    fn flush(&mut self) -> Result<(), Error> {
+        Ok(())
+    }
 }
