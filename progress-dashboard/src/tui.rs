@@ -281,6 +281,9 @@ fn draw_text_nowrap_fn(
 }
 
 fn draw_spinner(buf: &mut Buffer, bound: Rect, step: ProgressStep, seed: usize) {
+    let x = bound.x + (step as usize + seed % bound.width as usize) as u16;
+    let width = 5;
+    let bound = Rect { x, width, ..bound }.intersection(bound);
     tui_react::fill_background(bound, buf, Color::White);
 }
 
