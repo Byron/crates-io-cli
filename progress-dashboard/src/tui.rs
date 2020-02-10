@@ -274,13 +274,12 @@ fn draw_tree_prefix(
             tree_prefix.push('…');
         }
         max_prefix_len = Some(max_prefix_len.unwrap_or(0).max(tree_prefix.len() as u16));
-        let tree_prefix = Text::Raw(tree_prefix.into());
         let line_rect = Rect {
             y: bound.y + line as u16,
             height: 1,
             ..bound
         };
-        Paragraph::new([tree_prefix].iter()).draw(line_rect, buf);
+        draw_text_nowrap(line_rect, buf, tree_prefix, None);
     }
     max_prefix_len
 }
