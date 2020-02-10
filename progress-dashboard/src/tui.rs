@@ -262,7 +262,7 @@ fn draw_progress_bar(buf: &mut Buffer, bound: Rect, fraction: f32) -> (Rect, Sty
         width: ((bound.width as f32 * fraction) as u16).min(bound.width),
         ..bound
     };
-    let color = if fraction >= 1.0 {
+    let color = if fraction >= 0.8 {
         Color::Green
     } else {
         Color::Yellow
