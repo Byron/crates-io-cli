@@ -147,12 +147,11 @@ fn draw_everything(
 fn draw_progress(entries: &[(tree::Key, TreeValue)], buf: &mut Buffer, bound: Rect) {
     let x_offset = 1;
     let title_spacing = 1 + 1 + 1;
+    let column_line_width = 1;
     let max_title_width = entries.iter().take(bound.height as usize).fold(
         0,
         |state, (key, TreeValue { progress, title })| match progress {
-            None => {
-                state.max(title.graphemes(true).count() + key.level() as usize + title_spacing)
-            }
+            None => state.max(title.graphemes(true).count() + key.level() as usize + title_spacing),
             Some(_) => state,
         },
     );
@@ -160,62 +159,72 @@ fn draw_progress(entries: &[(tree::Key, TreeValue)], buf: &mut Buffer, bound: Re
         entries.iter().take(bound.height as usize).enumerate()
     {
         let max_width = bound.width.saturating_sub(x_offset);
-        let progress_text = format!("{progress}", progress = ProgressFormat(progress, max_width));
-        let progress_text_blocks = progress_text.graphemes(true).count() as u16;
+        let progress_text = format!(
+            " {progress}",
+            progress = ProgressFormat(progress, max_width)
+        );
 
         let y = bound.y + line as u16;
-        let progress_style = if let Some(fraction) = progress.and_then(|p| p.fraction()) {
+        if let Some(fraction) = progress.and_then(|p| p.fraction()) {
             let bar_bound = Rect {
-                x: bound.x + x_offset,
+                x: bound.x + x_offset + column_line_width + 1,
                 width: max_width,
                 y,
                 height: 1,
             };
-            draw_progress_bar(buf, bar_bound, fraction)
-        } else {
-            Style::default().bg(Color::Reset)
+            draw_progress_bar(buf, bar_bound, fraction);
         };
 
-        let width = progress_text_blocks + 2;
-        let progress_text = Text::Styled(progress_text.into(), progress_style);
-        let progress_rect = Rect {
-            x: bound.x + x_offset,
+        let mut progress_rect = Rect {
+            x: bound.x + x_offset + column_line_width,
             y,
-            width,
             height: 1,
+            ..bound
         }
         .intersection(bound);
-        Paragraph::new(
-            [
-                Text::Raw("│".into()),
-                Text::Styled(" ".into(), progress_style),
-                progress_text,
-            ]
-            .iter(),
-        )
-        .draw(progress_rect, buf);
+        draw_text_nowrap(progress_rect, buf, "│", None);
+        progress_rect = Rect {
+            x: progress_rect.x + column_line_width,
+            ..progress_rect
+        }
+        .intersection(bound);
+        draw_text_nowrap(progress_rect, buf, progress_text, None);
 
         if progress.is_none() {
             let center_rect = Rect {
-                x: bound.x + x_offset + 1 + (bound.width.saturating_sub(max_title_width as u16)) / 2,
+                x: bound.x
+                    + x_offset
+                    + column_line_width
+                    + (bound.width.saturating_sub(max_title_width as u16)) / 2,
                 y,
                 width: max_title_width as u16,
                 height: 1,
             }
             .intersection(bound);
-            Paragraph::new(
-                [Text::Raw(
-                    format!(
-                        " {:‧<prefix_count$} {} ",
-                        "",
-                        title,
-                        prefix_count = key.level() as usize
-                    )
-                    .into(),
-                )]
-                .iter(),
-            )
-            .draw(center_rect, buf);
+            let title_text = format!(
+                " {:‧<prefix_count$} {} ",
+                "",
+                title,
+                prefix_count = key.level() as usize
+            );
+            draw_text_nowrap(center_rect, buf, title_text, None);
+        }
+    }
+}
+
+// TODO: put this in tui-react
+fn draw_text_nowrap(
+    bound: Rect,
+    buf: &mut Buffer,
+    t: impl AsRef<str>,
+    s: impl Into<Option<Style>>,
+) {
+    let s = s.into();
+    for (g, x) in t.as_ref().graphemes(true).zip(bound.left()..bound.right()) {
+        let cell = buf.get_mut(x, bound.y);
+        cell.symbol = g.into();
+        if let Some(s) = s {
+            cell.style = s;
         }
     }
 }
