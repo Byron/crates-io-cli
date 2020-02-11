@@ -271,13 +271,15 @@ fn draw_text_nowrap<'a>(
     s: impl Into<Option<Style>>,
 ) {
     let s = s.into();
-    for (g, x) in t.as_ref().graphemes(true).zip(bound.left()..bound.right()) {
+    let t = t.as_ref();
+    for (g, x) in t.graphemes(true).zip(bound.left()..bound.right()) {
         let cell = buf.get_mut(x, bound.y);
-        let symbol_or_elipsis = if x + 1 == bound.right() {
-            "…".into()
-        } else {
-            g.into()
-        };
+        let symbol_or_elipsis =
+            if x + 1 == bound.right() && t.graphemes(true).count() > bound.width as usize {
+                "…".into()
+            } else {
+                g.into()
+            };
         cell.symbol = symbol_or_elipsis;
         if let Some(s) = s {
             cell.style = s;
