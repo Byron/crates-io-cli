@@ -115,14 +115,13 @@ fn draw_everything(
             width: column_width,
             ..bound
         };
-        draw_tree_prefix(&entries, buf, prefix_area).map(|l| l.min(column_width))
+        draw_tree_prefix(&entries, buf, prefix_area)
     };
 
     {
-        let max_prefix_len = max_prefix_width.unwrap_or_default();
         let progress_area = Rect {
-            x: bound.x + max_prefix_len,
-            width: bound.width.saturating_sub(max_prefix_len),
+            x: bound.x + max_prefix_width,
+            width: bound.width.saturating_sub(max_prefix_width),
             ..bound
         };
         draw_progress(&entries, buf, progress_area);
@@ -269,12 +268,14 @@ fn draw_text_nowrap<'a>(
     buf: &mut Buffer,
     t: impl AsRef<str>,
     s: impl Into<Option<Style>>,
-) {
+) -> u16 {
     let s = s.into();
     let t = t.as_ref();
     let mut graphemes = t.graphemes(true);
     let mut ellipsis_candidate_x = None;
+    let mut num_graphemes = 0;
     for (g, x) in graphemes.by_ref().zip(bound.left()..bound.right()) {
+        num_graphemes += 1;
         let cell = buf.get_mut(x, bound.y);
         if x + 1 == bound.right() {
             ellipsis_candidate_x = Some(x);
@@ -287,6 +288,7 @@ fn draw_text_nowrap<'a>(
     if let (Some(_), Some(x)) = (graphemes.next(), ellipsis_candidate_x) {
         buf.get_mut(x, bound.y).symbol = "…".into();
     }
+    num_graphemes
 }
 
 // TODO: put this in tui-react
@@ -337,12 +339,8 @@ fn draw_progress_bar(buf: &mut Buffer, bound: Rect, fraction: f32) -> (Rect, Sty
     )
 }
 
-fn draw_tree_prefix(
-    entries: &[(tree::Key, TreeValue)],
-    buf: &mut Buffer,
-    bound: Rect,
-) -> Option<u16> {
-    let mut max_prefix_len = None;
+fn draw_tree_prefix(entries: &[(tree::Key, TreeValue)], buf: &mut Buffer, bound: Rect) -> u16 {
+    let mut max_prefix_len = 0;
     for (line, (key, TreeValue { progress, title })) in
         entries.iter().take(bound.height as usize).enumerate()
     {
@@ -360,11 +358,6 @@ fn draw_tree_prefix(
             if progress.is_none() { "" } else { &title },
             width = key.level() as usize
         );
-        max_prefix_len = Some(
-            max_prefix_len
-                .unwrap_or(0)
-                .max(tree_prefix.graphemes(true).count() as u16),
-        );
         let line_rect = intersect(
             Rect {
                 y: bound.y + line as u16,
@@ -373,7 +366,7 @@ fn draw_tree_prefix(
             },
             bound,
         );
-        draw_text_nowrap(line_rect, buf, tree_prefix, None);
+        max_prefix_len = max_prefix_len.max(draw_text_nowrap(line_rect, buf, tree_prefix, None));
     }
     max_prefix_len
 }
