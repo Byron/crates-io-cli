@@ -109,35 +109,38 @@ fn draw_everything(
         false
     };
 
-    let column_width = bound.width / 2;
-    let max_prefix_width = {
-        let prefix_area = Rect {
-            width: column_width,
-            ..bound
+    if !entries.is_empty() {
+        let column_width = bound.width / 2;
+        let max_prefix_width = {
+            let prefix_area = Rect {
+                width: column_width,
+                ..bound
+            };
+            draw_tree_prefix(&entries, buf, prefix_area)
         };
-        draw_tree_prefix(&entries, buf, prefix_area)
-    };
 
-    {
-        let progress_area = Rect {
-            x: bound.x + max_prefix_width,
-            width: bound.width.saturating_sub(max_prefix_width),
-            ..bound
-        };
-        draw_progress(&entries, buf, progress_area);
-    }
+        {
+            let max_prefix_width = max_prefix_width;
+            let progress_area = Rect {
+                x: bound.x + max_prefix_width,
+                width: bound.width.saturating_sub(max_prefix_width),
+                ..bound
+            };
+            draw_progress(&entries, buf, progress_area);
+        }
 
-    if is_overflowing {
-        let overflow_rect = Rect {
-            y: bound.height + 1,
-            height: 1,
-            ..bound
-        };
-        draw_overflow(
-            entries.iter().skip(bound.height as usize),
-            buf,
-            overflow_rect,
-        );
+        if is_overflowing {
+            let overflow_rect = Rect {
+                y: bound.height + 1,
+                height: 1,
+                ..bound
+            };
+            draw_overflow(
+                entries.iter().skip(bound.height as usize),
+                buf,
+                overflow_rect,
+            );
+        }
     }
     entries
 }
