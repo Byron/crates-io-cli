@@ -282,6 +282,9 @@ fn draw_text_nowrap_fn(
 
 fn draw_spinner(buf: &mut Buffer, bound: Rect, step: ProgressStep, seed: usize) {
     let x = bound.x + (step as usize + seed % bound.width as usize) as u16;
+    if x >= bound.right() {
+        return;
+    }
     let width = 5;
     let bound = Rect { x, width, ..bound }.intersection(bound);
     tui_react::fill_background(bound, buf, Color::White);
@@ -339,7 +342,8 @@ fn draw_tree_prefix(
             y: bound.y + line as u16,
             height: 1,
             ..bound
-        };
+        }
+        .intersection(bound);
         draw_text_nowrap(line_rect, buf, tree_prefix, None);
     }
     max_prefix_len
