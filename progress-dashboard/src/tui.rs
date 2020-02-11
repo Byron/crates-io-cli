@@ -94,14 +94,14 @@ impl<'a> fmt::Display for ProgressFormat<'a> {
 
 fn draw_everything(
     entries: Vec<(tree::Key, TreeValue)>,
-    window_size: Rect,
+    bound: Rect,
     buf: &mut Buffer,
 ) -> Vec<(tree::Key, TreeValue)> {
     let mut progress_pane = Block::default()
         .title("Progress Tree")
         .borders(Borders::ALL);
-    progress_pane.draw(window_size, buf);
-    let mut current = progress_pane.inner(window_size);
+    progress_pane.draw(bound, buf);
+    let mut current = progress_pane.inner(bound);
     let is_overflowing = if entries.len() > current.height as usize {
         current.height = current.height.saturating_sub(1);
         true
@@ -174,7 +174,7 @@ fn draw_progress(entries: &[(tree::Key, TreeValue)], buf: &mut Buffer, bound: Re
         let max_width = bound.width.saturating_sub(x_offset);
         let progress_text = format!(
             " {progress}",
-            progress = ProgressFormat(progress, max_width)
+            progress = ProgressFormat(progress, max_width - 4)
         );
 
         let y = bound.y + line as u16;
@@ -272,7 +272,12 @@ fn draw_text_nowrap<'a>(
     let s = s.into();
     for (g, x) in t.as_ref().graphemes(true).zip(bound.left()..bound.right()) {
         let cell = buf.get_mut(x, bound.y);
-        cell.symbol = g.into();
+        let symbol_or_elipsis = if x + 1 == bound.right() {
+            "…".into()
+        } else {
+            g.into()
+        };
+        cell.symbol = symbol_or_elipsis;
         if let Some(s) = s {
             cell.style = s;
         }
@@ -336,7 +341,7 @@ fn draw_tree_prefix(
     for (line, (key, TreeValue { progress, title })) in
         entries.iter().take(bound.height as usize).enumerate()
     {
-        let mut tree_prefix = format!(
+        let tree_prefix = format!(
             "{:>width$} {}",
             if key.level() == 1 {
                 "‧"
@@ -350,14 +355,11 @@ fn draw_tree_prefix(
             if progress.is_none() { "" } else { &title },
             width = key.level() as usize
         );
-        tree_prefix = tree_prefix
-            .graphemes(true)
-            .take(bound.width.saturating_sub(1) as usize)
-            .collect();
-        if tree_prefix.len() + 1 >= bound.width as usize {
-            tree_prefix.push('…');
-        }
-        max_prefix_len = Some(max_prefix_len.unwrap_or(0).max(tree_prefix.len() as u16));
+        max_prefix_len = Some(
+            max_prefix_len
+                .unwrap_or(0)
+                .max(tree_prefix.graphemes(true).count() as u16),
+        );
         let line_rect = intersect(
             Rect {
                 y: bound.y + line as u16,
