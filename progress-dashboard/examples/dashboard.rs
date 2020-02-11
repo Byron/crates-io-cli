@@ -6,7 +6,7 @@ use futures::{
     FutureExt,
 };
 use futures_timer::Delay;
-use progress_dashboard::{tui, Key, Tree, TreeRoot};
+use progress_dashboard::{tui, Tree, TreeKey, TreeRoot};
 use rand::prelude::*;
 use std::{error::Error, future::Future, time::Duration};
 
@@ -88,14 +88,14 @@ async fn work_forever(pool: impl Spawn + Clone + Send + 'static) -> Result {
         iteration += 1;
         let local_work = new_chunk_of_work(
             format!("{}: local", iteration),
-            NestingLevel(thread_rng().gen_range(0, Key::max_level())),
+            NestingLevel(thread_rng().gen_range(0, TreeKey::max_level())),
             progress.clone(),
             pool.clone(),
         );
         let pooled_work = (0..thread_rng().gen_range(3, 8usize)).map(|_| {
             pool.spawn_with_handle(new_chunk_of_work(
                 format!("{}: pooled", iteration),
-                NestingLevel(thread_rng().gen_range(0, Key::max_level())),
+                NestingLevel(thread_rng().gen_range(0, TreeKey::max_level())),
                 progress.clone(),
                 pool.clone(),
             ))

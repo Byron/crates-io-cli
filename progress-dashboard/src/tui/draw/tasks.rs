@@ -1,8 +1,5 @@
 use crate::tui::utils::{draw_text_nowrap, draw_text_nowrap_fn, intersect, GraphemeCountWriter};
-use crate::{
-    tree::{self},
-    Progress, ProgressStep, TreeValue,
-};
+use crate::{Progress, ProgressStep, TreeKey, TreeValue};
 use std::fmt;
 use tui::widgets::{Text, Widget};
 use tui::{
@@ -14,10 +11,10 @@ use tui::{
 use unicode_segmentation::UnicodeSegmentation;
 
 pub fn pane(
-    entries: Vec<(tree::Key, TreeValue)>,
+    entries: Vec<(TreeKey, TreeValue)>,
     mut bound: Rect,
     buf: &mut Buffer,
-) -> Vec<(tree::Key, TreeValue)> {
+) -> Vec<(TreeKey, TreeValue)> {
     let is_overflowing = if entries.len() > bound.height as usize {
         bound.height = bound.height.saturating_sub(1);
         true
@@ -83,7 +80,7 @@ impl<'a> fmt::Display for ProgressFormat<'a> {
     }
 }
 
-pub fn draw_progress(entries: &[(tree::Key, TreeValue)], buf: &mut Buffer, bound: Rect) {
+pub fn draw_progress(entries: &[(TreeKey, TreeValue)], buf: &mut Buffer, bound: Rect) {
     let title_spacing = 2u16 + 1; // 2 on the left, 1 on the right
     let column_line_width = 1;
     let max_progress_label_width = entries
@@ -236,7 +233,7 @@ fn draw_progress_bar(buf: &mut Buffer, bound: Rect, fraction: f32) -> (Rect, Sty
     )
 }
 
-pub fn draw_tree_prefix(entries: &[(tree::Key, TreeValue)], buf: &mut Buffer, bound: Rect) -> u16 {
+pub fn draw_tree_prefix(entries: &[(TreeKey, TreeValue)], buf: &mut Buffer, bound: Rect) -> u16 {
     let mut max_prefix_len = 0;
     for (line, (key, TreeValue { progress, title })) in
         entries.iter().take(bound.height as usize).enumerate()
@@ -269,7 +266,7 @@ pub fn draw_tree_prefix(entries: &[(tree::Key, TreeValue)], buf: &mut Buffer, bo
 }
 
 pub fn draw_overflow<'a>(
-    entries: impl Iterator<Item = &'a (tree::Key, TreeValue)>,
+    entries: impl Iterator<Item = &'a (TreeKey, TreeValue)>,
     buf: &mut Buffer,
     bound: Rect,
 ) {

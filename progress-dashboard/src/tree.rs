@@ -17,7 +17,7 @@ impl TreeRoot {
         self.inner.lock().add_child(title)
     }
 
-    pub fn sorted_snapshot(&self, out: &mut Vec<(Key, TreeValue)>) {
+    pub fn sorted_snapshot(&self, out: &mut Vec<(TreeKey, TreeValue)>) {
         out.clear();
         out.extend(
             self.inner
@@ -32,9 +32,9 @@ impl TreeRoot {
 
 #[derive(Debug)]
 pub struct Tree {
-    pub(crate) key: Key,
+    pub(crate) key: TreeKey,
     pub(crate) child_id: TreeId,
-    pub(crate) tree: Arc<DashMap<Key, TreeValue>>,
+    pub(crate) tree: Arc<DashMap<TreeKey, TreeValue>>,
 }
 
 impl Drop for Tree {
@@ -87,7 +87,7 @@ type TreeId = u16; // NOTE: This means we will show weird behaviour if there are
 pub type ProgressStep = u32;
 
 #[derive(Copy, Clone, Default, Hash, Eq, PartialEq, Ord, PartialOrd, Debug)]
-pub struct Key(
+pub struct TreeKey(
     (
         Option<TreeId>,
         Option<TreeId>,
@@ -96,14 +96,14 @@ pub struct Key(
     ),
 );
 
-impl Key {
-    fn add_child(self, child_id: TreeId) -> Key {
-        Key(match self {
-            Key((None, None, None, None)) => (Some(child_id), None, None, None),
-            Key((a, None, None, None)) => (a, Some(child_id), None, None),
-            Key((a, b, None, None)) => (a, b, Some(child_id), None),
-            Key((a, b, c, None)) => (a, b, c, Some(child_id)),
-            Key((a, b, c, _d)) => {
+impl TreeKey {
+    fn add_child(self, child_id: TreeId) -> TreeKey {
+        TreeKey(match self {
+            TreeKey((None, None, None, None)) => (Some(child_id), None, None, None),
+            TreeKey((a, None, None, None)) => (a, Some(child_id), None, None),
+            TreeKey((a, b, None, None)) => (a, b, Some(child_id), None),
+            TreeKey((a, b, c, None)) => (a, b, c, Some(child_id)),
+            TreeKey((a, b, c, _d)) => {
                 log::warn!("Maximum nesting level reached. Adding tasks to current parent");
                 (a, b, c, Some(child_id))
             }
@@ -112,11 +112,11 @@ impl Key {
 
     pub fn level(&self) -> u8 {
         match self {
-            Key((None, None, None, None)) => 0,
-            Key((Some(_), None, None, None)) => 1,
-            Key((Some(_), Some(_), None, None)) => 2,
-            Key((Some(_), Some(_), Some(_), None)) => 3,
-            Key((Some(_), Some(_), Some(_), Some(_))) => 4,
+            TreeKey((None, None, None, None)) => 0,
+            TreeKey((Some(_), None, None, None)) => 1,
+            TreeKey((Some(_), Some(_), None, None)) => 2,
+            TreeKey((Some(_), Some(_), Some(_), None)) => 3,
+            TreeKey((Some(_), Some(_), Some(_), Some(_))) => 4,
             _ => unreachable!("This is a bug - Keys follow a certain pattern"),
         }
     }

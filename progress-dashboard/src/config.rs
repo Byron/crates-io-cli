@@ -1,4 +1,4 @@
-use crate::{Key, Tree, TreeRoot};
+use crate::{Tree, TreeKey, TreeRoot};
 use dashmap::DashMap;
 use parking_lot::Mutex;
 use std::sync::Arc;
@@ -33,7 +33,7 @@ impl From<Config> for TreeRoot {
         TreeRoot {
             inner: Arc::new(Mutex::new(Tree {
                 child_id: 0,
-                key: Key::default(),
+                key: TreeKey::default(),
                 tree: Arc::new(DashMap::with_capacity(initial_capacity)),
             })),
         }

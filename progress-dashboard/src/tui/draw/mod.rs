@@ -1,7 +1,7 @@
 mod tasks;
 
 use crate::tui::draw;
-use crate::{tree, TreeValue};
+use crate::{TreeKey, TreeValue};
 use tui::{
     buffer::Buffer,
     layout::Rect,
@@ -10,10 +10,10 @@ use tui::{
 
 pub fn all(
     title: impl AsRef<str>,
-    entries: Vec<(tree::Key, TreeValue)>,
+    entries: Vec<(TreeKey, TreeValue)>,
     bound: Rect,
     buf: &mut Buffer,
-) -> Vec<(tree::Key, TreeValue)> {
+) -> Vec<(TreeKey, TreeValue)> {
     let mut task_progress = Block::default().title(title.as_ref()).borders(Borders::ALL);
     task_progress.draw(bound, buf);
 
