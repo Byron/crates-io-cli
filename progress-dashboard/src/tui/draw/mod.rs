@@ -1,6 +1,7 @@
-use crate::tui::tasks;
-use crate::tui::utils::intersect;
-use crate::{tree, TreeValue};
+mod tasks;
+
+use crate::tui::draw;
+use crate::{tree, tui::utils::intersect, TreeValue};
 use tui::buffer::Buffer;
 use tui::layout::Rect;
 use tui::widgets::{Block, Borders, Widget};
@@ -28,7 +29,7 @@ pub fn all(
                 width: column_width,
                 ..bound
             };
-            tasks::draw_tree_prefix(&entries, buf, prefix_area)
+            draw::tasks::draw_tree_prefix(&entries, buf, prefix_area)
         };
 
         {
@@ -40,7 +41,7 @@ pub fn all(
                 },
                 bound,
             );
-            tasks::draw_progress(&entries, buf, progress_area);
+            draw::tasks::draw_progress(&entries, buf, progress_area);
         }
 
         if is_overflowing {
@@ -49,7 +50,7 @@ pub fn all(
                 height: 1,
                 ..bound
             };
-            tasks::draw_overflow(
+            draw::tasks::draw_overflow(
                 entries.iter().skip(bound.height as usize),
                 buf,
                 overflow_rect,
