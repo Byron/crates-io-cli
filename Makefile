@@ -27,7 +27,7 @@ feature-check: ## build features in commmon combination to be sure it all stays 
 tests: feature-check unit-tests journey-tests ## Run all tests we have
 
 unit-tests: ## Run all unit tests
-	cargo test
+	cargo test --all
 
 journey-tests: $(EXECUTABLE) $(bare_index_path) ## Run all journey tests with a bare clone of the crate-io index
 	tests/journey-tests.sh $(EXECUTABLE) $(bare_index_path)
