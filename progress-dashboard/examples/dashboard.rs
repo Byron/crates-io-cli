@@ -1,15 +1,14 @@
-use futures::future::{AbortHandle, Either};
 use futures::{
     executor::{block_on, ThreadPool},
     future::{abortable, join_all},
+    future::{AbortHandle, Either},
     task::{Spawn, SpawnExt},
     FutureExt,
 };
 use futures_timer::Delay;
 use progress_dashboard::{tui, Key, Tree, TreeRoot};
 use rand::prelude::*;
-use std::future::Future;
-use std::{error::Error, time::Duration};
+use std::{error::Error, future::Future, time::Duration};
 
 const WORK_STEPS_NEEDED_FOR_UNBOUNDED_TASK: u8 = 100;
 const UNITS: &[&str] = &["Mb", "kb", "items", "files"];
@@ -132,6 +131,7 @@ fn launch_ambient_gui(
     let render_fut = tui::render(
         progress,
         tui::Config {
+            title: " Dashboard Demo ".into(),
             frames_per_second: 30,
         },
     )?;

@@ -7,11 +7,11 @@ use futures_timer::Delay;
 use futures::{channel::mpsc, future::select, future::Either, io::Error, SinkExt, StreamExt};
 use std::{fmt, io, time::Duration};
 use termion::{event::Key, input::TermRead, raw::IntoRawMode, screen::AlternateScreen};
-use tui::style::{Color, Style};
 use tui::{
     backend::TermionBackend,
     buffer::Buffer,
     layout::Rect,
+    style::{Color, Style},
     widgets::{Block, Borders, Widget},
     widgets::{Paragraph, Text},
 };
@@ -20,12 +20,16 @@ use unicode_segmentation::UnicodeSegmentation;
 
 #[derive(Clone)]
 pub struct Config {
+    pub title: String,
     pub frames_per_second: u8,
 }
 
 pub fn render(
     progress: TreeRoot,
-    Config { frames_per_second }: Config,
+    Config {
+        title,
+        frames_per_second,
+    }: Config,
 ) -> Result<impl std::future::Future<Output = ()>, std::io::Error> {
     let mut terminal = {
         let stdout = io::stdout().into_raw_mode()?;
@@ -53,7 +57,7 @@ pub fn render(
             let buf = terminal.current_buffer_mut();
             progress.sorted_snapshot(&mut entries_buf);
 
-            entries_buf = draw_everything(entries_buf, window_size, buf);
+            entries_buf = draw_everything(&title, entries_buf, window_size, buf);
             terminal.post_render().expect("post render to work");
 
             let delay = Delay::new(duration_per_frame);
@@ -93,13 +97,12 @@ impl<'a> fmt::Display for ProgressFormat<'a> {
 }
 
 fn draw_everything(
+    title: impl AsRef<str>,
     entries: Vec<(tree::Key, TreeValue)>,
     bound: Rect,
     buf: &mut Buffer,
 ) -> Vec<(tree::Key, TreeValue)> {
-    let mut progress_pane = Block::default()
-        .title("Progress Tree")
-        .borders(Borders::ALL);
+    let mut progress_pane = Block::default().title(title.as_ref()).borders(Borders::ALL);
     progress_pane.draw(bound, buf);
     let mut bound = progress_pane.inner(bound);
     let is_overflowing = if entries.len() > bound.height as usize {
