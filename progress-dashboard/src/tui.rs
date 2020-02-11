@@ -101,19 +101,19 @@ fn draw_everything(
         .title("Progress Tree")
         .borders(Borders::ALL);
     progress_pane.draw(bound, buf);
-    let mut current = progress_pane.inner(bound);
-    let is_overflowing = if entries.len() > current.height as usize {
-        current.height = current.height.saturating_sub(1);
+    let mut bound = progress_pane.inner(bound);
+    let is_overflowing = if entries.len() > bound.height as usize {
+        bound.height = bound.height.saturating_sub(1);
         true
     } else {
         false
     };
 
-    let column_width = current.width / 2;
+    let column_width = bound.width / 2;
     let max_prefix_width = {
         let prefix_area = Rect {
             width: column_width,
-            ..current
+            ..bound
         };
         draw_tree_prefix(&entries, buf, prefix_area).map(|l| l.min(column_width))
     };
@@ -121,21 +121,21 @@ fn draw_everything(
     {
         let max_prefix_len = max_prefix_width.unwrap_or_default();
         let progress_area = Rect {
-            x: current.x + max_prefix_len,
-            width: current.width.saturating_sub(max_prefix_len),
-            ..current
+            x: bound.x + max_prefix_len,
+            width: bound.width.saturating_sub(max_prefix_len),
+            ..bound
         };
         draw_progress(&entries, buf, progress_area);
     }
 
     if is_overflowing {
         let overflow_rect = Rect {
-            y: current.height + 1,
+            y: bound.height + 1,
             height: 1,
-            ..current
+            ..bound
         };
         draw_overflow(
-            entries.iter().skip(current.height as usize),
+            entries.iter().skip(bound.height as usize),
             buf,
             overflow_rect,
         );
@@ -242,8 +242,7 @@ fn draw_progress(entries: &[(tree::Key, TreeValue)], buf: &mut Buffer, bound: Re
             let center_rect = intersect(
                 Rect {
                     x: bound.x
-                        + x_offset
-                        + column_line_width
+                        + title_spacing as u16
                         + (bound.width.saturating_sub(max_title_width as u16)) / 2,
                     y,
                     width: max_title_width as u16,
