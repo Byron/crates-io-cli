@@ -184,7 +184,7 @@ fn draw_progress(entries: &[(tree::Key, TreeValue)], buf: &mut Buffer, bound: Re
         let progress_bar_info = if let Some(fraction) = progress.and_then(|p| p.fraction()) {
             let bar_bound = intersect(
                 Rect {
-                    x: bound.x + title_spacing,
+                    x: bound.x + column_line_width,
                     y,
                     height: 1,
                     ..bound
@@ -331,7 +331,7 @@ fn draw_progress_bar(buf: &mut Buffer, bound: Rect, fraction: f32) -> (Rect, Sty
         return (Rect::default(), Style::default());
     }
     let fractional_progress_rect = Rect {
-        width: ((bound.width as f32 * fraction) as u16).min(bound.width),
+        width: ((bound.width as f32 * fraction).ceil() as u16).min(bound.width),
         ..bound
     };
     let color = if fraction >= 0.8 {
