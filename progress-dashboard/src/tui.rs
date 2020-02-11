@@ -272,18 +272,20 @@ fn draw_text_nowrap<'a>(
 ) {
     let s = s.into();
     let t = t.as_ref();
-    for (g, x) in t.graphemes(true).zip(bound.left()..bound.right()) {
+    let mut graphemes = t.graphemes(true);
+    let mut ellipsis_candidate_x = None;
+    for (g, x) in graphemes.by_ref().zip(bound.left()..bound.right()) {
         let cell = buf.get_mut(x, bound.y);
-        let symbol_or_elipsis =
-            if x + 1 == bound.right() && t.graphemes(true).count() > bound.width as usize {
-                "…".into()
-            } else {
-                g.into()
-            };
-        cell.symbol = symbol_or_elipsis;
+        if x + 1 == bound.right() {
+            ellipsis_candidate_x = Some(x);
+        }
+        cell.symbol = g.into();
         if let Some(s) = s {
             cell.style = s;
         }
+    }
+    if let (Some(_), Some(x)) = (graphemes.next(), ellipsis_candidate_x) {
+        buf.get_mut(x, bound.y).symbol = "…".into();
     }
 }
 
