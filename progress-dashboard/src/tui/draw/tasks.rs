@@ -13,6 +13,56 @@ use tui::{
 };
 use unicode_segmentation::UnicodeSegmentation;
 
+pub fn pane(
+    entries: Vec<(tree::Key, TreeValue)>,
+    mut bound: Rect,
+    buf: &mut Buffer,
+) -> Vec<(tree::Key, TreeValue)> {
+    let is_overflowing = if entries.len() > bound.height as usize {
+        bound.height = bound.height.saturating_sub(1);
+        true
+    } else {
+        false
+    };
+
+    if !entries.is_empty() {
+        let column_width = bound.width / 2;
+        let max_prefix_width = {
+            let prefix_area = Rect {
+                width: column_width,
+                ..bound
+            };
+            draw_tree_prefix(&entries, buf, prefix_area)
+        };
+
+        {
+            let max_prefix_width = max_prefix_width;
+            let progress_area = intersect(
+                Rect {
+                    x: bound.x + max_prefix_width,
+                    ..bound
+                },
+                bound,
+            );
+            draw_progress(&entries, buf, progress_area);
+        }
+
+        if is_overflowing {
+            let overflow_rect = Rect {
+                y: bound.height + 1,
+                height: 1,
+                ..bound
+            };
+            draw_overflow(
+                entries.iter().skip(bound.height as usize),
+                buf,
+                overflow_rect,
+            );
+        }
+    }
+    entries
+}
+
 struct ProgressFormat<'a>(&'a Option<Progress>, u16);
 
 impl<'a> fmt::Display for ProgressFormat<'a> {

@@ -1,7 +1,5 @@
 use std::io::Error;
-use tui::buffer::Buffer;
-use tui::layout::Rect;
-use tui::style::Style;
+use tui::{buffer::Buffer, layout::Rect, style::Style};
 use unicode_segmentation::UnicodeSegmentation;
 
 #[derive(Default)]
