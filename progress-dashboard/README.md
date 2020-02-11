@@ -25,7 +25,7 @@
   * [ ] custom statistics window (data sent via message channel)
     * [ ] overflow handling
 * [ ] run example as journey test
-* [ ] some benchmarks
+* [x] some benchmarks
 * [ ] full documentation and maybe a few smaller examples
 
 ## Lessons Learned
