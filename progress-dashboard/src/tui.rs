@@ -167,6 +167,7 @@ fn draw_progress(entries: &[(tree::Key, TreeValue)], buf: &mut Buffer, bound: Re
             Some(_) => state,
         },
     );
+
     for (line, (key, TreeValue { progress, title })) in
         entries.iter().take(bound.height as usize).enumerate()
     {
@@ -189,20 +190,24 @@ fn draw_progress(entries: &[(tree::Key, TreeValue)], buf: &mut Buffer, bound: Re
             None
         };
 
-        let mut progress_rect = Rect {
-            x: bound.x + x_offset + column_line_width,
-            y,
-            height: 1,
-            ..bound
-        }
-        .intersection(bound);
+        let mut progress_rect = intersect(
+            Rect {
+                x: bound.x + x_offset + column_line_width,
+                y,
+                height: 1,
+                ..bound
+            },
+            bound,
+        );
         draw_text_nowrap(progress_rect, buf, "│", None);
-        progress_rect = Rect {
-            x: progress_rect.x + column_line_width,
-            ..progress_rect
-        }
-        .intersection(bound);
-        if let Some(style_fn) = progress_bar_info.map(|(bound, style)| {
+        progress_rect = intersect(
+            Rect {
+                x: progress_rect.x + column_line_width,
+                ..progress_rect
+            },
+            bound,
+        );
+        match progress_bar_info.map(|(bound, style)| {
             move |_t: &str, x: u16, _y: u16| {
                 if x < bound.right() {
                     style
@@ -211,33 +216,41 @@ fn draw_progress(entries: &[(tree::Key, TreeValue)], buf: &mut Buffer, bound: Re
                 }
             }
         }) {
-            draw_text_nowrap_fn(progress_rect, buf, progress_text, style_fn);
-        } else {
-            draw_text_nowrap(progress_rect, buf, progress_text, None);
-            // we have progress, but no upper limit
-            if let Some((step, None)) = progress.as_ref().map(|p| (p.step, p.done_at.as_ref())) {
-                let bar_rect = Rect {
-                    x: bound.x + max_progress_label_width as u16,
-                    y,
-                    height: 1,
-                    ..bound
+            Some(style_fn) => {
+                draw_text_nowrap_fn(progress_rect, buf, progress_text, style_fn);
+            }
+            None => {
+                draw_text_nowrap(progress_rect, buf, progress_text, None);
+                // we have progress, but no upper limit
+                if let Some((step, None)) = progress.as_ref().map(|p| (p.step, p.done_at.as_ref()))
+                {
+                    let bar_rect = intersect(
+                        Rect {
+                            x: bound.x + max_progress_label_width as u16,
+                            y,
+                            height: 1,
+                            ..bound
+                        },
+                        bound,
+                    );
+                    draw_spinner(buf, bar_rect, step, line);
                 }
-                .intersection(bound);
-                draw_spinner(buf, bar_rect, step, line);
             }
         }
 
         if progress.is_none() {
-            let center_rect = Rect {
-                x: bound.x
-                    + x_offset
-                    + column_line_width
-                    + (bound.width.saturating_sub(max_title_width as u16)) / 2,
-                y,
-                width: max_title_width as u16,
-                height: 1,
-            }
-            .intersection(bound);
+            let center_rect = intersect(
+                Rect {
+                    x: bound.x
+                        + x_offset
+                        + column_line_width
+                        + (bound.width.saturating_sub(max_title_width as u16)) / 2,
+                    y,
+                    width: max_title_width as u16,
+                    height: 1,
+                },
+                bound,
+            );
             let title_text = format!(
                 " {:‧<prefix_count$} {} ",
                 "",
@@ -273,6 +286,9 @@ fn draw_text_nowrap_fn(
     t: impl AsRef<str>,
     mut s: impl FnMut(&str, u16, u16) -> Style,
 ) {
+    if bound.width == 0 {
+        return;
+    }
     for (g, x) in t.as_ref().graphemes(true).zip(bound.left()..bound.right()) {
         let cell = buf.get_mut(x, bound.y);
         cell.symbol = g.into();
@@ -281,16 +297,20 @@ fn draw_text_nowrap_fn(
 }
 
 fn draw_spinner(buf: &mut Buffer, bound: Rect, step: ProgressStep, seed: usize) {
-    let x = bound.x + (step as usize + seed % bound.width as usize) as u16;
-    if x >= bound.right() {
+    if bound.width == 0 {
         return;
     }
+    let step = step as usize;
+    let x = bound.x + ((step + seed) % bound.width as usize) as u16;
     let width = 5;
-    let bound = Rect { x, width, ..bound }.intersection(bound);
+    let bound = intersect(Rect { x, width, ..bound }, bound);
     tui_react::fill_background(bound, buf, Color::White);
 }
 
 fn draw_progress_bar(buf: &mut Buffer, bound: Rect, fraction: f32) -> (Rect, Style) {
+    if bound.width == 0 {
+        return (Rect::default(), Style::default());
+    }
     let fractional_progress_rect = Rect {
         width: ((bound.width as f32 * fraction) as u16).min(bound.width),
         ..bound
@@ -338,12 +358,14 @@ fn draw_tree_prefix(
             tree_prefix.push('…');
         }
         max_prefix_len = Some(max_prefix_len.unwrap_or(0).max(tree_prefix.len() as u16));
-        let line_rect = Rect {
-            y: bound.y + line as u16,
-            height: 1,
-            ..bound
-        }
-        .intersection(bound);
+        let line_rect = intersect(
+            Rect {
+                y: bound.y + line as u16,
+                height: 1,
+                ..bound
+            },
+            bound,
+        );
         draw_text_nowrap(line_rect, buf, tree_prefix, None);
     }
     max_prefix_len
@@ -385,5 +407,19 @@ impl std::io::Write for GraphemeCountWriter {
 
     fn flush(&mut self) -> Result<(), Error> {
         Ok(())
+    }
+}
+
+/// A safe version of Rect::intersection that doesn't suffer from underflows
+fn intersect(lhs: Rect, rhs: Rect) -> Rect {
+    let x1 = lhs.x.max(rhs.x);
+    let y1 = lhs.y.max(rhs.y);
+    let x2 = lhs.right().min(rhs.right());
+    let y2 = lhs.bottom().min(rhs.bottom());
+    Rect {
+        x: x1,
+        y: y1,
+        width: x2.saturating_sub(x1),
+        height: y2.saturating_sub(y1),
     }
 }
