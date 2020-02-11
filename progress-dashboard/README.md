@@ -14,16 +14,15 @@
   * [x] unbounded progress
   * [ ] blocking indicator
     * [ ] with optional time-to-unblock
-  * [ ] fractional FPS
-  * [ ] use future streams as sole interface (one unified stream with Messages)
-  * [ ] Ring-buffer powered message buffer in tree (done, info, warn, error)
-    * [ ] display that message buffer
   * [ ] tasks overview headline
     * [ ] FPS count
     * [ ] 'last frame at' for FPS < 1.0
+  * [ ] fractional FPS
+  * [ ] Ring-buffer powered message buffer in tree (done, info, warn, error)
+    * [ ] display that message buffer in tui
+  * [ ] use future streams as sole interface (one unified stream with Messages)
   * [ ] define boundary on the fly using messages (allows incorporating it into other TUIs potentially)
   * [ ] custom statistics window (data sent via message channel)
-    * [ ] overflow handling
 * [ ] run example as journey test
 * [x] some benchmarks
 * [ ] full documentation and maybe a few smaller examples
