@@ -144,8 +144,8 @@ fn draw_everything(
 }
 
 fn draw_progress(entries: &[(tree::Key, TreeValue)], buf: &mut Buffer, bound: Rect) {
-    let x_offset = 1;
-    let title_spacing = 1 + 1 + 1;
+    let x_offset = 1u16;
+    let title_spacing = 1u16 + 1 + 1;
     let column_line_width = 1;
     let max_progress_label_width = entries
         .iter()
@@ -163,7 +163,8 @@ fn draw_progress(entries: &[(tree::Key, TreeValue)], buf: &mut Buffer, bound: Re
     let max_title_width = entries.iter().take(bound.height as usize).fold(
         0,
         |state, (key, TreeValue { progress, title })| match progress {
-            None => state.max(title.graphemes(true).count() + key.level() as usize + title_spacing),
+            None => state
+                .max(title.graphemes(true).count() + key.level() as usize + title_spacing as usize),
             Some(_) => state,
         },
     );
@@ -171,10 +172,10 @@ fn draw_progress(entries: &[(tree::Key, TreeValue)], buf: &mut Buffer, bound: Re
     for (line, (key, TreeValue { progress, title })) in
         entries.iter().take(bound.height as usize).enumerate()
     {
-        let max_width = bound.width.saturating_sub(x_offset);
+        let max_width = bound.width.saturating_sub(x_offset + column_line_width);
         let progress_text = format!(
             " {progress}",
-            progress = ProgressFormat(progress, max_width - 4)
+            progress = ProgressFormat(progress, max_width - title_spacing)
         );
 
         let y = bound.y + line as u16;
@@ -203,6 +204,7 @@ fn draw_progress(entries: &[(tree::Key, TreeValue)], buf: &mut Buffer, bound: Re
         progress_rect = intersect(
             Rect {
                 x: progress_rect.x + column_line_width,
+                width: bound.width.saturating_sub(column_line_width),
                 ..progress_rect
             },
             bound,
