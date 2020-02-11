@@ -1,5 +1,8 @@
 mod tree;
 
+mod config;
+
+pub use config::*;
 pub use tree::*;
 
 #[cfg(feature = "tui-renderer")]
