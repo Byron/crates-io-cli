@@ -121,11 +121,13 @@ fn draw_everything(
 
         {
             let max_prefix_width = max_prefix_width;
-            let progress_area = Rect {
-                x: bound.x + max_prefix_width,
-                width: bound.width.saturating_sub(max_prefix_width),
-                ..bound
-            };
+            let progress_area = intersect(
+                Rect {
+                    x: bound.x + max_prefix_width,
+                    ..bound
+                },
+                bound,
+            );
             draw_progress(&entries, buf, progress_area);
         }
 
@@ -146,8 +148,7 @@ fn draw_everything(
 }
 
 fn draw_progress(entries: &[(tree::Key, TreeValue)], buf: &mut Buffer, bound: Rect) {
-    let x_offset = 1u16;
-    let title_spacing = 1u16 + 1 + 1;
+    let title_spacing = 2u16 + 1; // 2 on the left, 1 on the right
     let column_line_width = 1;
     let max_progress_label_width = entries
         .iter()
@@ -174,20 +175,22 @@ fn draw_progress(entries: &[(tree::Key, TreeValue)], buf: &mut Buffer, bound: Re
     for (line, (key, TreeValue { progress, title })) in
         entries.iter().take(bound.height as usize).enumerate()
     {
-        let max_width = bound.width.saturating_sub(x_offset + column_line_width);
         let progress_text = format!(
             " {progress}",
-            progress = ProgressFormat(progress, max_width - title_spacing)
+            progress = ProgressFormat(progress, bound.width.saturating_sub(title_spacing))
         );
 
         let y = bound.y + line as u16;
         let progress_bar_info = if let Some(fraction) = progress.and_then(|p| p.fraction()) {
-            let bar_bound = Rect {
-                x: bound.x + x_offset + column_line_width + 1,
-                width: max_width,
-                y,
-                height: 1,
-            };
+            let bar_bound = intersect(
+                Rect {
+                    x: bound.x + title_spacing,
+                    y,
+                    height: 1,
+                    ..bound
+                },
+                bound,
+            );
             Some(draw_progress_bar(buf, bar_bound, fraction))
         } else {
             None
@@ -195,7 +198,7 @@ fn draw_progress(entries: &[(tree::Key, TreeValue)], buf: &mut Buffer, bound: Re
 
         let mut progress_rect = intersect(
             Rect {
-                x: bound.x + x_offset + column_line_width,
+                x: bound.x,
                 y,
                 height: 1,
                 ..bound
@@ -203,6 +206,7 @@ fn draw_progress(entries: &[(tree::Key, TreeValue)], buf: &mut Buffer, bound: Re
             bound,
         );
         draw_text_nowrap(progress_rect, buf, "│", None);
+
         progress_rect = intersect(
             Rect {
                 x: progress_rect.x + column_line_width,
@@ -246,7 +250,7 @@ fn draw_progress(entries: &[(tree::Key, TreeValue)], buf: &mut Buffer, bound: Re
             let center_rect = intersect(
                 Rect {
                     x: bound.x
-                        + title_spacing as u16
+                        + column_line_width
                         + (bound.width.saturating_sub(max_title_width as u16)) / 2,
                     y,
                     width: max_title_width as u16,
@@ -348,7 +352,7 @@ fn draw_tree_prefix(entries: &[(tree::Key, TreeValue)], buf: &mut Buffer, bound:
         entries.iter().take(bound.height as usize).enumerate()
     {
         let tree_prefix = format!(
-            "{:>width$} {}",
+            "{:>width$} {} ",
             if key.level() == 1 {
                 "‧"
             } else {
