@@ -144,17 +144,13 @@ pub fn draw_progress(entries: &[(TreeKey, TreeValue)], buf: &mut Buffer, bound: 
         }
 
         if progress.is_none() {
-            let center_rect = rect::intersect(
-                Rect {
-                    x: bound.x
-                        + column_line_width
-                        + (bound.width.saturating_sub(max_title_width as u16)) / 2,
-                    y: line_bound.y,
-                    width: max_title_width as u16,
-                    height: 1,
-                },
-                bound,
-            );
+            let center_rect = Rect {
+                width: max_title_width as u16,
+                ..rect::offset_x(
+                    line_bound,
+                    column_line_width + (bound.width.saturating_sub(max_title_width as u16)) / 2,
+                )
+            };
             let title_text = format!(
                 " {:‧<prefix_count$} {} ",
                 "",
