@@ -17,6 +17,8 @@ const UNITS: &[&str] = &["Mb", "kb", "items", "files"];
 const WORK_DELAY_MS: u64 = 100;
 const LONG_WORK_DELAY_MS: u64 = 2000;
 const SPAWN_DELAY_MS: u64 = 200;
+const CHANCE_TO_BLOCK_PER_STEP: f64 = 1.0 / 100.0;
+const CHANCE_TO_SHOW_ETA: f64 = 0.5;
 
 async fn work_item(mut progress: Tree) -> () {
     let max: u8 = thread_rng().gen_range(25, 125);
@@ -35,8 +37,8 @@ async fn work_item(mut progress: Tree) -> () {
 
     for step in 0..max {
         progress.set(step as u32);
-        let delay = if thread_rng().gen_bool(1.0 / 100.0) {
-            let eta = if thread_rng().gen_bool(0.5) {
+        let delay = if thread_rng().gen_bool(CHANCE_TO_BLOCK_PER_STEP) {
+            let eta = if thread_rng().gen_bool(CHANCE_TO_SHOW_ETA) {
                 Some(SystemTime::now().add(Duration::from_millis(LONG_WORK_DELAY_MS)))
             } else {
                 None

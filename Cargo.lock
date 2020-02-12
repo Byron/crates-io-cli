@@ -1119,6 +1119,7 @@ dependencies = [
  "env_logger",
  "futures 0.3.4",
  "futures-timer",
+ "humantime 2.0.0",
  "log",
  "parking_lot 0.10.0",
  "rand",

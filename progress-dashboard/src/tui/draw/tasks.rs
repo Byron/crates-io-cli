@@ -1,6 +1,8 @@
 use crate::tui::utils::{draw_text_nowrap, draw_text_nowrap_fn, rect, GraphemeCountWriter};
 use crate::{Progress, ProgressStep, TaskState, TreeKey, TreeValue};
+use humantime::format_duration;
 use std::fmt;
+use std::time::SystemTime;
 use tui::{
     buffer::Buffer,
     layout::Rect,
@@ -132,6 +134,16 @@ pub fn draw_progress(
         let progress_rect = rect::offset_x(line_bound, column_line_width);
         match progress.map(|p| (p.fraction(), p.state, p.step)) {
             Some((Some(fraction), state, _step)) => {
+                let mut progress_text = progress_text;
+                if let TaskState::Blocked(Some(eta)) = state {
+                    let now = SystemTime::now();
+                    if eta > now {
+                        progress_text.push_str(&format!(
+                            " → {} to unblock",
+                            format_duration(eta.duration_since(now).expect("computation to work"))
+                        ))
+                    }
+                }
                 let (bound, style) =
                     draw_progress_bar_fn(buf, progress_rect, fraction, |fraction| {
                         if let TaskState::Blocked(_) = state {
@@ -150,7 +162,7 @@ pub fn draw_progress(
                         Style::default()
                     }
                 };
-                draw_text_nowrap_fn(bound, buf, progress_text, style_fn);
+                draw_text_nowrap_fn(progress_rect, buf, progress_text, style_fn);
             }
             Some((None, state, step)) => {
                 draw_text_nowrap(progress_rect, buf, progress_text, None);

@@ -12,8 +12,8 @@
   * [x] title-only
   * [x] bounded progress
   * [x] unbounded progress
-  * [ ] blocking indicator
-    * [ ] with optional time-to-unblock
+  * [x] blocking indicator
+    * [x] with optional time-to-unblock
   * [ ] tasks overview headline
     * [ ] FPS count
     * [ ] 'last frame at' for FPS < 1.0
