@@ -289,5 +289,17 @@ pub fn draw_overflow<'a>(
         "{} …and {} more -- {:4.01}%",
         VERTICAL_LINE, count, progress_percent
     );
-    draw_text_nowrap(rect::offset_x(bound, label_offset), buf, label, None);
+    let (progress_rect, STYLE) = draw_progress_bar(buf, bound, progress_percent / 100.0);
+    draw_text_nowrap_fn(
+        rect::offset_x(bound, label_offset),
+        buf,
+        label,
+        move |_g, x, _y| {
+            if x < progress_rect.right() {
+                style
+            } else {
+                Style::default()
+            }
+        },
+    );
 }
