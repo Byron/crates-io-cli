@@ -74,3 +74,15 @@ pub fn intersect(lhs: Rect, rhs: Rect) -> Rect {
         height: y2.saturating_sub(y1),
     }
 }
+
+pub mod rect {
+    use tui::layout::Rect;
+
+    pub fn offset_x(r: Rect, offset: u16) -> Rect {
+        Rect {
+            x: r.x + offset,
+            width: r.width.saturating_sub(offset),
+            ..r
+        }
+    }
+}
