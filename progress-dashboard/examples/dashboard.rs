@@ -92,7 +92,7 @@ async fn work_forever(pool: impl Spawn + Clone + Send + 'static) -> Result {
             progress.clone(),
             pool.clone(),
         );
-        let pooled_work = (0..thread_rng().gen_range(3, 8usize)).map(|_| {
+        let pooled_work = (0..thread_rng().gen_range(6, 16usize)).map(|_| {
             pool.spawn_with_handle(new_chunk_of_work(
                 format!("{}: pooled", iteration),
                 NestingLevel(thread_rng().gen_range(0, TreeKey::max_level())),
@@ -132,7 +132,7 @@ fn launch_ambient_gui(
         progress,
         tui::Config {
             title: " Dashboard Demo ".into(),
-            frames_per_second: 30,
+            frames_per_second: 10,
         },
     )?;
     let (render_fut, abort_handle) = abortable(render_fut);
