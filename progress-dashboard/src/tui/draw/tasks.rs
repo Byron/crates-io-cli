@@ -104,39 +104,22 @@ pub fn draw_progress(entries: &[(TreeKey, TreeValue)], buf: &mut Buffer, bound: 
     for (line, (key, TreeValue { progress, title })) in
         entries.iter().take(bound.height as usize).enumerate()
     {
+        let line_bound = line_bound(bound, line);
         let progress_text = format!(
             " {progress}",
             progress = ProgressFormat(progress, bound.width.saturating_sub(title_spacing))
         );
 
-        let y = bound.y + line as u16;
         let progress_bar_info = if let Some(fraction) = progress.and_then(|p| p.fraction()) {
-            let bar_bound = rect::intersect(
-                Rect {
-                    x: bound.x + column_line_width,
-                    y,
-                    height: 1,
-                    ..bound
-                },
-                bound,
-            );
+            let bar_bound = rect::offset_x(line_bound, column_line_width);
             Some(draw_progress_bar(buf, bar_bound, fraction))
         } else {
             None
         };
 
-        let mut progress_rect = rect::intersect(
-            Rect {
-                x: bound.x,
-                y,
-                height: 1,
-                ..bound
-            },
-            bound,
-        );
-        draw_text_nowrap(progress_rect, buf, VERTICAL_LINE, None);
+        draw_text_nowrap(line_bound, buf, VERTICAL_LINE, None);
 
-        progress_rect = rect::offset_x(progress_rect, column_line_width);
+        let progress_rect = rect::offset_x(line_bound, column_line_width);
         match progress_bar_info.map(|(bound, style)| {
             move |_t: &str, x: u16, _y: u16| {
                 if x < bound.right() {
@@ -154,15 +137,7 @@ pub fn draw_progress(entries: &[(TreeKey, TreeValue)], buf: &mut Buffer, bound: 
                 // we have progress, but no upper limit
                 if let Some((step, None)) = progress.as_ref().map(|p| (p.step, p.done_at.as_ref()))
                 {
-                    let bar_rect = rect::intersect(
-                        Rect {
-                            x: bound.x + max_progress_label_width as u16,
-                            y,
-                            height: 1,
-                            ..bound
-                        },
-                        bound,
-                    );
+                    let bar_rect = rect::offset_x(line_bound, max_progress_label_width as u16);
                     draw_spinner(buf, bar_rect, step, line);
                 }
             }
@@ -174,7 +149,7 @@ pub fn draw_progress(entries: &[(TreeKey, TreeValue)], buf: &mut Buffer, bound: 
                     x: bound.x
                         + column_line_width
                         + (bound.width.saturating_sub(max_title_width as u16)) / 2,
-                    y,
+                    y: line_bound.y,
                     width: max_title_width as u16,
                     height: 1,
                 },
@@ -237,6 +212,7 @@ pub fn draw_tree(entries: &[(TreeKey, TreeValue)], buf: &mut Buffer, bound: Rect
     for (line, (key, TreeValue { progress, title })) in
         entries.iter().take(bound.height as usize).enumerate()
     {
+        let line_bound = line_bound(bound, line);
         let tree_prefix = format!(
             "{:>width$} {} ",
             if key.level() == 1 {
@@ -251,17 +227,17 @@ pub fn draw_tree(entries: &[(TreeKey, TreeValue)], buf: &mut Buffer, bound: Rect
             if progress.is_none() { "" } else { &title },
             width = key.level() as usize
         );
-        let line_rect = rect::intersect(
-            Rect {
-                y: bound.y + line as u16,
-                height: 1,
-                ..bound
-            },
-            bound,
-        );
-        max_prefix_len = max_prefix_len.max(draw_text_nowrap(line_rect, buf, tree_prefix, None));
+        max_prefix_len = max_prefix_len.max(draw_text_nowrap(line_bound, buf, tree_prefix, None));
     }
     max_prefix_len
+}
+
+fn line_bound(bound: Rect, line: usize) -> Rect {
+    Rect {
+        y: bound.y + line as u16,
+        height: 1,
+        ..bound
+    }
 }
 
 pub fn draw_overflow<'a>(
