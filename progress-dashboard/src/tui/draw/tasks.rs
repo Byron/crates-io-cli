@@ -168,14 +168,15 @@ pub fn draw_progress(
                 );
             }
             None => {
-                let center_rect = Rect {
-                    width: max_title_width as u16,
-                    ..rect::offset_x(
-                        line_bound,
-                        column_line_width
+                let center_rect = rect::intersect(
+                    Rect {
+                        x: column_line_width
                             + (bound.width.saturating_sub(max_title_width as u16)) / 2,
-                    )
-                };
+                        width: max_title_width as u16,
+                        ..line_bound
+                    },
+                    line_bound,
+                );
                 let title_text = format!(
                     " {:‧<prefix_count$} {} ",
                     "",
