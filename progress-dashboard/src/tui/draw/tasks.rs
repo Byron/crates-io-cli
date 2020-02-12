@@ -276,20 +276,17 @@ pub fn draw_overflow<'a>(
 ) {
     let (count, mut progress_percent) = entries.fold(
         (0usize, 0f32),
-        |(count, progress_percent), (_key, value)| {
+        |(count, progress_fraction), (_key, value)| {
             let progress = value
                 .progress
-                .and_then(|p| p.fraction().map(|f| f * 100.0))
+                .and_then(|p| p.fraction())
                 .unwrap_or_default();
-            (count + 1, progress_percent + progress)
+            (count + 1, progress_fraction + progress)
         },
     );
     progress_percent /= count as f32;
-    let label = format!(
-        "{} …and {} more -- {:4.01}%",
-        VERTICAL_LINE, count, progress_percent
-    );
-    let (progress_rect, STYLE) = draw_progress_bar(buf, bound, progress_percent / 100.0);
+    let label = format!("{} …and {} more", VERTICAL_LINE, count);
+    let (progress_rect, style) = draw_progress_bar(buf, bound, progress_percent);
     draw_text_nowrap_fn(
         rect::offset_x(bound, label_offset),
         buf,
