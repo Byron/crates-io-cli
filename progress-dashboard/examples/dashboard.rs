@@ -8,11 +8,14 @@ use futures::{
 use futures_timer::Delay;
 use progress_dashboard::{tui, Tree, TreeKey, TreeRoot};
 use rand::prelude::*;
+use std::ops::Add;
+use std::time::SystemTime;
 use std::{error::Error, future::Future, time::Duration};
 
 const WORK_STEPS_NEEDED_FOR_UNBOUNDED_TASK: u8 = 100;
 const UNITS: &[&str] = &["Mb", "kb", "items", "files"];
 const WORK_DELAY_MS: u64 = 100;
+const LONG_WORK_DELAY_MS: u64 = 2000;
 const SPAWN_DELAY_MS: u64 = 200;
 
 async fn work_item(mut progress: Tree) -> () {
@@ -32,7 +35,18 @@ async fn work_item(mut progress: Tree) -> () {
 
     for step in 0..max {
         progress.set(step as u32);
-        Delay::new(Duration::from_millis(WORK_DELAY_MS)).await;
+        let delay = if thread_rng().gen_bool(1.0 / 100.0) {
+            let eta = if thread_rng().gen_bool(0.5) {
+                Some(SystemTime::now().add(Duration::from_millis(LONG_WORK_DELAY_MS)))
+            } else {
+                None
+            };
+            progress.blocked(eta);
+            thread_rng().gen_range(WORK_DELAY_MS, LONG_WORK_DELAY_MS)
+        } else {
+            WORK_DELAY_MS
+        };
+        Delay::new(Duration::from_millis(delay)).await;
     }
     ()
 }

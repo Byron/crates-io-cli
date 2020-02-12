@@ -1,7 +1,7 @@
 use crate::Config;
 use dashmap::DashMap;
 use parking_lot::Mutex;
-use std::sync::Arc;
+use std::{sync::Arc, time::SystemTime};
 
 /// The top-level of the progress tree
 #[derive(Clone, Debug)]
@@ -54,15 +54,26 @@ impl Tree {
         });
     }
 
-    pub fn set(&mut self, step: ProgressStep) {
+    fn alter_progress(&mut self, f: impl FnMut(&mut Progress)) {
         self.tree.get_mut(&self.key).map(|mut r| {
             // NOTE: since we wrap around, if there are more tasks than we can have IDs for,
             // and if all these tasks are still alive, two progress trees may see the same ID
             // when these go out of scope, they delete the key and the other tree will not find
             // its value anymore. Besides, it's probably weird to see tasks changing their progress
             // all the time…
-            r.value_mut().progress.as_mut().map(|p| p.step = step);
+            r.value_mut().progress.as_mut().map(f);
         });
+    }
+
+    pub fn set(&mut self, step: ProgressStep) {
+        self.alter_progress(|p| {
+            p.step = step;
+            p.state = TaskState::Running;
+        });
+    }
+
+    pub fn blocked(&mut self, eta: Option<SystemTime>) {
+        self.alter_progress(|p| p.state = TaskState::Blocked(eta));
     }
 
     pub fn add_child(&mut self, title: impl Into<String>) -> Tree {
@@ -126,11 +137,27 @@ impl TreeKey {
     }
 }
 
+#[derive(Copy, Clone, Hash, Eq, PartialEq, Ord, PartialOrd, Debug)]
+pub enum TaskState {
+    /// Indicates a task is blocked and cannot make progress, optionally until the
+    /// given time.
+    Blocked(Option<SystemTime>),
+    /// The task is running
+    Running,
+}
+
+impl Default for TaskState {
+    fn default() -> Self {
+        TaskState::Running
+    }
+}
+
 #[derive(Copy, Clone, Default, Hash, Eq, PartialEq, Ord, PartialOrd, Debug)]
 pub struct Progress {
     pub step: ProgressStep,
     pub done_at: Option<ProgressStep>,
     pub unit: Option<&'static str>,
+    pub state: TaskState,
 }
 
 impl Progress {

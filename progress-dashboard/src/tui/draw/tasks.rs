@@ -1,5 +1,5 @@
 use crate::tui::utils::{draw_text_nowrap, draw_text_nowrap_fn, rect, GraphemeCountWriter};
-use crate::{Progress, ProgressStep, TreeKey, TreeValue};
+use crate::{Progress, ProgressStep, TaskState, TreeKey, TreeValue};
 use std::fmt;
 use tui::{
     buffer::Buffer,
@@ -127,59 +127,69 @@ pub fn draw_progress(
             progress = ProgressFormat(progress, bound.width.saturating_sub(title_spacing))
         );
 
-        let progress_bar_info = if let Some(fraction) = progress.and_then(|p| p.fraction()) {
-            let bar_bound = rect::offset_x(line_bound, column_line_width);
-            Some(draw_progress_bar(buf, bar_bound, fraction))
-        } else {
-            None
-        };
-
         draw_text_nowrap(line_bound, buf, VERTICAL_LINE, None);
 
         let progress_rect = rect::offset_x(line_bound, column_line_width);
-        match progress_bar_info.map(|(bound, style)| {
-            move |_t: &str, x: u16, _y: u16| {
-                if x < bound.right() {
-                    style
-                } else {
-                    Style::default()
-                }
+        match progress.map(|p| (p.fraction(), p.state, p.step)) {
+            Some((Some(fraction), state, _step)) => {
+                let (bound, style) =
+                    draw_progress_bar_fn(buf, progress_rect, fraction, |fraction| {
+                        if let TaskState::Blocked(_) = state {
+                            return Color::Red;
+                        }
+                        if fraction >= 0.8 {
+                            Color::Green
+                        } else {
+                            Color::Yellow
+                        }
+                    });
+                let style_fn = move |_t: &str, x: u16, _y: u16| {
+                    if x < bound.right() {
+                        style
+                    } else {
+                        Style::default()
+                    }
+                };
+                draw_text_nowrap_fn(bound, buf, progress_text, style_fn);
             }
-        }) {
-            Some(style_fn) => {
-                draw_text_nowrap_fn(progress_rect, buf, progress_text, style_fn);
+            Some((None, state, step)) => {
+                draw_text_nowrap(progress_rect, buf, progress_text, None);
+                let bar_rect = rect::offset_x(line_bound, max_progress_label_width as u16);
+                draw_spinner(
+                    buf,
+                    bar_rect,
+                    step,
+                    line,
+                    if let TaskState::Blocked(_) = state {
+                        Color::Red
+                    } else {
+                        Color::White
+                    },
+                );
             }
             None => {
+                let center_rect = Rect {
+                    width: max_title_width as u16,
+                    ..rect::offset_x(
+                        line_bound,
+                        column_line_width
+                            + (bound.width.saturating_sub(max_title_width as u16)) / 2,
+                    )
+                };
+                let title_text = format!(
+                    " {:‧<prefix_count$} {} ",
+                    "",
+                    title,
+                    prefix_count = key.level() as usize
+                );
                 draw_text_nowrap(progress_rect, buf, progress_text, None);
-                // we have progress, but no upper limit
-                if let Some((step, None)) = progress.as_ref().map(|p| (p.step, p.done_at.as_ref()))
-                {
-                    let bar_rect = rect::offset_x(line_bound, max_progress_label_width as u16);
-                    draw_spinner(buf, bar_rect, step, line);
-                }
+                draw_text_nowrap(center_rect, buf, title_text, None);
             }
-        }
-
-        if progress.is_none() {
-            let center_rect = Rect {
-                width: max_title_width as u16,
-                ..rect::offset_x(
-                    line_bound,
-                    column_line_width + (bound.width.saturating_sub(max_title_width as u16)) / 2,
-                )
-            };
-            let title_text = format!(
-                " {:‧<prefix_count$} {} ",
-                "",
-                title,
-                prefix_count = key.level() as usize
-            );
-            draw_text_nowrap(center_rect, buf, title_text, None);
         }
     }
 }
 
-fn draw_spinner(buf: &mut Buffer, bound: Rect, step: ProgressStep, seed: usize) {
+fn draw_spinner(buf: &mut Buffer, bound: Rect, step: ProgressStep, seed: usize, color: Color) {
     if bound.width == 0 {
         return;
     }
@@ -187,18 +197,9 @@ fn draw_spinner(buf: &mut Buffer, bound: Rect, step: ProgressStep, seed: usize) 
     let x = bound.x + ((step + seed) % bound.width as usize) as u16;
     let width = 5;
     let bound = rect::intersect(Rect { x, width, ..bound }, bound);
-    tui_react::fill_background(bound, buf, Color::White);
+    tui_react::fill_background(bound, buf, color);
 }
 
-fn draw_progress_bar(buf: &mut Buffer, bound: Rect, fraction: f32) -> (Rect, Style) {
-    draw_progress_bar_fn(buf, bound, fraction, |fraction| {
-        if fraction >= 0.8 {
-            Color::Green
-        } else {
-            Color::Yellow
-        }
-    })
-}
 fn draw_progress_bar_fn(
     buf: &mut Buffer,
     bound: Rect,
