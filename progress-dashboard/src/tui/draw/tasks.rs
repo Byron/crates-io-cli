@@ -10,6 +10,7 @@ use tui_react::fill_background;
 use unicode_segmentation::UnicodeSegmentation;
 
 const VERTICAL_LINE: &str = "│";
+const MIN_TREE_WIDTH: u16 = 20;
 
 pub fn pane(
     entries: Vec<(TreeKey, TreeValue)>,
@@ -25,18 +26,29 @@ pub fn pane(
 
     if !entries.is_empty() {
         let column_width = bound.width / 2;
-        let max_tree_draw_width = {
+        let max_tree_draw_width = if column_width >= MIN_TREE_WIDTH {
             let prefix_area = Rect {
                 width: column_width,
                 ..bound
             };
             draw_tree(&entries, buf, prefix_area)
+        } else {
+            0
         };
 
         {
             let max_tree_draw_width = max_tree_draw_width;
             let progress_area = rect::offset_x(bound, max_tree_draw_width);
-            draw_progress(&entries, buf, progress_area);
+            draw_progress(
+                &entries,
+                buf,
+                progress_area,
+                if max_tree_draw_width == 0 {
+                    false
+                } else {
+                    true
+                },
+            );
         }
 
         if is_overflowing {
@@ -76,9 +88,14 @@ impl<'a> fmt::Display for ProgressFormat<'a> {
     }
 }
 
-pub fn draw_progress(entries: &[(TreeKey, TreeValue)], buf: &mut Buffer, bound: Rect) {
+pub fn draw_progress(
+    entries: &[(TreeKey, TreeValue)],
+    buf: &mut Buffer,
+    bound: Rect,
+    draw_column_line: bool,
+) {
     let title_spacing = 2u16 + 1; // 2 on the left, 1 on the right
-    let column_line_width = 1;
+    let column_line_width = if draw_column_line { 1 } else { 0 };
     let max_progress_label_width = entries
         .iter()
         .take(bound.height as usize)
@@ -253,7 +270,11 @@ pub fn draw_overflow<'a>(
         },
     );
     progress_percent /= count as f32;
-    let label = format!("{} …and {} more", VERTICAL_LINE, count);
+    let label = format!(
+        "{} …and {} more",
+        if label_offset == 0 { "" } else { VERTICAL_LINE },
+        count
+    );
     let (progress_rect, style) =
         draw_progress_bar_fn(buf, bound, progress_percent, |_| Color::Green);
 
