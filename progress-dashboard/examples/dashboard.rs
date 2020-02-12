@@ -1,3 +1,4 @@
+#![deny(unsafe_code)]
 use futures::{
     executor::{block_on, ThreadPool},
     future::{abortable, join_all},

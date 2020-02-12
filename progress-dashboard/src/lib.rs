@@ -1,3 +1,4 @@
+#![deny(unsafe_code)]
 mod tree;
 
 mod config;
