@@ -1,6 +1,4 @@
-use crate::tui::utils::{
-    draw_text_nowrap, draw_text_nowrap_fn, intersect, rect, GraphemeCountWriter,
-};
+use crate::tui::utils::{draw_text_nowrap, draw_text_nowrap_fn, rect, GraphemeCountWriter};
 use crate::{Progress, ProgressStep, TreeKey, TreeValue};
 use std::fmt;
 use tui::{
@@ -37,13 +35,7 @@ pub fn pane(
 
         {
             let max_tree_draw_width = max_tree_draw_width;
-            let progress_area = intersect(
-                Rect {
-                    x: bound.x + max_tree_draw_width,
-                    ..bound
-                },
-                bound,
-            );
+            let progress_area = rect::offset_x(bound, max_tree_draw_width);
             draw_progress(&entries, buf, progress_area);
         }
 
@@ -119,7 +111,7 @@ pub fn draw_progress(entries: &[(TreeKey, TreeValue)], buf: &mut Buffer, bound: 
 
         let y = bound.y + line as u16;
         let progress_bar_info = if let Some(fraction) = progress.and_then(|p| p.fraction()) {
-            let bar_bound = intersect(
+            let bar_bound = rect::intersect(
                 Rect {
                     x: bound.x + column_line_width,
                     y,
@@ -133,7 +125,7 @@ pub fn draw_progress(entries: &[(TreeKey, TreeValue)], buf: &mut Buffer, bound: 
             None
         };
 
-        let mut progress_rect = intersect(
+        let mut progress_rect = rect::intersect(
             Rect {
                 x: bound.x,
                 y,
@@ -144,14 +136,7 @@ pub fn draw_progress(entries: &[(TreeKey, TreeValue)], buf: &mut Buffer, bound: 
         );
         draw_text_nowrap(progress_rect, buf, VERTICAL_LINE, None);
 
-        progress_rect = intersect(
-            Rect {
-                x: progress_rect.x + column_line_width,
-                width: bound.width.saturating_sub(column_line_width),
-                ..progress_rect
-            },
-            bound,
-        );
+        progress_rect = rect::offset_x(progress_rect, column_line_width);
         match progress_bar_info.map(|(bound, style)| {
             move |_t: &str, x: u16, _y: u16| {
                 if x < bound.right() {
@@ -169,7 +154,7 @@ pub fn draw_progress(entries: &[(TreeKey, TreeValue)], buf: &mut Buffer, bound: 
                 // we have progress, but no upper limit
                 if let Some((step, None)) = progress.as_ref().map(|p| (p.step, p.done_at.as_ref()))
                 {
-                    let bar_rect = intersect(
+                    let bar_rect = rect::intersect(
                         Rect {
                             x: bound.x + max_progress_label_width as u16,
                             y,
@@ -184,7 +169,7 @@ pub fn draw_progress(entries: &[(TreeKey, TreeValue)], buf: &mut Buffer, bound: 
         }
 
         if progress.is_none() {
-            let center_rect = intersect(
+            let center_rect = rect::intersect(
                 Rect {
                     x: bound.x
                         + column_line_width
@@ -213,7 +198,7 @@ fn draw_spinner(buf: &mut Buffer, bound: Rect, step: ProgressStep, seed: usize) 
     let step = step as usize;
     let x = bound.x + ((step + seed) % bound.width as usize) as u16;
     let width = 5;
-    let bound = intersect(Rect { x, width, ..bound }, bound);
+    let bound = rect::intersect(Rect { x, width, ..bound }, bound);
     tui_react::fill_background(bound, buf, Color::White);
 }
 
@@ -266,7 +251,7 @@ pub fn draw_tree(entries: &[(TreeKey, TreeValue)], buf: &mut Buffer, bound: Rect
             if progress.is_none() { "" } else { &title },
             width = key.level() as usize
         );
-        let line_rect = intersect(
+        let line_rect = rect::intersect(
             Rect {
                 y: bound.y + line as u16,
                 height: 1,

@@ -61,22 +61,23 @@ pub fn draw_text_nowrap_fn(
         cell.style = s(&cell.symbol, x, bound.y);
     }
 }
-/// A safe version of Rect::intersection that doesn't suffer from underflows
-pub fn intersect(lhs: Rect, rhs: Rect) -> Rect {
-    let x1 = lhs.x.max(rhs.x);
-    let y1 = lhs.y.max(rhs.y);
-    let x2 = lhs.right().min(rhs.right());
-    let y2 = lhs.bottom().min(rhs.bottom());
-    Rect {
-        x: x1,
-        y: y1,
-        width: x2.saturating_sub(x1),
-        height: y2.saturating_sub(y1),
-    }
-}
 
 pub mod rect {
     use tui::layout::Rect;
+
+    /// A safe version of Rect::intersection that doesn't suffer from underflows
+    pub fn intersect(lhs: Rect, rhs: Rect) -> Rect {
+        let x1 = lhs.x.max(rhs.x);
+        let y1 = lhs.y.max(rhs.y);
+        let x2 = lhs.right().min(rhs.right());
+        let y2 = lhs.bottom().min(rhs.bottom());
+        Rect {
+            x: x1,
+            y: y1,
+            width: x2.saturating_sub(x1),
+            height: y2.saturating_sub(y1),
+        }
+    }
 
     pub fn offset_x(r: Rect, offset: u16) -> Rect {
         Rect {
