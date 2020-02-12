@@ -8,6 +8,7 @@ use tui::{
     layout::Rect,
     style::{Color, Style},
 };
+use tui_react::fill_background;
 use unicode_segmentation::UnicodeSegmentation;
 
 const VERTICAL_LINE: &str = "│";
@@ -217,6 +218,20 @@ fn draw_spinner(buf: &mut Buffer, bound: Rect, step: ProgressStep, seed: usize) 
 }
 
 fn draw_progress_bar(buf: &mut Buffer, bound: Rect, fraction: f32) -> (Rect, Style) {
+    draw_progress_bar_fn(buf, bound, fraction, |fraction| {
+        if fraction >= 0.8 {
+            Color::Green
+        } else {
+            Color::Yellow
+        }
+    })
+}
+fn draw_progress_bar_fn(
+    buf: &mut Buffer,
+    bound: Rect,
+    fraction: f32,
+    style: impl FnOnce(f32) -> Color,
+) -> (Rect, Style) {
     if bound.width == 0 {
         return (Rect::default(), Style::default());
     }
@@ -224,11 +239,7 @@ fn draw_progress_bar(buf: &mut Buffer, bound: Rect, fraction: f32) -> (Rect, Sty
         width: ((bound.width as f32 * fraction).ceil() as u16).min(bound.width),
         ..bound
     };
-    let color = if fraction >= 0.8 {
-        Color::Green
-    } else {
-        Color::Yellow
-    };
+    let color = style(fraction);
     tui_react::fill_background(fractional_progress_rect, buf, color);
     (
         fractional_progress_rect,
@@ -286,7 +297,15 @@ pub fn draw_overflow<'a>(
     );
     progress_percent /= count as f32;
     let label = format!("{} …and {} more", VERTICAL_LINE, count);
-    let (progress_rect, style) = draw_progress_bar(buf, bound, progress_percent);
+    let (progress_rect, style) =
+        draw_progress_bar_fn(buf, bound, progress_percent, |_| Color::Green);
+
+    let bg_color = Color::Red;
+    fill_background(
+        rect::offset_x(bound, progress_rect.right() - 1),
+        buf,
+        bg_color,
+    );
     draw_text_nowrap_fn(
         rect::offset_x(bound, label_offset),
         buf,
@@ -295,7 +314,7 @@ pub fn draw_overflow<'a>(
             if x < progress_rect.right() {
                 style
             } else {
-                Style::default()
+                style.bg(bg_color)
             }
         },
     );
