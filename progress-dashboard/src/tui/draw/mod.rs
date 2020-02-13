@@ -21,11 +21,16 @@ pub fn all(
         return entries;
     }
 
+    let border_width = 1;
     draw::tasks::headline(
         &entries,
         buf,
         rect::offset_x(
-            Rect { height: 1, ..bound },
+            Rect {
+                height: 1,
+                width: bound.width.saturating_sub(border_width),
+                ..bound
+            },
             (title.as_ref().graphemes(true).count() + 2) as u16,
         ),
     );

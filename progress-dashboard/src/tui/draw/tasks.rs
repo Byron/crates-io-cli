@@ -82,16 +82,22 @@ pub fn headline(entries: &[(TreeKey, TreeValue)], buf: &mut Buffer, bound: Rect)
             (running, blocked, groups)
         },
     );
+    let text = format!(
+        " {:3} running + {:3} blocked + {:3} groups = {} ",
+        num_running_tasks,
+        num_blocked_tasks,
+        num_groups,
+        entries.len()
+    );
     draw_text_nowrap(
-        bound,
-        buf,
-        format!(
-            " {:3} running + {:3} blocked + {:3} groups = {} ",
-            num_running_tasks,
-            num_blocked_tasks,
-            num_groups,
-            entries.len()
+        rect::offset_x(
+            bound,
+            bound
+                .width
+                .saturating_sub(text.graphemes(true).count() as u16 + 1),
         ),
+        buf,
+        text,
         None,
     );
 }

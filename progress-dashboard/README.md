@@ -14,7 +14,7 @@
   * [x] unbounded progress
   * [x] blocking indicator
     * [x] with optional time-to-unblock
-  * [ ] tasks overview headline
+  * [x] tasks overview headline
     * [ ] FPS count
     * [ ] 'last frame at' for FPS < 1.0
   * [ ] fractional FPS
