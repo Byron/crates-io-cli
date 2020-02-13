@@ -15,9 +15,9 @@
   * [x] blocking indicator
     * [x] with optional time-to-unblock
   * [x] tasks overview headline
-    * [ ] FPS count
-    * [ ] 'last frame at' for FPS < 1.0
-  * [ ] fractional FPS
+  * [x] fractional FPS
+    * [x] 'last frame at' for FPS < 1.0 in headline
+  * [ ] validate unicode support
   * [ ] Ring-buffer powered message buffer in tree (done, info, warn, error)
     * [ ] display that message buffer in tui
   * [ ] use future streams as sole interface (one unified stream with Messages)
