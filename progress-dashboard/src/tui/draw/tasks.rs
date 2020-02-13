@@ -70,6 +70,32 @@ pub fn pane(
     entries
 }
 
+pub fn headline(entries: &[(TreeKey, TreeValue)], buf: &mut Buffer, bound: Rect) {
+    let (num_running_tasks, num_blocked_tasks, num_groups) = entries.iter().fold(
+        (0, 0, 0),
+        |(mut running, mut blocked, mut groups), (_key, TreeValue { progress, .. })| {
+            match progress.map(|p| p.state) {
+                Some(TaskState::Running) => running += 1,
+                Some(TaskState::Blocked(_)) => blocked += 1,
+                None => groups += 1,
+            }
+            (running, blocked, groups)
+        },
+    );
+    draw_text_nowrap(
+        bound,
+        buf,
+        format!(
+            " {:3} running + {:3} blocked + {:3} groups = {} ",
+            num_running_tasks,
+            num_blocked_tasks,
+            num_groups,
+            entries.len()
+        ),
+        None,
+    );
+}
+
 struct ProgressFormat<'a>(&'a Option<Progress>, u16);
 
 impl<'a> fmt::Display for ProgressFormat<'a> {
