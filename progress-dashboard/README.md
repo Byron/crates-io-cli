@@ -17,7 +17,7 @@
   * [x] tasks overview headline
   * [x] fractional FPS
     * [x] 'last frame at' for FPS < 1.0 in headline
-  * [ ] validate unicode support
+  * [x] unicode support
   * [ ] Ring-buffer powered message buffer in tree (done, info, warn, error)
     * [ ] display that message buffer in tui
   * [ ] use future streams as sole interface (one unified stream with Messages)

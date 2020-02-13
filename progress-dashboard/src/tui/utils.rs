@@ -46,7 +46,8 @@ pub fn draw_text_nowrap<'a>(
 
         x_offset += (width - 1) as u16;
         let x = x as usize;
-        for i in x + 1..x + width {
+        for x in x + 1..x + width {
+            let i = buf.index_of(x as u16, bound.y);
             buf.content[i].reset();
         }
     }
