@@ -15,6 +15,21 @@ use std::{error::Error, future::Future, time::Duration};
 
 const WORK_STEPS_NEEDED_FOR_UNBOUNDED_TASK: u8 = 100;
 const UNITS: &[&str] = &["Mb", "kb", "items", "files"];
+const TITLES: &[&str] = &[" Dashboard Demo ", " 仪表板演示 "];
+const WORK_NAMES: &[&str] = &[
+    "Downloading Crate",
+    "下载板条箱",
+    "Running 'cargo geiger'",
+    "运行程序 'cargo geiger'",
+    "Counting lines of code",
+    "计数代码行",
+    "Checking for unused dependencies",
+    "检查未使用的依赖项",
+    "Checking for crate-bloat",
+    "检查板条箱膨胀",
+    "Generating report",
+    "生成报告",
+];
 const WORK_DELAY_MS: u64 = 100;
 const LONG_WORK_DELAY_MS: u64 = 2000;
 const SPAWN_DELAY_MS: u64 = 200;
@@ -71,9 +86,11 @@ async fn new_chunk_of_work(
         let num_tasks = max_level as usize * 2;
         for id in 0..num_tasks {
             let handle = pool
-                .spawn_with_handle(work_item(
-                    level_progress.add_child(format!("work {}", id + 1)),
-                ))
+                .spawn_with_handle(work_item(level_progress.add_child(format!(
+                    "{} {}",
+                    WORK_NAMES.choose(&mut thread_rng()).unwrap(),
+                    id + 1
+                ))))
                 .expect("spawn to work");
             handles.push(handle);
 
@@ -148,8 +165,8 @@ fn launch_ambient_gui(
     let render_fut = tui::render(
         progress,
         tui::Config {
-            title: " Dashboard Demo ".into(),
-            frames_per_second: 10,
+            title: TITLES.choose(&mut thread_rng()).map(|t| *t).unwrap().into(),
+            frames_per_second: 10.0,
         },
     )?;
     let (render_fut, abort_handle) = abortable(render_fut);
