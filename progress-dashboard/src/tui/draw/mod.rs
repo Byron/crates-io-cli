@@ -8,6 +8,7 @@ use tui::{
     widgets::{Block, Borders, Widget},
 };
 use unicode_segmentation::UnicodeSegmentation;
+use unicode_width::UnicodeWidthStr;
 
 pub fn all(
     title: impl AsRef<str>,
@@ -33,7 +34,12 @@ pub fn all(
                 width: bound.width.saturating_sub(border_width),
                 ..bound
             },
-            (title.as_ref().graphemes(true).count() + 2) as u16,
+            (title
+                .as_ref()
+                .graphemes(true)
+                .map(|s| s.width())
+                .sum::<usize>()
+                + 2) as u16,
         ),
     );
 

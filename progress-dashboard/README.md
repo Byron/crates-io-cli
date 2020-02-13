@@ -24,6 +24,7 @@
   * [ ] define boundary on the fly using messages (allows incorporating it into other TUIs potentially)
   * [ ] custom statistics window (data sent via message channel)
 * [ ] run example as journey test
+* [ ] Argh based command-line input
 * [x] some benchmarks
 * [ ] full documentation and maybe a few smaller examples
 

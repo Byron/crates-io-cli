@@ -28,9 +28,13 @@ pub fn draw_text_nowrap<'a>(
     let t = t.as_ref();
     let mut graphemes = t.graphemes(true);
     let mut ellipsis_candidate_x = None;
-    let mut width = 0;
-    for (g, x) in graphemes.by_ref().zip(bound.left()..bound.right()) {
-        width += g.width();
+    let mut total_width = 0;
+    let mut x_offset = 0;
+    for (g, mut x) in graphemes.by_ref().zip(bound.left()..bound.right()) {
+        let width = g.width();
+        total_width += width;
+
+        x += x_offset;
         let cell = buf.get_mut(x, bound.y);
         if x + 1 == bound.right() {
             ellipsis_candidate_x = Some(x);
@@ -39,11 +43,17 @@ pub fn draw_text_nowrap<'a>(
         if let Some(s) = s {
             cell.style = s;
         }
+
+        x_offset += (width - 1) as u16;
+        let x = x as usize;
+        for i in x + 1..x + width {
+            buf.content[i].reset();
+        }
     }
     if let (Some(_), Some(x)) = (graphemes.next(), ellipsis_candidate_x) {
         buf.get_mut(x, bound.y).symbol = "…".into();
     }
-    width as u16
+    total_width as u16
 }
 
 // TODO: put this in tui-react
