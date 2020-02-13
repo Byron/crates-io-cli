@@ -1,6 +1,7 @@
 use std::io::Error;
 use tui::{buffer::Buffer, layout::Rect, style::Style};
 use unicode_segmentation::UnicodeSegmentation;
+use unicode_width::UnicodeWidthStr;
 
 #[derive(Default)]
 pub struct GraphemeCountWriter(pub usize);
@@ -27,9 +28,9 @@ pub fn draw_text_nowrap<'a>(
     let t = t.as_ref();
     let mut graphemes = t.graphemes(true);
     let mut ellipsis_candidate_x = None;
-    let mut num_graphemes = 0;
+    let mut width = 0;
     for (g, x) in graphemes.by_ref().zip(bound.left()..bound.right()) {
-        num_graphemes += 1;
+        width += g.width();
         let cell = buf.get_mut(x, bound.y);
         if x + 1 == bound.right() {
             ellipsis_candidate_x = Some(x);
@@ -42,7 +43,7 @@ pub fn draw_text_nowrap<'a>(
     if let (Some(_), Some(x)) = (graphemes.next(), ellipsis_candidate_x) {
         buf.get_mut(x, bound.y).symbol = "…".into();
     }
-    num_graphemes
+    width as u16
 }
 
 // TODO: put this in tui-react

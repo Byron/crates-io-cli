@@ -10,6 +10,7 @@ use tui::{
 };
 use tui_react::fill_background;
 use unicode_segmentation::UnicodeSegmentation;
+use unicode_width::UnicodeWidthStr;
 
 const VERTICAL_LINE: &str = "│";
 const MIN_TREE_WIDTH: u16 = 20;
@@ -112,7 +113,7 @@ pub fn headline(
             bound,
             bound
                 .width
-                .saturating_sub(text.graphemes(true).count() as u16 + 1),
+                .saturating_sub(text.graphemes(true).map(|s| s.width()).sum::<usize>() as u16 + 1),
         ),
         buf,
         text,
@@ -164,8 +165,11 @@ pub fn draw_progress(
     let max_title_width = entries.iter().take(bound.height as usize).fold(
         0,
         |state, (key, TreeValue { progress, title })| match progress {
-            None => state
-                .max(title.graphemes(true).count() + key.level() as usize + title_spacing as usize),
+            None => state.max(
+                title.graphemes(true).map(|s| s.width()).sum::<usize>()
+                    + key.level() as usize
+                    + title_spacing as usize,
+            ),
             Some(_) => state,
         },
     );
@@ -233,7 +237,7 @@ pub fn draw_progress(
                 let center_rect = rect::intersect(
                     Rect {
                         x: column_line_width
-                            + (bound.width.saturating_sub(max_title_width as u16)) / 2,
+                            + (line_bound.width.saturating_add(max_title_width as u16 * 2)) / 2,
                         width: max_title_width as u16,
                         ..line_bound
                     },
