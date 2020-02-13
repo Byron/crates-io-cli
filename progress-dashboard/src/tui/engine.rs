@@ -11,7 +11,7 @@ use tui_react::Terminal;
 #[derive(Clone)]
 pub struct Config {
     pub title: String,
-    pub frames_per_second: u8,
+    pub frames_per_second: f32,
 }
 
 pub fn render(
@@ -28,7 +28,7 @@ pub fn render(
         Terminal::new(backend)?
     };
 
-    let duration_per_frame = Duration::from_secs(1) / frames_per_second as u32;
+    let duration_per_frame = Duration::from_secs_f32(1.0 / frames_per_second);
     let (mut key_send, mut key_receive) = mpsc::channel::<Key>(1);
 
     // This brings blocking key-handling into the async world
@@ -47,7 +47,7 @@ pub fn render(
             let buf = terminal.current_buffer_mut();
             progress.sorted_snapshot(&mut entries_buf);
 
-            entries_buf = draw::all(&title, entries_buf, window_size, buf);
+            entries_buf = draw::all(&title, duration_per_frame, entries_buf, window_size, buf);
             terminal.post_render().expect("post render to work");
 
             let delay = Delay::new(duration_per_frame);

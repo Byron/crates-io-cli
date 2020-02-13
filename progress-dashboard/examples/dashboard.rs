@@ -149,7 +149,7 @@ fn launch_ambient_gui(
         progress,
         tui::Config {
             title: " Dashboard Demo ".into(),
-            frames_per_second: 10,
+            frames_per_second: 0.25,
         },
     )?;
     let (render_fut, abort_handle) = abortable(render_fut);

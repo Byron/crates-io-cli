@@ -1,7 +1,7 @@
 mod tasks;
 
-use crate::tui::utils::rect;
-use crate::{tui::draw, TreeKey, TreeValue};
+use crate::{tui::draw, tui::utils::rect, TreeKey, TreeValue};
+use std::time::Duration;
 use tui::{
     buffer::Buffer,
     layout::Rect,
@@ -11,6 +11,7 @@ use unicode_segmentation::UnicodeSegmentation;
 
 pub fn all(
     title: impl AsRef<str>,
+    duration_per_frame: Duration,
     entries: Vec<(TreeKey, TreeValue)>,
     bound: Rect,
     buf: &mut Buffer,
@@ -24,6 +25,7 @@ pub fn all(
     let border_width = 1;
     draw::tasks::headline(
         &entries,
+        duration_per_frame,
         buf,
         rect::offset_x(
             Rect {

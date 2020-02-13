@@ -2,7 +2,7 @@ use crate::tui::utils::{draw_text_nowrap, draw_text_nowrap_fn, rect, GraphemeCou
 use crate::{Progress, ProgressStep, TaskState, TreeKey, TreeValue};
 use humantime::format_duration;
 use std::fmt;
-use std::time::SystemTime;
+use std::time::{Duration, SystemTime};
 use tui::{
     buffer::Buffer,
     layout::Rect,
@@ -70,7 +70,12 @@ pub fn pane(
     entries
 }
 
-pub fn headline(entries: &[(TreeKey, TreeValue)], buf: &mut Buffer, bound: Rect) {
+pub fn headline(
+    entries: &[(TreeKey, TreeValue)],
+    duration_per_frame: Duration,
+    buf: &mut Buffer,
+    bound: Rect,
+) {
     let (num_running_tasks, num_blocked_tasks, num_groups) = entries.iter().fold(
         (0, 0, 0),
         |(mut running, mut blocked, mut groups), (_key, TreeValue { progress, .. })| {
@@ -83,7 +88,20 @@ pub fn headline(entries: &[(TreeKey, TreeValue)], buf: &mut Buffer, bound: Rect)
         },
     );
     let text = format!(
-        " {:3} running + {:3} blocked + {:3} groups = {} ",
+        "{} {:3} running + {:3} blocked + {:3} groups = {} ",
+        if duration_per_frame > Duration::from_secs(1) {
+            format!(
+                " Every {}s → {}",
+                duration_per_frame.as_secs(),
+                String::from_utf8_lossy(
+                    &humantime::format_rfc3339_seconds(SystemTime::now())
+                        .to_string()
+                        .as_bytes()[.."2020-02-13T00:51:45".len()]
+                )
+            )
+        } else {
+            "".into()
+        },
         num_running_tasks,
         num_blocked_tasks,
         num_groups,
