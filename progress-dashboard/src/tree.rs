@@ -47,16 +47,30 @@ struct Message {
 #[derive(Debug)]
 pub(crate) struct MessageRingBuffer {
     buf: Vec<Message>,
+    cursor: usize,
 }
 
 impl MessageRingBuffer {
     pub fn with_capacity(capacity: usize) -> MessageRingBuffer {
         MessageRingBuffer {
             buf: Vec::with_capacity(capacity),
+            cursor: 0,
         }
     }
 
-    pub fn push_overwrite(&mut self, _level: MessageLevel, _origin: String, _message: &str) {}
+    pub fn push_overwrite(&mut self, level: MessageLevel, origin: String, message: &str) {
+        let msg = Message {
+            level,
+            origin,
+            message: message.to_string(),
+        };
+        if self.buf.len() < self.buf.capacity() {
+            self.buf.push(msg)
+        } else {
+            self.buf[self.cursor] = msg;
+            self.cursor = (self.cursor + 1) % self.buf.len();
+        }
+    }
 }
 
 #[derive(Debug)]
