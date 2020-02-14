@@ -1,4 +1,4 @@
-use crate::{Tree, TreeKey, TreeRoot};
+use crate::{MessageRingBuffer, Tree, TreeKey, TreeRoot};
 use dashmap::DashMap;
 use parking_lot::Mutex;
 use std::sync::Arc;
@@ -13,7 +13,7 @@ pub struct Config {
     /// The amount of items the tree can hold without being forced to allocate
     pub initial_capacity: usize,
     /// The amount of messages we can hold before we start overwriting old ones
-    pub message_buffer_capacity: i32,
+    pub message_buffer_capacity: usize,
 }
 
 impl Config {
@@ -35,7 +35,7 @@ impl From<Config> for TreeRoot {
     fn from(
         Config {
             initial_capacity,
-            message_buffer_capacity: _,
+            message_buffer_capacity,
         }: Config,
     ) -> Self {
         TreeRoot {
@@ -43,6 +43,9 @@ impl From<Config> for TreeRoot {
                 highest_child_id: 0,
                 key: TreeKey::default(),
                 tree: Arc::new(DashMap::with_capacity(initial_capacity)),
+                messages: Arc::new(Mutex::new(MessageRingBuffer::with_capacity(
+                    message_buffer_capacity,
+                ))),
             })),
         }
     }

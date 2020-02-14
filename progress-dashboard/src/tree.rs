@@ -38,10 +38,33 @@ pub enum MessageLevel {
 }
 
 #[derive(Debug)]
+struct Message {
+    level: MessageLevel,
+    origin: String,
+    message: String,
+}
+
+#[derive(Debug)]
+pub(crate) struct MessageRingBuffer {
+    buf: Vec<Message>,
+}
+
+impl MessageRingBuffer {
+    pub fn with_capacity(capacity: usize) -> MessageRingBuffer {
+        MessageRingBuffer {
+            buf: Vec::with_capacity(capacity),
+        }
+    }
+
+    pub fn push_overwrite(&mut self, _level: MessageLevel, _origin: String, _message: &str) {}
+}
+
+#[derive(Debug)]
 pub struct Tree {
     pub(crate) key: TreeKey,
     pub(crate) highest_child_id: TreeId,
     pub(crate) tree: Arc<DashMap<TreeKey, TreeValue>>,
+    pub(crate) messages: Arc<Mutex<MessageRingBuffer>>,
 }
 
 impl Drop for Tree {
@@ -97,10 +120,20 @@ impl Tree {
             highest_child_id: 0,
             key: child_key,
             tree: self.tree.clone(),
+            messages: self.messages.clone(),
         }
     }
 
-    pub fn message(&mut self, _level: MessageLevel, _message: impl AsRef<str>) {}
+    pub fn message(&mut self, level: MessageLevel, message: impl AsRef<str>) {
+        self.messages.lock().push_overwrite(
+            level,
+            self.tree
+                .get(&self.key)
+                .map(|v| v.title.to_owned())
+                .unwrap_or_default(),
+            message.as_ref(),
+        )
+    }
 
     pub fn done(&mut self, message: impl AsRef<str>) {
         self.message(MessageLevel::Success, message)

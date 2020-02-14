@@ -47,7 +47,7 @@ fn usage(c: &mut Criterion) {
                 let mut progress = root.add_child("the one");
                 progress.init(Some(20), Some("element"));
                 b.iter(|| {
-                    progress.message(MessageLevel::Done, "for testing");
+                    progress.message(MessageLevel::Success, "for testing");
                 });
             },
         );
