@@ -30,10 +30,17 @@ impl TreeRoot {
     }
 }
 
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]
+pub enum MessageLevel {
+    Info,
+    Failure,
+    Success,
+}
+
 #[derive(Debug)]
 pub struct Tree {
     pub(crate) key: TreeKey,
-    pub(crate) child_id: TreeId,
+    pub(crate) highest_child_id: TreeId,
     pub(crate) tree: Arc<DashMap<TreeKey, TreeValue>>,
 }
 
@@ -77,7 +84,7 @@ impl Tree {
     }
 
     pub fn add_child(&mut self, title: impl Into<String>) -> Tree {
-        let child_key = self.key.add_child(self.child_id);
+        let child_key = self.key.add_child(self.highest_child_id);
         self.tree.insert(
             child_key,
             TreeValue {
@@ -85,12 +92,24 @@ impl Tree {
                 progress: None,
             },
         );
-        self.child_id = self.child_id.wrapping_add(1);
+        self.highest_child_id = self.highest_child_id.wrapping_add(1);
         Tree {
-            child_id: 0,
+            highest_child_id: 0,
             key: child_key,
             tree: self.tree.clone(),
         }
+    }
+
+    pub fn message(&mut self, _level: MessageLevel, _message: impl AsRef<str>) {}
+
+    pub fn done(&mut self, message: impl AsRef<str>) {
+        self.message(MessageLevel::Success, message)
+    }
+    pub fn fail(&mut self, message: impl AsRef<str>) {
+        self.message(MessageLevel::Failure, message)
+    }
+    pub fn info(&mut self, message: impl AsRef<str>) {
+        self.message(MessageLevel::Info, message)
     }
 }
 

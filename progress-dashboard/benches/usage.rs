@@ -1,11 +1,12 @@
 use criterion::*;
 
-use progress_dashboard::{Config, TreeRoot};
+use progress_dashboard::{Config, MessageLevel, TreeRoot};
 
 fn usage(c: &mut Criterion) {
     fn small_tree() -> TreeRoot {
         Config {
             initial_capacity: 10,
+            message_buffer_capacity: 2,
         }
         .create()
     };
@@ -37,6 +38,19 @@ fn usage(c: &mut Criterion) {
                 progress.set(5);
             });
         });
+    c.benchmark_group("Tree::message")
+        .throughput(Throughput::Elements(1))
+        .bench_function(
+            "send one message with a full message buffer (worst case performance)",
+            |b| {
+                let root = small_tree();
+                let mut progress = root.add_child("the one");
+                progress.init(Some(20), Some("element"));
+                b.iter(|| {
+                    progress.message(MessageLevel::Done, "for testing");
+                });
+            },
+        );
 }
 
 criterion_group!(benches, usage);

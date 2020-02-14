@@ -12,6 +12,8 @@ use std::sync::Arc;
 pub struct Config {
     /// The amount of items the tree can hold without being forced to allocate
     pub initial_capacity: usize,
+    /// The amount of messages we can hold before we start overwriting old ones
+    pub message_buffer_capacity: i32,
 }
 
 impl Config {
@@ -24,15 +26,21 @@ impl Default for Config {
     fn default() -> Self {
         Config {
             initial_capacity: 100,
+            message_buffer_capacity: 100,
         }
     }
 }
 
 impl From<Config> for TreeRoot {
-    fn from(Config { initial_capacity }: Config) -> Self {
+    fn from(
+        Config {
+            initial_capacity,
+            message_buffer_capacity: _,
+        }: Config,
+    ) -> Self {
         TreeRoot {
             inner: Arc::new(Mutex::new(Tree {
-                child_id: 0,
+                highest_child_id: 0,
                 key: TreeKey::default(),
                 tree: Arc::new(DashMap::with_capacity(initial_capacity)),
             })),

@@ -30,6 +30,30 @@ const WORK_NAMES: &[&str] = &[
     "Generating report",
     "生成报告",
 ];
+const DONE_MESSAGES: &[&str] = &[
+    "Yeeeehaa! Finally!!",
+    "呀！ 最后！",
+    "It feels good to be done!",
+    "感觉好极了！",
+    "Told you so!!",
+    "告诉过你了！",
+];
+const FAIL_MESSAGES: &[&str] = &[
+    "That didn't seem to work!",
+    "那似乎没有用！",
+    "Oh my… I failed you 😞",
+    "哦，我…我让你失败😞",
+    "This didn't end well…",
+    "结局不好…",
+];
+const INFO_MESSAGES: &[&str] = &[
+    "Making good progress!",
+    "进展良好！",
+    "Humming along…",
+    "嗡嗡作响…",
+    "It will be done soooooon…",
+    "会很快完成的……",
+];
 const WORK_DELAY_MS: u64 = 100;
 const LONG_WORK_DELAY_MS: u64 = 2000;
 const SPAWN_DELAY_MS: u64 = 200;
@@ -64,9 +88,16 @@ async fn work_item(mut progress: Tree) -> () {
         } else {
             WORK_DELAY_MS
         };
+        if thread_rng().gen_bool(0.05) {
+            progress.info(INFO_MESSAGES.choose(&mut thread_rng()).unwrap());
+        }
         Delay::new(Duration::from_millis(delay)).await;
     }
-    ()
+    if thread_rng().gen_bool(0.95) {
+        progress.done(DONE_MESSAGES.choose(&mut thread_rng()).unwrap());
+    } else {
+        progress.fail(FAIL_MESSAGES.choose(&mut thread_rng()).unwrap());
+    }
 }
 
 async fn new_chunk_of_work(
