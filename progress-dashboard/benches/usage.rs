@@ -51,6 +51,19 @@ fn usage(c: &mut Criterion) {
                 });
             },
         );
+    c.benchmark_group("Tree::copy_messages")
+        .throughput(Throughput::Elements(2))
+        .bench_function("copy all messages with buffer being at capacity", |b| {
+            let root = small_tree();
+            let mut progress = root.add_child("the one");
+            progress.init(Some(20), Some("element"));
+            progress.done("foo");
+            progress.done("bar");
+            let mut out = Vec::new();
+            b.iter(|| {
+                root.copy_messages(&mut out);
+            });
+        });
 }
 
 criterion_group!(benches, usage);

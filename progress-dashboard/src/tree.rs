@@ -28,6 +28,10 @@ impl TreeRoot {
         );
         out.sort_by_key(|t| t.0);
     }
+
+    pub fn copy_messages(&self, out: &mut Vec<Message>) {
+        self.inner.lock().messages.lock().copy_into(out);
+    }
 }
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]
@@ -37,8 +41,8 @@ pub enum MessageLevel {
     Success,
 }
 
-#[derive(Debug)]
-struct Message {
+#[derive(Debug, Clone)]
+pub struct Message {
     level: MessageLevel,
     origin: String,
     message: String,
@@ -58,17 +62,33 @@ impl MessageRingBuffer {
         }
     }
 
+    fn has_capacity(&self) -> bool {
+        self.buf.len() < self.buf.capacity()
+    }
+
     pub fn push_overwrite(&mut self, level: MessageLevel, origin: String, message: &str) {
         let msg = Message {
             level,
             origin,
             message: message.to_string(),
         };
-        if self.buf.len() < self.buf.capacity() {
+        if self.has_capacity() {
             self.buf.push(msg)
         } else {
             self.buf[self.cursor] = msg;
             self.cursor = (self.cursor + 1) % self.buf.len();
+        }
+    }
+
+    pub fn copy_into(&self, out: &mut Vec<Message>) {
+        out.clear();
+        if self.has_capacity() {
+            out.extend_from_slice(self.buf.as_slice());
+        } else {
+            out.extend_from_slice(&self.buf[(self.cursor + 1) % self.buf.len()..]);
+            if self.cursor + 1 != self.buf.len() {
+                out.extend_from_slice(&self.buf[..self.cursor]);
+            }
         }
     }
 }

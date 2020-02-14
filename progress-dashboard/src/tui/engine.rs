@@ -42,10 +42,12 @@ pub fn render(
 
     let render_fut = async move {
         let mut entries_buf = Vec::new();
+        let mut messages = Vec::new();
         loop {
             let window_size = terminal.pre_render().expect("pre-render to work");
             let buf = terminal.current_buffer_mut();
             progress.sorted_snapshot(&mut entries_buf);
+            progress.copy_messages(&mut messages);
 
             entries_buf = draw::all(&title, duration_per_frame, entries_buf, window_size, buf);
             terminal.post_render().expect("post render to work");
