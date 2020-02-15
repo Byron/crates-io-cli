@@ -122,7 +122,7 @@ fn setup_future(
                 extract,
             );
             info(&"searching ...");
-            let default_timeout: Duration = Duration::from_millis(5000);
+            let default_timeout: Duration = Duration::from_millis(15000);
             let timeout = Timeout::new(default_timeout.clone(), handle)
                 .map(|f| Box::new(f) as Box<dyn Future<Item = _, Error = _> + Send>)
                 .unwrap_or_else(|_| Box::new(futures::empty()))
