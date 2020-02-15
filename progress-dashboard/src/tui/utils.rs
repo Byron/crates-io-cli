@@ -27,32 +27,37 @@ pub fn draw_text_nowrap<'a>(
     let s = s.into();
     let t = t.as_ref();
     let mut graphemes = t.graphemes(true);
-    let mut ellipsis_candidate_x = None;
     let mut total_width = 0;
-    let mut x_offset = 0;
-    for (g, mut x) in graphemes.by_ref().zip(bound.left()..bound.right()) {
-        let width = g.width();
-        total_width += width;
+    {
+        let mut ellipsis_candidate_x = None;
+        let mut x_offset = 0;
+        for (g, mut x) in graphemes.by_ref().zip(bound.left()..bound.right()) {
+            let width = g.width();
+            total_width += width;
 
-        x += x_offset;
-        let cell = buf.get_mut(x, bound.y);
-        if x + 1 == bound.right() {
-            ellipsis_candidate_x = Some(x);
-        }
-        cell.symbol = g.into();
-        if let Some(s) = s {
-            cell.style = s;
-        }
+            x += x_offset;
+            if x >= bound.right() {
+                break;
+            }
+            let cell = buf.get_mut(x, bound.y);
+            if x + 1 == bound.right() {
+                ellipsis_candidate_x = Some(x);
+            }
+            cell.symbol = g.into();
+            if let Some(s) = s {
+                cell.style = s;
+            }
 
-        x_offset += (width - 1) as u16;
-        let x = x as usize;
-        for x in x + 1..x + width {
-            let i = buf.index_of(x as u16, bound.y);
-            buf.content[i].reset();
+            x_offset += (width - 1) as u16;
+            let x = x as usize;
+            for x in x + 1..x + width {
+                let i = buf.index_of(x as u16, bound.y);
+                buf.content[i].reset();
+            }
         }
-    }
-    if let (Some(_), Some(x)) = (graphemes.next(), ellipsis_candidate_x) {
-        buf.get_mut(x, bound.y).symbol = "…".into();
+        if let (Some(_), Some(x)) = (graphemes.next(), ellipsis_candidate_x) {
+            buf.get_mut(x, bound.y).symbol = "…".into();
+        }
     }
     total_width as u16
 }
