@@ -18,9 +18,9 @@
   * [x] fractional FPS
     * [x] 'last frame at' for FPS < 1.0 in headline
   * [x] unicode support
-  * [ ] Ring-buffer powered message buffer in tree (done, info, warn, error)
-    * [ ] display that message buffer in tui
-  * [ ] use future streams as sole interface (one unified stream with Messages)
+  * [x] Ring-buffer powered message buffer in tree (done, info, warn, error)
+    * [x] display that message buffer in tui
+  * [x] use future streams as sole interface (one unified stream with Messages)
   * [ ] define boundary on the fly using messages (allows incorporating it into other TUIs potentially)
   * [ ] custom statistics window (data sent via message channel)
 * [ ] run example as journey test
