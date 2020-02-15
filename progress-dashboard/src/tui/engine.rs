@@ -70,17 +70,9 @@ pub fn render_with_input(
         ]);
 
         while let Some(event) = events.next().await {
+            let mut skip_redraw = false;
             match event {
-                Event::Tick => {
-                    let window_size = terminal.pre_render().expect("pre-render to work");
-                    let window_size = state.user_provided_window_size.unwrap_or(window_size);
-                    let buf = terminal.current_buffer_mut();
-                    progress.sorted_snapshot(&mut entries);
-                    progress.copy_messages(&mut messages);
-
-                    draw::all(&state, &entries, &messages, window_size, buf);
-                    terminal.post_render().expect("post render to work");
-                }
+                Event::Tick => {}
                 Event::Input(key) => match key {
                     Key::Esc | Key::Char('q') | Key::Ctrl('c') | Key::Ctrl('[') => {
                         break;
@@ -89,10 +81,20 @@ pub fn render_with_input(
                     Key::Char('j') => state.task_offset = state.task_offset.saturating_add(1),
                     Key::Char('K') => state.message_offset = state.message_offset.saturating_sub(1),
                     Key::Char('k') => state.task_offset = state.task_offset.saturating_sub(1),
-                    _ => {}
+                    _ => skip_redraw = true,
                 },
                 Event::SetWindowSize(bound) => state.user_provided_window_size = Some(bound),
                 Event::SetTitle(title) => state.title = title,
+            }
+            if !skip_redraw {
+                let window_size = terminal.pre_render().expect("pre-render to work");
+                let window_size = state.user_provided_window_size.unwrap_or(window_size);
+                let buf = terminal.current_buffer_mut();
+                progress.sorted_snapshot(&mut entries);
+                progress.copy_messages(&mut messages);
+
+                draw::all(&state, &entries, &messages, window_size, buf);
+                terminal.post_render().expect("post render to work");
             }
         }
     };
