@@ -26,7 +26,7 @@ impl Default for Config {
     fn default() -> Self {
         Config {
             initial_capacity: 100,
-            message_buffer_capacity: 50,
+            message_buffer_capacity: 20,
         }
     }
 }
