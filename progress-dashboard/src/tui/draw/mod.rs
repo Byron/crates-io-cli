@@ -13,14 +13,14 @@ use unicode_width::UnicodeWidthStr;
 pub fn all(
     title: impl AsRef<str>,
     duration_per_frame: Duration,
-    entries: Vec<(TreeKey, TreeValue)>,
+    entries: &[(TreeKey, TreeValue)],
     bound: Rect,
     buf: &mut Buffer,
-) -> Vec<(TreeKey, TreeValue)> {
+) {
     let mut task_progress = Block::default().title(title.as_ref()).borders(Borders::ALL);
     task_progress.draw(bound, buf);
     if bound.width < 4 || bound.height < 4 {
-        return entries;
+        return;
     }
 
     let border_width = 1;
@@ -44,5 +44,5 @@ pub fn all(
     );
 
     let bound = task_progress.inner(bound);
-    draw::tasks::pane(entries, bound, buf)
+    draw::tasks::pane(&entries, bound, buf);
 }

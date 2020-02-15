@@ -15,11 +15,7 @@ use unicode_width::UnicodeWidthStr;
 const VERTICAL_LINE: &str = "│";
 const MIN_TREE_WIDTH: u16 = 20;
 
-pub fn pane(
-    entries: Vec<(TreeKey, TreeValue)>,
-    mut bound: Rect,
-    buf: &mut Buffer,
-) -> Vec<(TreeKey, TreeValue)> {
+pub fn pane(entries: &[(TreeKey, TreeValue)], mut bound: Rect, buf: &mut Buffer) {
     let is_overflowing = if entries.len() > bound.height as usize {
         bound.height = bound.height.saturating_sub(1);
         true
@@ -34,7 +30,7 @@ pub fn pane(
                 width: column_width,
                 ..bound
             };
-            draw_tree(&entries, buf, prefix_area)
+            draw_tree(entries, buf, prefix_area)
         } else {
             0
         };
@@ -43,7 +39,7 @@ pub fn pane(
             let max_tree_draw_width = max_tree_draw_width;
             let progress_area = rect::offset_x(bound, max_tree_draw_width);
             draw_progress(
-                &entries,
+                entries,
                 buf,
                 progress_area,
                 if max_tree_draw_width == 0 {
@@ -68,7 +64,6 @@ pub fn pane(
             );
         }
     }
-    entries
 }
 
 pub fn headline(

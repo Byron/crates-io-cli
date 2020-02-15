@@ -49,7 +49,7 @@ pub fn render(
             progress.sorted_snapshot(&mut entries_buf);
             progress.copy_messages(&mut messages);
 
-            entries_buf = draw::all(&title, duration_per_frame, entries_buf, window_size, buf);
+            draw::all(&title, duration_per_frame, &entries_buf, window_size, buf);
             terminal.post_render().expect("post render to work");
 
             let delay = Delay::new(duration_per_frame);
