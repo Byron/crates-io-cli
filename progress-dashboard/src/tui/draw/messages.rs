@@ -88,16 +88,17 @@ pub fn pane(
         draw_text_nowrap(message_bound, buf, message, None);
     }
 
-    if (bound.height as usize) < messages.len().saturating_sub(offset as usize) {
+    if (bound.height as usize) < messages.len().saturating_sub(offset as usize)
+        || offset.min(messages.len() as u16) > 0
+    {
+        let messages_below = messages
+            .len()
+            .saturating_sub(bound.height.saturating_add(offset) as usize);
+        let messages_skipped = offset.min(messages.len() as u16);
         draw_text_nowrap(
             rect::offset_x(overflow_bound, 2),
             buf,
-            format!(
-                "…and {} more",
-                messages
-                    .len()
-                    .saturating_sub(bound.height.saturating_add(offset) as usize)
-            ),
+            format!("… {} skipped and {} more", messages_skipped, messages_below),
             None,
         );
     }
