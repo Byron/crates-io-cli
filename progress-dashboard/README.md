@@ -20,7 +20,7 @@
   * [x] unicode support
   * [x] Ring-buffer powered message buffer in tree (done, info, warn, error)
     * [x] display that message buffer in tui
-    * [ ] overflow handling
+    * [x] overflow handling
   * [x] use future streams as sole interface (one unified stream with Messages)
   * [x] define boundary on the fly using messages (allows incorporating it into other TUIs potentially)
   * [ ] custom statistics window (data sent via message channel)

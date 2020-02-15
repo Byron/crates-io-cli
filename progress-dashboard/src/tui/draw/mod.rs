@@ -50,7 +50,12 @@ pub fn all(
 
     draw::tasks::pane(&entries, tasks_pane, buf);
     if let Some(messages_pane) = messages_pane {
-        draw::messages::pane(messages, messages_pane, buf);
+        draw::messages::pane(
+            messages,
+            messages_pane,
+            rect::line_bound(bound, bound.height.saturating_sub(1) as usize),
+            buf,
+        );
     }
 }
 

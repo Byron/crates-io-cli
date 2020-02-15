@@ -16,7 +16,7 @@ const TIME_COLUMN_PREFIX: u16 = "20-02-13T".len() as u16;
 
 const TIME_COLUMN_SUFFIX: u16 = "00:51:45".len() as u16;
 
-pub fn pane(messages: &[Message], bound: Rect, buf: &mut Buffer) {
+pub fn pane(messages: &[Message], bound: Rect, overflow_bound: Rect, buf: &mut Buffer) {
     let mut block = Block::default().title("Messages").borders(Borders::TOP);
     block.draw(bound, buf);
 
@@ -77,6 +77,15 @@ pub fn pane(messages: &[Message], bound: Rect, buf: &mut Buffer) {
             );
         }
         draw_text_nowrap(message_bound, buf, message, None);
+    }
+
+    if (bound.height as usize) < messages.len() {
+        draw_text_nowrap(
+            rect::offset_x(overflow_bound, 2),
+            buf,
+            format!("…and {} more", messages.len() - bound.height as usize),
+            None,
+        );
     }
 }
 
