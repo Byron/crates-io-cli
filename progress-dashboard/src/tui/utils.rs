@@ -98,4 +98,12 @@ pub mod rect {
             ..r
         }
     }
+
+    pub fn line_bound(bound: Rect, line: usize) -> Rect {
+        Rect {
+            y: bound.y + line as u16,
+            height: 1,
+            ..bound
+        }
+    }
 }

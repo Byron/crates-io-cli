@@ -172,7 +172,7 @@ pub fn draw_progress(
     for (line, (key, TreeValue { progress, title })) in
         entries.iter().take(bound.height as usize).enumerate()
     {
-        let line_bound = line_bound(bound, line);
+        let line_bound = rect::line_bound(bound, line);
         let progress_text = format!(
             " {progress}",
             progress = ProgressFormat(progress, bound.width.saturating_sub(title_spacing))
@@ -288,7 +288,7 @@ pub fn draw_tree(entries: &[(TreeKey, TreeValue)], buf: &mut Buffer, bound: Rect
     for (line, (key, TreeValue { progress, title })) in
         entries.iter().take(bound.height as usize).enumerate()
     {
-        let line_bound = line_bound(bound, line);
+        let line_bound = rect::line_bound(bound, line);
         let tree_prefix = format!(
             "{:>width$} {} ",
             if key.level() == 1 {
@@ -306,14 +306,6 @@ pub fn draw_tree(entries: &[(TreeKey, TreeValue)], buf: &mut Buffer, bound: Rect
         max_prefix_len = max_prefix_len.max(draw_text_nowrap(line_bound, buf, tree_prefix, None));
     }
     max_prefix_len
-}
-
-fn line_bound(bound: Rect, line: usize) -> Rect {
-    Rect {
-        y: bound.y + line as u16,
-        height: 1,
-        ..bound
-    }
 }
 
 pub fn draw_overflow<'a>(

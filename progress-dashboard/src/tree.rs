@@ -49,9 +49,9 @@ pub enum MessageLevel {
 
 #[derive(Debug, Clone)]
 pub struct Message {
-    level: MessageLevel,
-    origin: String,
-    message: String,
+    pub level: MessageLevel,
+    pub origin: String,
+    pub message: String,
 }
 
 #[derive(Debug)]

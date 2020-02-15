@@ -86,6 +86,7 @@ fn compute_pane_bounds(messages: &[Message], inner: Rect) -> (Rect, Option<Rect>
 }
 
 mod messages {
+    use crate::tui::utils::{draw_text_nowrap, rect};
     use crate::Message;
     use tui::{
         buffer::Buffer,
@@ -96,6 +97,13 @@ mod messages {
     pub fn pane(messages: &[Message], bound: Rect, buf: &mut Buffer) {
         let mut block = Block::default().title("Messages").borders(Borders::TOP);
         block.draw(bound, buf);
+
         let bound = block.inner(bound);
+        for (line, Message { message, .. }) in
+            messages.iter().take(bound.height as usize).enumerate()
+        {
+            let line_bound = rect::line_bound(bound, line);
+            draw_text_nowrap(line_bound, buf, message, None);
+        }
     }
 }
