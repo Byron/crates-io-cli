@@ -14,13 +14,14 @@ use unicode_width::UnicodeWidthStr;
 
 const MIN_TREE_WIDTH: u16 = 20;
 
-pub fn pane(entries: &[(TreeKey, TreeValue)], mut bound: Rect, buf: &mut Buffer) {
-    let is_overflowing = if entries.len() > bound.height as usize {
-        bound.height = bound.height.saturating_sub(1);
-        true
-    } else {
-        false
-    };
+pub fn pane(entries: &[(TreeKey, TreeValue)], mut bound: Rect, offset: u16, buf: &mut Buffer) {
+    let needs_overflow_line =
+        if entries.len() > bound.height as usize || offset.min(entries.len() as u16) > 0 {
+            bound.height = bound.height.saturating_sub(1);
+            true
+        } else {
+            false
+        };
 
     if !entries.is_empty() {
         let column_width = bound.width / 2;
@@ -29,7 +30,7 @@ pub fn pane(entries: &[(TreeKey, TreeValue)], mut bound: Rect, buf: &mut Buffer)
                 width: column_width,
                 ..bound
             };
-            draw_tree(entries, buf, prefix_area)
+            draw_tree(entries, buf, prefix_area, offset)
         } else {
             0
         };
@@ -46,10 +47,11 @@ pub fn pane(entries: &[(TreeKey, TreeValue)], mut bound: Rect, buf: &mut Buffer)
                 } else {
                     true
                 },
+                offset,
             );
         }
 
-        if is_overflowing {
+        if needs_overflow_line {
             let overflow_rect = Rect {
                 y: bound.height + 1,
                 height: 1,
@@ -140,11 +142,13 @@ pub fn draw_progress(
     buf: &mut Buffer,
     bound: Rect,
     draw_column_line: bool,
+    offset: u16,
 ) {
     let title_spacing = 2u16 + 1; // 2 on the left, 1 on the right
     let column_line_width = if draw_column_line { 1 } else { 0 };
     let max_progress_label_width = entries
         .iter()
+        .skip(offset as usize)
         .take(bound.height as usize)
         .map(|(_, TreeValue { progress, .. })| progress)
         .fold(0, |state, progress| match progress {
@@ -156,20 +160,27 @@ pub fn draw_progress(
             }
             None => state,
         });
-    let max_title_width = entries.iter().take(bound.height as usize).fold(
-        0,
-        |state, (key, TreeValue { progress, title })| match progress {
-            None => state.max(
-                title.graphemes(true).map(|s| s.width()).sum::<usize>()
-                    + key.level() as usize
-                    + title_spacing as usize,
-            ),
-            Some(_) => state,
-        },
-    );
+    let max_title_width = entries
+        .iter()
+        .skip(offset as usize)
+        .take(bound.height as usize)
+        .fold(
+            0,
+            |state, (key, TreeValue { progress, title })| match progress {
+                None => state.max(
+                    title.graphemes(true).map(|s| s.width()).sum::<usize>()
+                        + key.level() as usize
+                        + title_spacing as usize,
+                ),
+                Some(_) => state,
+            },
+        );
 
-    for (line, (key, TreeValue { progress, title })) in
-        entries.iter().take(bound.height as usize).enumerate()
+    for (line, (key, TreeValue { progress, title })) in entries
+        .iter()
+        .skip(offset as usize)
+        .take(bound.height as usize)
+        .enumerate()
     {
         let line_bound = rect::line_bound(bound, line);
         let progress_text = format!(
@@ -282,10 +293,18 @@ fn draw_progress_bar_fn(
     )
 }
 
-pub fn draw_tree(entries: &[(TreeKey, TreeValue)], buf: &mut Buffer, bound: Rect) -> u16 {
+pub fn draw_tree(
+    entries: &[(TreeKey, TreeValue)],
+    buf: &mut Buffer,
+    bound: Rect,
+    offset: u16,
+) -> u16 {
     let mut max_prefix_len = 0;
-    for (line, (key, TreeValue { progress, title })) in
-        entries.iter().take(bound.height as usize).enumerate()
+    for (line, (key, TreeValue { progress, title })) in entries
+        .iter()
+        .skip(offset as usize)
+        .take(bound.height as usize)
+        .enumerate()
     {
         let line_bound = rect::line_bound(bound, line);
         let tree_prefix = format!(

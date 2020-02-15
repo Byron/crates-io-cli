@@ -46,7 +46,7 @@ pub fn all(
     let inner = window.inner(bound);
     let (tasks_pane, messages_pane) = compute_pane_bounds(messages, inner);
 
-    draw::tasks::pane(&entries, tasks_pane, buf);
+    draw::tasks::pane(&entries, tasks_pane, state.task_offset, buf);
     if let Some(messages_pane) = messages_pane {
         draw::messages::pane(
             messages,
