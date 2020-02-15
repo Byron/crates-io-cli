@@ -52,6 +52,7 @@ pub fn all(
             messages,
             messages_pane,
             rect::line_bound(bound, bound.height.saturating_sub(1) as usize),
+            state.message_offset,
             buf,
         );
     }

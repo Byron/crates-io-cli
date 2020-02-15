@@ -16,13 +16,21 @@ const TIME_COLUMN_PREFIX: u16 = "20-02-13T".len() as u16;
 
 const TIME_COLUMN_SUFFIX: u16 = "00:51:45".len() as u16;
 
-pub fn pane(messages: &[Message], bound: Rect, overflow_bound: Rect, buf: &mut Buffer) {
+pub fn pane(
+    messages: &[Message],
+    bound: Rect,
+    overflow_bound: Rect,
+    offset: u16,
+    buf: &mut Buffer,
+) {
     let mut block = Block::default().title("Messages").borders(Borders::TOP);
     block.draw(bound, buf);
 
     let bound = block.inner(bound);
     let max_origin_width = messages
         .iter()
+        .rev()
+        .skip(offset as usize)
         .take(bound.height as usize)
         .fold(0, |state, message| {
             state.max(
@@ -43,8 +51,9 @@ pub fn pane(messages: &[Message], bound: Rect, overflow_bound: Rect, buf: &mut B
         },
     ) in messages
         .iter()
-        .take(bound.height as usize)
         .rev()
+        .skip(offset as usize)
+        .take(bound.height as usize)
         .enumerate()
     {
         let line_bound = rect::line_bound(bound, line);
