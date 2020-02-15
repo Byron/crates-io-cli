@@ -9,6 +9,7 @@ use tui::{
     layout::Rect,
     widgets::{Block, Borders, Widget},
 };
+use unicode_segmentation::UnicodeSegmentation;
 use unicode_width::UnicodeWidthStr;
 
 const TIME_COLUMN_PREFIX: u16 = "20-02-13T".len() as u16;
@@ -20,13 +21,25 @@ pub fn pane(messages: &[Message], bound: Rect, buf: &mut Buffer) {
     block.draw(bound, buf);
 
     let bound = block.inner(bound);
+    let max_origin_width = messages
+        .iter()
+        .take(bound.height as usize)
+        .fold(0, |state, message| {
+            state.max(
+                message
+                    .origin
+                    .graphemes(true)
+                    .map(|g| g.width())
+                    .sum::<usize>(),
+            )
+        }) as u16;
     for (
         line,
         Message {
             time,
             message,
             level,
-            ..
+            origin,
         },
     ) in messages
         .iter()
@@ -35,7 +48,8 @@ pub fn pane(messages: &[Message], bound: Rect, buf: &mut Buffer) {
         .enumerate()
     {
         let line_bound = rect::line_bound(bound, line);
-        let (time_bound, level_bound, message_bound) = compute_bounds(line_bound);
+        let (time_bound, level_bound, origin_bound, message_bound) =
+            compute_bounds(line_bound, max_origin_width);
         if let Some(time_bound) = time_bound {
             draw_text_nowrap(time_bound, buf, format_time_column(time), None);
         }
@@ -50,6 +64,15 @@ pub fn pane(messages: &[Message], bound: Rect, buf: &mut Buffer) {
                 rect::offset_x(level_bound, LEVEL_TEXT_WIDTH),
                 buf,
                 rect::VERTICAL_LINE,
+                None,
+            );
+        }
+        if let Some(origin_bound) = origin_bound {
+            draw_text_nowrap(origin_bound, buf, origin, None);
+            draw_text_nowrap(
+                rect::offset_x(origin_bound, max_origin_width),
+                buf,
+                "→",
                 None,
             );
         }
@@ -92,7 +115,10 @@ fn format_time_column(time: &SystemTime) -> String {
     )
 }
 
-fn compute_bounds(line: Rect) -> (Option<Rect>, Option<Rect>, Rect) {
+fn compute_bounds(
+    line: Rect,
+    max_origin_width: u16,
+) -> (Option<Rect>, Option<Rect>, Option<Rect>, Rect) {
     let vertical_line_width = rect::VERTICAL_LINE.width() as u16;
     let mythical_offset_we_should_not_need = 1;
 
@@ -109,9 +135,21 @@ fn compute_bounds(line: Rect) -> (Option<Rect>, Option<Rect>, Rect) {
     };
     cursor += level_bound.width;
 
+    let origin_bound = Rect {
+        x: cursor,
+        width: max_origin_width + vertical_line_width,
+        ..line
+    };
+    cursor += origin_bound.width;
+
     let message_bound = rect::intersect(rect::offset_x(line, cursor), line);
     if message_bound.width < 30 {
-        return (None, None, line);
+        return (None, None, None, line);
     }
-    (Some(time_bound), Some(level_bound), message_bound)
+    (
+        Some(time_bound),
+        Some(level_bound),
+        Some(origin_bound),
+        message_bound,
+    )
 }
