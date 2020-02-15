@@ -1,7 +1,23 @@
-use std::io::Error;
+use futures::{task::Poll, FutureExt};
+use futures_timer::Delay;
+use std::{io::Error, time::Duration};
 use tui::{buffer::Buffer, layout::Rect, style::Style};
 use unicode_segmentation::UnicodeSegmentation;
 use unicode_width::UnicodeWidthStr;
+
+pub fn ticker(dur: Duration) -> impl futures::Stream<Item = ()> {
+    let mut delay = Delay::new(dur);
+    futures::stream::poll_fn(move |ctx| {
+        let res = delay.poll_unpin(ctx);
+        match res {
+            Poll::Pending => Poll::Pending,
+            Poll::Ready(_) => {
+                delay.reset(dur);
+                Poll::Ready(Some(()))
+            }
+        }
+    })
+}
 
 #[derive(Default)]
 pub struct GraphemeCountWriter(pub usize);

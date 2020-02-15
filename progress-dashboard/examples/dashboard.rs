@@ -4,9 +4,10 @@ use futures::{
     future::{abortable, join_all},
     future::{AbortHandle, Either},
     task::{Spawn, SpawnExt},
-    FutureExt,
+    FutureExt, StreamExt,
 };
 use futures_timer::Delay;
+use progress_dashboard::tui::{ticker, Event};
 use progress_dashboard::{tui, Tree, TreeKey, TreeRoot};
 use rand::prelude::*;
 use std::{error::Error, future::Future, ops::Add, time::Duration, time::SystemTime};
@@ -187,16 +188,51 @@ async fn work_forever(pool: impl Spawn + Clone + Send + 'static) -> Result {
     Ok(())
 }
 
+enum Direction {
+    Shrink,
+    Grow,
+}
+
 fn launch_ambient_gui(
     pool: &dyn Spawn,
     progress: TreeRoot,
 ) -> std::result::Result<(impl Future<Output = ()>, AbortHandle), std::io::Error> {
-    let render_fut = tui::render(
+    let mut offset_xy = (0u16, 0u16);
+    let mut direction = Direction::Shrink;
+    let render_fut = tui::render_with_input(
         progress,
         tui::Config {
             title: TITLES.choose(&mut thread_rng()).map(|t| *t).unwrap().into(),
             frames_per_second: 10.0,
         },
+        ticker(Duration::from_millis(30)).map(move |_| {
+            let (width, height) = termion::terminal_size().unwrap_or((30, 30));
+            let (ref mut ofs_x, ref mut ofs_y) = offset_xy;
+            let min_size = 2;
+            match direction {
+                Direction::Shrink => {
+                    *ofs_x = ofs_x.saturating_add(1);
+                    *ofs_y = ofs_y.saturating_add(1);
+                }
+                Direction::Grow => {
+                    *ofs_x = ofs_x.saturating_sub(1);
+                    *ofs_y = ofs_y.saturating_sub(1);
+                }
+            }
+            let bound = tui::tui_export::layout::Rect {
+                x: 0,
+                y: 0,
+                width: width.saturating_sub(*ofs_x).max(min_size),
+                height: height.saturating_sub(*ofs_y).max(min_size),
+            };
+            if bound.area() <= min_size * min_size || bound.area() == width * height {
+                direction = match direction {
+                    Direction::Grow => Direction::Shrink,
+                    Direction::Shrink => Direction::Grow,
+                };
+            }
+            Event::SetWindowSize(bound)
+        }),
     )?;
     let (render_fut, abort_handle) = abortable(render_fut);
     let handle = pool

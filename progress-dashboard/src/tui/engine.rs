@@ -1,12 +1,9 @@
-use crate::tree::TreeRoot;
-use futures_timer::Delay;
+use crate::{tree::TreeRoot, tui::draw, tui::ticker};
 
-use crate::tui::draw;
-use futures::task::Poll;
-use futures::{channel::mpsc, FutureExt, SinkExt, StreamExt};
+use futures::{channel::mpsc, SinkExt, StreamExt};
 use std::{io, time::Duration};
 use termion::{event::Key, input::TermRead, raw::IntoRawMode, screen::AlternateScreen};
-use tui::backend::TermionBackend;
+use tui::{backend::TermionBackend, layout::Rect};
 use tui_react::Terminal;
 
 #[derive(Clone)]
@@ -15,23 +12,10 @@ pub struct Config {
     pub frames_per_second: f32,
 }
 
-fn ticker(dur: Duration) -> impl futures::Stream<Item = ()> {
-    let mut delay = Delay::new(dur);
-    futures::stream::poll_fn(move |ctx| {
-        let res = delay.poll_unpin(ctx);
-        match res {
-            Poll::Pending => Poll::Pending,
-            Poll::Ready(_) => {
-                delay.reset(dur);
-                Poll::Ready(Some(()))
-            }
-        }
-    })
-}
-
 pub enum Event {
     Tick,
     Input(Key),
+    SetWindowSize(Rect),
 }
 
 pub fn render_with_input(
@@ -69,11 +53,13 @@ pub fn render_with_input(
             key_receive.map(|key| Event::Input(key)).boxed(),
             events.boxed(),
         ]);
+        let mut user_provided_window_size = None;
 
         while let Some(event) = events.next().await {
             match event {
                 Event::Tick => {
                     let window_size = terminal.pre_render().expect("pre-render to work");
+                    let window_size = user_provided_window_size.unwrap_or(window_size);
                     let buf = terminal.current_buffer_mut();
                     progress.sorted_snapshot(&mut entries);
                     progress.copy_messages(&mut messages);
@@ -94,6 +80,7 @@ pub fn render_with_input(
                     }
                     _ => {}
                 },
+                Event::SetWindowSize(bound) => user_provided_window_size = Some(bound),
             }
         }
     };
