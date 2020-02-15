@@ -29,17 +29,18 @@ fn ticker(dur: Duration) -> impl futures::Stream<Item = ()> {
     })
 }
 
-enum Event {
+pub enum Event {
     Tick,
     Input(Key),
 }
 
-pub fn render(
+pub fn render_with_input(
     progress: TreeRoot,
     Config {
         title,
         frames_per_second,
     }: Config,
+    events: impl futures::Stream<Item = Event> + Send,
 ) -> Result<impl std::future::Future<Output = ()>, std::io::Error> {
     let mut terminal = {
         let stdout = io::stdout().into_raw_mode()?;
@@ -63,10 +64,11 @@ pub fn render(
     let render_fut = async move {
         let mut entries = Vec::with_capacity(progress.num_tasks());
         let mut messages = Vec::with_capacity(progress.messages_capacity());
-        let mut events = futures::stream::select(
-            ticker(duration_per_frame).map(|_| Event::Tick),
-            key_receive.map(|key| Event::Input(key)),
-        );
+        let mut events = futures::stream::select_all(vec![
+            ticker(duration_per_frame).map(|_| Event::Tick).boxed(),
+            key_receive.map(|key| Event::Input(key)).boxed(),
+            events.boxed(),
+        ]);
 
         while let Some(event) = events.next().await {
             match event {
@@ -94,7 +96,13 @@ pub fn render(
                 },
             }
         }
-        ()
     };
     Ok(render_fut)
+}
+
+pub fn render(
+    progress: TreeRoot,
+    config: Config,
+) -> Result<impl std::future::Future<Output = ()>, std::io::Error> {
+    return render_with_input(progress, config, futures::stream::pending());
 }

@@ -9,9 +9,7 @@ use futures::{
 use futures_timer::Delay;
 use progress_dashboard::{tui, Tree, TreeKey, TreeRoot};
 use rand::prelude::*;
-use std::ops::Add;
-use std::time::SystemTime;
-use std::{error::Error, future::Future, time::Duration};
+use std::{error::Error, future::Future, ops::Add, time::Duration, time::SystemTime};
 
 const WORK_STEPS_NEEDED_FOR_UNBOUNDED_TASK: u8 = 100;
 const UNITS: &[&str] = &["Mb", "kb", "items", "files"];
