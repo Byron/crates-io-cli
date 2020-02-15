@@ -1,6 +1,7 @@
 mod messages;
 mod tasks;
 
+use crate::tui::State;
 use crate::{tui::draw, tui::utils::rect, Message, TreeKey, TreeValue};
 use std::time::Duration;
 use tui::{
@@ -12,14 +13,14 @@ use unicode_segmentation::UnicodeSegmentation;
 use unicode_width::UnicodeWidthStr;
 
 pub fn all(
-    title: impl AsRef<str>,
+    state: &State,
     duration_per_frame: Duration,
     entries: &[(TreeKey, TreeValue)],
     messages: &[Message],
     bound: Rect,
     buf: &mut Buffer,
 ) {
-    let mut window = Block::default().title(title.as_ref()).borders(Borders::ALL);
+    let mut window = Block::default().title(&state.title).borders(Borders::ALL);
     window.draw(bound, buf);
     if bound.width < 4 || bound.height < 4 {
         return;
@@ -36,8 +37,8 @@ pub fn all(
                 width: bound.width.saturating_sub(border_width),
                 ..bound
             },
-            (title
-                .as_ref()
+            (state
+                .title
                 .graphemes(true)
                 .map(|s| s.width())
                 .sum::<usize>()

@@ -18,6 +18,14 @@ pub enum Event {
     SetWindowSize(Rect),
 }
 
+#[derive(Default)]
+pub struct State {
+    pub title: String,
+    pub task_offset: u16,
+    pub message_offset: u16,
+    pub user_provided_window_size: Option<Rect>,
+}
+
 pub fn render_with_input(
     progress: TreeRoot,
     Config {
@@ -46,6 +54,10 @@ pub fn render_with_input(
     });
 
     let render_fut = async move {
+        let mut state = State {
+            title,
+            ..State::default()
+        };
         let mut entries = Vec::with_capacity(progress.num_tasks());
         let mut messages = Vec::with_capacity(progress.messages_capacity());
         let mut events = futures::stream::select_all(vec![
@@ -53,19 +65,18 @@ pub fn render_with_input(
             key_receive.map(|key| Event::Input(key)).boxed(),
             events.boxed(),
         ]);
-        let mut user_provided_window_size = None;
 
         while let Some(event) = events.next().await {
             match event {
                 Event::Tick => {
                     let window_size = terminal.pre_render().expect("pre-render to work");
-                    let window_size = user_provided_window_size.unwrap_or(window_size);
+                    let window_size = state.user_provided_window_size.unwrap_or(window_size);
                     let buf = terminal.current_buffer_mut();
                     progress.sorted_snapshot(&mut entries);
                     progress.copy_messages(&mut messages);
 
                     draw::all(
-                        &title,
+                        &state,
                         duration_per_frame,
                         &entries,
                         &messages,
@@ -78,9 +89,13 @@ pub fn render_with_input(
                     Key::Esc | Key::Char('q') | Key::Ctrl('c') | Key::Ctrl('[') => {
                         break;
                     }
+                    Key::Char('J') => state.message_offset = state.message_offset.saturating_add(1),
+                    Key::Char('j') => state.task_offset = state.task_offset.saturating_add(1),
+                    Key::Char('K') => state.message_offset = state.message_offset.saturating_sub(1),
+                    Key::Char('k') => state.task_offset = state.task_offset.saturating_sub(1),
                     _ => {}
                 },
-                Event::SetWindowSize(bound) => user_provided_window_size = Some(bound),
+                Event::SetWindowSize(bound) => state.user_provided_window_size = Some(bound),
             }
         }
     };
