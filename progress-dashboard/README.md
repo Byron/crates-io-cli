@@ -21,7 +21,7 @@
   * [x] Ring-buffer powered message buffer in tree (done, info, warn, error)
     * [x] display that message buffer in tui
   * [x] use future streams as sole interface (one unified stream with Messages)
-  * [ ] define boundary on the fly using messages (allows incorporating it into other TUIs potentially)
+  * [x] define boundary on the fly using messages (allows incorporating it into other TUIs potentially)
   * [ ] custom statistics window (data sent via message channel)
 * [ ] run example as journey test
 * [ ] Argh based command-line input
