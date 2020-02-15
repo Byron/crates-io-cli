@@ -9,6 +9,7 @@ use tui::{
     layout::Rect,
     widgets::{Block, Borders, Widget},
 };
+use unicode_width::UnicodeWidthStr;
 
 const TIME_COLUMN_PREFIX: u16 = "20-02-13T".len() as u16;
 
@@ -46,7 +47,7 @@ pub fn pane(messages: &[Message], bound: Rect, buf: &mut Buffer) {
                 Some(level_to_style(*level)),
             );
             draw_text_nowrap(
-                rect::offset_x(level_bound, level_bound.width - 1),
+                rect::offset_x(level_bound, LEVEL_TEXT_WIDTH),
                 buf,
                 rect::VERTICAL_LINE,
                 None,
@@ -56,6 +57,7 @@ pub fn pane(messages: &[Message], bound: Rect, buf: &mut Buffer) {
     }
 }
 
+const LEVEL_TEXT_WIDTH: u16 = 4;
 fn format_level_column(level: MessageLevel) -> &'static str {
     use MessageLevel::*;
     match level {
@@ -91,16 +93,18 @@ fn format_time_column(time: &SystemTime) -> String {
 }
 
 fn compute_bounds(line: Rect) -> (Option<Rect>, Option<Rect>, Rect) {
-    let vertical_line_width = 1u16;
+    let vertical_line_width = rect::VERTICAL_LINE.width() as u16;
+    let mythical_offset_we_should_not_need = 1;
+
     let time_bound = Rect {
         width: TIME_COLUMN_SUFFIX + vertical_line_width,
         ..line
     };
 
-    let mut cursor = time_bound.width;
+    let mut cursor = time_bound.width + mythical_offset_we_should_not_need;
     let level_bound = Rect {
-        x: cursor + 1,
-        width: 4 + vertical_line_width,
+        x: cursor,
+        width: LEVEL_TEXT_WIDTH + vertical_line_width,
         ..line
     };
     cursor += level_bound.width;
