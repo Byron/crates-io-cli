@@ -25,6 +25,7 @@ pub struct State {
     pub task_offset: u16,
     pub message_offset: u16,
     pub user_provided_window_size: Option<Rect>,
+    pub duration_per_frame: Duration,
 }
 
 pub fn render_with_input(
@@ -57,6 +58,7 @@ pub fn render_with_input(
     let render_fut = async move {
         let mut state = State {
             title,
+            duration_per_frame,
             ..State::default()
         };
         let mut entries = Vec::with_capacity(progress.num_tasks());
@@ -76,14 +78,7 @@ pub fn render_with_input(
                     progress.sorted_snapshot(&mut entries);
                     progress.copy_messages(&mut messages);
 
-                    draw::all(
-                        &state,
-                        duration_per_frame,
-                        &entries,
-                        &messages,
-                        window_size,
-                        buf,
-                    );
+                    draw::all(&state, &entries, &messages, window_size, buf);
                     terminal.post_render().expect("post render to work");
                 }
                 Event::Input(key) => match key {

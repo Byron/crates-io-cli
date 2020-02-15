@@ -1,9 +1,7 @@
 mod messages;
 mod tasks;
 
-use crate::tui::State;
-use crate::{tui::draw, tui::utils::rect, Message, TreeKey, TreeValue};
-use std::time::Duration;
+use crate::{tui::draw, tui::utils::rect, tui::State, Message, TreeKey, TreeValue};
 use tui::{
     buffer::Buffer,
     layout::Rect,
@@ -14,7 +12,6 @@ use unicode_width::UnicodeWidthStr;
 
 pub fn all(
     state: &State,
-    duration_per_frame: Duration,
     entries: &[(TreeKey, TreeValue)],
     messages: &[Message],
     bound: Rect,
@@ -29,7 +26,7 @@ pub fn all(
     let border_width = 1;
     draw::tasks::headline(
         &entries,
-        duration_per_frame,
+        state.duration_per_frame,
         buf,
         rect::offset_x(
             Rect {
