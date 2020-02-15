@@ -16,6 +16,7 @@ pub enum Event {
     Tick,
     Input(Key),
     SetWindowSize(Rect),
+    SetTitle(String),
 }
 
 #[derive(Default)]
@@ -96,6 +97,7 @@ pub fn render_with_input(
                     _ => {}
                 },
                 Event::SetWindowSize(bound) => state.user_provided_window_size = Some(bound),
+                Event::SetTitle(title) => state.title = title,
             }
         }
     };

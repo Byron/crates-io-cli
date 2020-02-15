@@ -4,13 +4,16 @@ use futures::{
     future::{abortable, join_all},
     future::{AbortHandle, Either},
     task::{Spawn, SpawnExt},
-    FutureExt, StreamExt,
+    Future, FutureExt, StreamExt,
 };
 use futures_timer::Delay;
-use progress_dashboard::tui::{ticker, Event};
-use progress_dashboard::{tui, Tree, TreeKey, TreeRoot};
+use progress_dashboard::{
+    tui,
+    tui::{ticker, Event},
+    Tree, TreeKey, TreeRoot,
+};
 use rand::prelude::*;
-use std::{error::Error, future::Future, ops::Add, time::Duration, time::SystemTime};
+use std::{error::Error, ops::Add, time::Duration, time::SystemTime};
 
 const WORK_STEPS_NEEDED_FOR_UNBOUNDED_TASK: u8 = 100;
 const UNITS: &[&str] = &["Mb", "kb", "items", "files"];
@@ -208,7 +211,11 @@ fn launch_ambient_gui(
             title: TITLES.choose(&mut thread_rng()).map(|t| *t).unwrap().into(),
             frames_per_second: args.fps,
         },
-        window_resize_stream(args.animate_terminal_size),
+        futures::stream::select(
+            window_resize_stream(args.animate_terminal_size),
+            ticker(Duration::from_millis(5000))
+                .map(|_| Event::SetTitle(TITLES.choose(&mut thread_rng()).unwrap().to_string())),
+        ),
     )?;
     let (render_fut, abort_handle) = abortable(render_fut);
     let handle = pool
@@ -229,6 +236,7 @@ fn window_resize_stream(animate: bool) -> impl futures::Stream<Item = Event> {
     if !animate {
         return futures::stream::pending().boxed();
     }
+
     ticker(Duration::from_millis(100))
         .map(move |_| {
             let (width, height) = termion::terminal_size().unwrap_or((30, 30));
