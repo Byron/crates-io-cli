@@ -205,18 +205,22 @@ fn launch_ambient_gui(
             title: TITLES.choose(&mut thread_rng()).map(|t| *t).unwrap().into(),
             frames_per_second: 10.0,
         },
-        ticker(Duration::from_millis(30)).map(move |_| {
+        ticker(Duration::from_millis(100)).map(move |_| {
             let (width, height) = termion::terminal_size().unwrap_or((30, 30));
             let (ref mut ofs_x, ref mut ofs_y) = offset_xy;
             let min_size = 2;
             match direction {
                 Direction::Shrink => {
-                    *ofs_x = ofs_x.saturating_add(1);
-                    *ofs_y = ofs_y.saturating_add(1);
+                    *ofs_x = ofs_x
+                        .saturating_add((1 as f32 * (width as f32 / height as f32)).ceil() as u16);
+                    *ofs_y = ofs_y
+                        .saturating_add((1 as f32 * (height as f32 / width as f32)).ceil() as u16);
                 }
                 Direction::Grow => {
-                    *ofs_x = ofs_x.saturating_sub(1);
-                    *ofs_y = ofs_y.saturating_sub(1);
+                    *ofs_x = ofs_x
+                        .saturating_sub((1 as f32 * (width as f32 / height as f32)).ceil() as u16);
+                    *ofs_y = ofs_y
+                        .saturating_sub((1 as f32 * (height as f32 / width as f32)).ceil() as u16);
                 }
             }
             let bound = tui::tui_export::layout::Rect {
