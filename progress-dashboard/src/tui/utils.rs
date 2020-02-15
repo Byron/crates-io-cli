@@ -36,9 +36,6 @@ pub fn draw_text_nowrap<'a>(
             total_width += width;
 
             x += x_offset;
-            if x >= bound.right() {
-                break;
-            }
             let cell = buf.get_mut(x, bound.y);
             if x + 1 == bound.right() {
                 ellipsis_candidate_x = Some(x);
@@ -49,6 +46,9 @@ pub fn draw_text_nowrap<'a>(
             }
 
             x_offset += (width - 1) as u16;
+            if x + x_offset >= bound.right() {
+                break;
+            }
             let x = x as usize;
             for x in x + 1..x + width {
                 let i = buf.index_of(x as u16, bound.y);
