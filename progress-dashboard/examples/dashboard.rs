@@ -141,10 +141,14 @@ async fn new_chunk_of_work(
     Ok(())
 }
 
-async fn work_forever(pool: impl Spawn + Clone + Send + 'static) -> Result {
-    let progress = progress_dashboard::TreeRoot::new();
+async fn work_forever(pool: impl Spawn + Clone + Send + 'static, args: arg::Options) -> Result {
+    let progress = progress_dashboard::Config {
+        message_buffer_capacity: args.message_scrollback_buffer_size,
+        ..progress_dashboard::Config::default()
+    }
+    .create();
     // Now we should handle signals to be able to cleanup properly
-    let (gui_handle, abort_gui) = launch_ambient_gui(&pool, progress.clone()).unwrap();
+    let (gui_handle, abort_gui) = launch_ambient_gui(&pool, progress.clone(), args).unwrap();
     let mut gui_handle = Some(gui_handle.boxed());
     let mut iteration = 0;
 
@@ -196,14 +200,15 @@ enum Direction {
 fn launch_ambient_gui(
     pool: &dyn Spawn,
     progress: TreeRoot,
+    args: arg::Options,
 ) -> std::result::Result<(impl Future<Output = ()>, AbortHandle), std::io::Error> {
     let render_fut = tui::render_with_input(
         progress,
         tui::Config {
             title: TITLES.choose(&mut thread_rng()).map(|t| *t).unwrap().into(),
-            frames_per_second: 10.0,
+            frames_per_second: args.fps,
         },
-        window_resize_stream(),
+        window_resize_stream(args.animate_terminal_size),
     )?;
     let (render_fut, abort_handle) = abortable(render_fut);
     let handle = pool
@@ -218,52 +223,80 @@ fn launch_ambient_gui(
     ))
 }
 
-fn window_resize_stream() -> impl futures::Stream<Item = Event> {
+fn window_resize_stream(animate: bool) -> impl futures::Stream<Item = Event> {
     let mut offset_xy = (0u16, 0u16);
     let mut direction = Direction::Shrink;
-    ticker(Duration::from_millis(100)).map(move |_| {
-        let (width, height) = termion::terminal_size().unwrap_or((30, 30));
-        let (ref mut ofs_x, ref mut ofs_y) = offset_xy;
-        let min_size = 2;
-        match direction {
-            Direction::Shrink => {
-                *ofs_x =
-                    ofs_x.saturating_add((1 as f32 * (width as f32 / height as f32)).ceil() as u16);
-                *ofs_y =
-                    ofs_y.saturating_add((1 as f32 * (height as f32 / width as f32)).ceil() as u16);
+    if !animate {
+        return futures::stream::pending().boxed();
+    }
+    ticker(Duration::from_millis(100))
+        .map(move |_| {
+            let (width, height) = termion::terminal_size().unwrap_or((30, 30));
+            let (ref mut ofs_x, ref mut ofs_y) = offset_xy;
+            let min_size = 2;
+            match direction {
+                Direction::Shrink => {
+                    *ofs_x = ofs_x
+                        .saturating_add((1 as f32 * (width as f32 / height as f32)).ceil() as u16);
+                    *ofs_y = ofs_y
+                        .saturating_add((1 as f32 * (height as f32 / width as f32)).ceil() as u16);
+                }
+                Direction::Grow => {
+                    *ofs_x = ofs_x
+                        .saturating_sub((1 as f32 * (width as f32 / height as f32)).ceil() as u16);
+                    *ofs_y = ofs_y
+                        .saturating_sub((1 as f32 * (height as f32 / width as f32)).ceil() as u16);
+                }
             }
-            Direction::Grow => {
-                *ofs_x =
-                    ofs_x.saturating_sub((1 as f32 * (width as f32 / height as f32)).ceil() as u16);
-                *ofs_y =
-                    ofs_y.saturating_sub((1 as f32 * (height as f32 / width as f32)).ceil() as u16);
-            }
-        }
-        let bound = tui::tui_export::layout::Rect {
-            x: 0,
-            y: 0,
-            width: width.saturating_sub(*ofs_x).max(min_size),
-            height: height.saturating_sub(*ofs_y).max(min_size),
-        };
-        if bound.area() <= min_size * min_size || bound.area() == width * height {
-            direction = match direction {
-                Direction::Grow => Direction::Shrink,
-                Direction::Shrink => Direction::Grow,
+            let bound = tui::tui_export::layout::Rect {
+                x: 0,
+                y: 0,
+                width: width.saturating_sub(*ofs_x).max(min_size),
+                height: height.saturating_sub(*ofs_y).max(min_size),
             };
-        }
-        Event::SetWindowSize(bound)
-    })
+            if bound.area() <= min_size * min_size || bound.area() == width * height {
+                direction = match direction {
+                    Direction::Grow => Direction::Shrink,
+                    Direction::Shrink => Direction::Grow,
+                };
+            }
+            Event::SetWindowSize(bound)
+        })
+        .boxed()
 }
 
 fn main() -> Result {
     env_logger::init();
+
+    let args: arg::Options = argh::from_env();
     // Use spawn as well to simulate Send futures
     let pool = ThreadPool::builder()
         .pool_size(1)
         .create()
         .expect("pool creation to work (io-error is not Send");
-    block_on(work_forever(pool))
+    block_on(work_forever(pool, args))
 }
 
 struct NestingLevel(u8);
 type Result = std::result::Result<(), Box<dyn Error + Send>>;
+
+mod arg {
+    use argh::FromArgs;
+
+    #[derive(FromArgs)]
+    /// Reach new heights.
+    pub struct Options {
+        /// if set, the terminal window will be animated to assure resizing works as expected.
+        #[argh(switch, short = 'a')]
+        pub animate_terminal_size: bool,
+
+        /// the amount of frames to show per second, can be below zero, e.g.
+        /// 0.25 shows a frame every 4 seconds.
+        #[argh(option, default = "10.0")]
+        pub fps: f32,
+
+        /// the amount of scrollback for task messages.
+        #[argh(option, default = "20")]
+        pub message_scrollback_buffer_size: usize,
+    }
+}

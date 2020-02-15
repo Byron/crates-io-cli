@@ -20,12 +20,13 @@
   * [x] unicode support
   * [x] Ring-buffer powered message buffer in tree (done, info, warn, error)
     * [x] display that message buffer in tui
+    * [ ] overflow handling
   * [x] use future streams as sole interface (one unified stream with Messages)
   * [x] define boundary on the fly using messages (allows incorporating it into other TUIs potentially)
   * [ ] custom statistics window (data sent via message channel)
-* [ ] run example as journey test
-* [ ] Argh based command-line input
+* [x] Argh based command-line input
 * [x] some benchmarks
+* [ ] run example as journey test
 * [ ] full documentation and maybe a few smaller examples
 
 ## Lessons Learned
