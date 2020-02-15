@@ -88,11 +88,16 @@ pub fn pane(
         draw_text_nowrap(message_bound, buf, message, None);
     }
 
-    if (bound.height as usize) < messages.len() {
+    if (bound.height as usize) < messages.len().saturating_sub(offset as usize) {
         draw_text_nowrap(
             rect::offset_x(overflow_bound, 2),
             buf,
-            format!("…and {} more", messages.len() - bound.height as usize),
+            format!(
+                "…and {} more",
+                messages
+                    .len()
+                    .saturating_sub(bound.height.saturating_add(offset) as usize)
+            ),
             None,
         );
     }
