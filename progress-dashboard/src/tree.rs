@@ -49,6 +49,7 @@ pub enum MessageLevel {
 
 #[derive(Debug, Clone)]
 pub struct Message {
+    pub time: SystemTime,
     pub level: MessageLevel,
     pub origin: String,
     pub message: String,
@@ -74,6 +75,7 @@ impl MessageRingBuffer {
 
     pub fn push_overwrite(&mut self, level: MessageLevel, origin: String, message: &str) {
         let msg = Message {
+            time: SystemTime::now(),
             level,
             origin,
             message: message.to_string(),

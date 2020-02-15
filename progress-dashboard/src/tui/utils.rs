@@ -77,6 +77,8 @@ pub fn draw_text_nowrap_fn(
 pub mod rect {
     use tui::layout::Rect;
 
+    pub const VERTICAL_LINE: &str = "│";
+
     /// A safe version of Rect::intersection that doesn't suffer from underflows
     pub fn intersect(lhs: Rect, rhs: Rect) -> Rect {
         let x1 = lhs.x.max(rhs.x);

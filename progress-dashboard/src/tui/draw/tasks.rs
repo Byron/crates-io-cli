@@ -12,7 +12,6 @@ use tui_react::fill_background;
 use unicode_segmentation::UnicodeSegmentation;
 use unicode_width::UnicodeWidthStr;
 
-const VERTICAL_LINE: &str = "│";
 const MIN_TREE_WIDTH: u16 = 20;
 
 pub fn pane(entries: &[(TreeKey, TreeValue)], mut bound: Rect, buf: &mut Buffer) {
@@ -178,7 +177,7 @@ pub fn draw_progress(
             progress = ProgressFormat(progress, bound.width.saturating_sub(title_spacing))
         );
 
-        draw_text_nowrap(line_bound, buf, VERTICAL_LINE, None);
+        draw_text_nowrap(line_bound, buf, rect::VERTICAL_LINE, None);
 
         let progress_rect = rect::offset_x(line_bound, column_line_width);
         match progress.map(|p| (p.fraction(), p.state, p.step)) {
@@ -327,7 +326,11 @@ pub fn draw_overflow<'a>(
     progress_percent /= count as f32;
     let label = format!(
         "{} …and {} more",
-        if label_offset == 0 { "" } else { VERTICAL_LINE },
+        if label_offset == 0 {
+            ""
+        } else {
+            rect::VERTICAL_LINE
+        },
         count
     );
     let (progress_rect, style) =

@@ -88,7 +88,7 @@ async fn work_item(mut progress: Tree) -> () {
         } else {
             WORK_DELAY_MS
         };
-        if thread_rng().gen_bool(0.05) {
+        if thread_rng().gen_bool(0.01) {
             progress.info(INFO_MESSAGES.choose(&mut thread_rng()).unwrap());
         }
         Delay::new(Duration::from_millis(delay)).await;
