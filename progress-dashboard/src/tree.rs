@@ -13,6 +13,12 @@ impl TreeRoot {
     pub fn new() -> TreeRoot {
         Config::default().into()
     }
+    pub fn messages_capacity(&self) -> usize {
+        self.inner.lock().messages.lock().buf.capacity()
+    }
+    pub fn num_tasks(&self) -> usize {
+        self.inner.lock().tree.len()
+    }
     pub fn add_child(&self, title: impl Into<String>) -> Tree {
         self.inner.lock().add_child(title)
     }

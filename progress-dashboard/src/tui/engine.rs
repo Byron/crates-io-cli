@@ -41,8 +41,8 @@ pub fn render(
     });
 
     let render_fut = async move {
-        let mut entries_buf = Vec::new();
-        let mut messages = Vec::new();
+        let mut entries_buf = Vec::with_capacity(progress.num_tasks());
+        let mut messages = Vec::with_capacity(progress.messages_capacity());
         loop {
             let window_size = terminal.pre_render().expect("pre-render to work");
             let buf = terminal.current_buffer_mut();
