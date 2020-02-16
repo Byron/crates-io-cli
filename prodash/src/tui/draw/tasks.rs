@@ -25,6 +25,7 @@ pub fn pane(entries: &[(TreeKey, TreeValue)], mut bound: Rect, offset: &mut u16,
         } else {
             false
         };
+    *offset = sanitize_offset(*offset, entries.len(), bound.height);
 
     if !entries.is_empty() {
         let column_width = bound.width / 2;
@@ -61,10 +62,12 @@ pub fn pane(entries: &[(TreeKey, TreeValue)], mut bound: Rect, offset: &mut u16,
                 ..bound
             };
             draw_overflow(
-                entries.iter().skip(bound.height as usize),
+                entries,
                 buf,
                 overflow_rect,
                 max_tree_draw_width,
+                bound.height,
+                *offset,
             );
         }
     }
@@ -147,7 +150,6 @@ pub fn draw_progress(
     draw_column_line: bool,
     offset: u16,
 ) {
-    let offset = sanitize_offset(offset, entries.len(), bound.height);
     let title_spacing = 2u16 + 1; // 2 on the left, 1 on the right
     let column_line_width = if draw_column_line { 1 } else { 0 };
     let max_progress_label_width = entries
@@ -356,33 +358,46 @@ pub fn draw_tree(
 }
 
 pub fn draw_overflow<'a>(
-    entries: impl Iterator<Item = &'a (TreeKey, TreeValue)>,
+    entries: &[(TreeKey, TreeValue)],
     buf: &mut Buffer,
     bound: Rect,
     label_offset: u16,
+    num_entries_on_display: u16,
+    offset: u16,
 ) {
-    let (count, mut progress_percent) = entries.fold(
-        (0usize, 0f32),
-        |(count, progress_fraction), (_key, value)| {
-            let progress = value
-                .progress
-                .and_then(|p| p.fraction())
-                .unwrap_or_default();
-            (count + 1, progress_fraction + progress)
-        },
-    );
-    progress_percent /= count as f32;
+    let (count, mut progress_fraction) = entries
+        .iter()
+        .take(offset as usize)
+        .chain(
+            entries
+                .iter()
+                .skip((offset + num_entries_on_display) as usize),
+        )
+        .fold(
+            (0usize, 0f32),
+            |(count, progress_fraction), (_key, value)| {
+                let progress = value
+                    .progress
+                    .and_then(|p| p.fraction())
+                    .unwrap_or_default();
+                (count + 1, progress_fraction + progress)
+            },
+        );
+    progress_fraction /= count as f32;
     let label = format!(
-        "{} …and {} more",
+        "{} …{} skipped and {} more",
         if label_offset == 0 {
             ""
         } else {
             rect::VERTICAL_LINE
         },
-        count
+        offset,
+        entries
+            .len()
+            .saturating_sub((offset + num_entries_on_display + 1) as usize)
     );
     let (progress_rect, style) =
-        draw_progress_bar_fn(buf, bound, progress_percent, |_| Color::Green);
+        draw_progress_bar_fn(buf, bound, progress_fraction, |_| Color::Green);
 
     let bg_color = Color::Red;
     fill_background(
