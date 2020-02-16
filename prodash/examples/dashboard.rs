@@ -246,6 +246,16 @@ fn generate_statistics() -> Vec<Line> {
         Line::Text("as long as it fits one line".into()),
         Line::Text("until a certain limit is reached".into()),
         Line::Text("which is when truncation happens".into()),
+        Line::Text("这是中文的一些文字。".into()),
+        Line::Text("鹅、鹅、鹅 曲项向天歌 白毛浮绿水 红掌拨清波".into()),
+        Line::Text("床前明月光, 疑是地上霜。举头望明月，低头思故乡。".into()),
+        Line::Text("锄禾日当午，汗滴禾下土。谁知盘中餐，粒粒皆辛苦。".into()),
+        Line::Text("春眠不觉晓，处处闻啼鸟。夜来风雨声，花落知多少".into()),
+        Line::Text("煮豆燃豆萁，豆在釜中泣。本自同根生，相煎何太急".into()),
+        Line::Text(
+            "and this line is without any doubt very very long and it really doesn't want to stop"
+                .into(),
+        ),
         Line::Title("Statistics".into()),
         Line::Text(format!(
             "lines of unsafe code: {}",

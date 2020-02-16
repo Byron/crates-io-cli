@@ -36,6 +36,7 @@ pub struct State {
     pub duration_per_frame: Duration,
     pub information: Vec<Line>,
     pub hide_info: bool,
+    pub maximize_info: bool,
 }
 
 pub fn render_with_input(
@@ -102,6 +103,7 @@ pub fn render_with_input(
                     Key::Char('k') => state.task_offset = state.task_offset.saturating_sub(1),
                     Key::Char('u') => state.task_offset = state.task_offset.saturating_sub(10),
                     Key::Char('[') => state.hide_info = !state.hide_info,
+                    Key::Char('{') => state.maximize_info = !state.maximize_info,
                     _ => skip_redraw = true,
                 },
                 Event::SetWindowSize(bound) => state.user_provided_window_size = Some(bound),

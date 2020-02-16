@@ -15,6 +15,15 @@ pub fn all(
     bound: Rect,
     buf: &mut Buffer,
 ) {
+    let (bound, info_pane) = compute_info_bound(
+        bound,
+        if state.hide_info {
+            &[]
+        } else {
+            &state.information
+        },
+        state.maximize_info,
+    );
     let mut window = Block::default().title(&state.title).borders(Borders::ALL);
     window.draw(bound, buf);
     if bound.width < 4 || bound.height < 4 {
@@ -37,15 +46,10 @@ pub fn all(
     );
 
     let inner = window.inner(bound);
-    let (tasks_pane, messages_pane, info_pane) = compute_pane_bounds(
+    let (tasks_pane, messages_pane) = compute_pane_bounds(
         if state.hide_messages { &[] } else { messages },
         inner,
         state.messages_fullscreen,
-        if state.hide_info {
-            &[]
-        } else {
-            &state.information
-        },
     );
 
     draw::tasks::pane(&entries, tasks_pane, &mut state.task_offset, buf);
@@ -71,11 +75,9 @@ fn compute_pane_bounds(
     messages: &[Message],
     inner: Rect,
     messages_fullscreen: bool,
-    info: &[Line],
-) -> (Rect, Option<Rect>, Option<Rect>) {
-    let (inner, info_bound) = compute_info_bound(inner, info);
+) -> (Rect, Option<Rect>) {
     if messages.is_empty() {
-        (inner, None, info_bound)
+        (inner, None)
     } else {
         let (task_percent, messages_percent) = if messages_fullscreen {
             (0.1, 0.9)
@@ -85,7 +87,7 @@ fn compute_pane_bounds(
         let tasks_height: u16 = (inner.height as f32 * task_percent).ceil() as u16;
         let messages_height: u16 = (inner.height as f32 * messages_percent).floor() as u16;
         if messages_height < 2 {
-            (inner, None, info_bound)
+            (inner, None)
         } else {
             let messages_title = 1u16;
             let new_messages_height =
@@ -105,13 +107,12 @@ fn compute_pane_bounds(
                     },
                     inner,
                 )),
-                info_bound,
             )
         }
     }
 }
 
-fn compute_info_bound(bound: Rect, info: &[Line]) -> (Rect, Option<Rect>) {
+fn compute_info_bound(bound: Rect, info: &[Line], maximize: bool) -> (Rect, Option<Rect>) {
     if info.is_empty() {
         return (bound, None);
     }
@@ -120,7 +121,11 @@ fn compute_info_bound(bound: Rect, info: &[Line]) -> (Rect, Option<Rect>) {
             Line::Text(s) | Line::Title(s) => s,
         }))
     });
-    let pane_width = (bound.width / 2).min(max_line_width);
+    let pane_width = if maximize {
+        bound.width.saturating_sub(8).min(max_line_width)
+    } else {
+        (bound.width / 3).min(max_line_width)
+    };
     (
         Rect {
             width: bound.width.saturating_sub(pane_width),
