@@ -35,6 +35,7 @@ pub struct State {
     pub user_provided_window_size: Option<Rect>,
     pub duration_per_frame: Duration,
     pub information: Vec<Line>,
+    pub hide_info: bool,
 }
 
 pub fn render_with_input(

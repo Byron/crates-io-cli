@@ -2,6 +2,7 @@ mod messages;
 mod tasks;
 
 use crate::tui::utils::block_width;
+use crate::tui::Line;
 use crate::{tui::draw, tui::utils::rect, tui::State, Message, TreeKey, TreeValue};
 use tui::{
     buffer::Buffer,
@@ -38,10 +39,15 @@ pub fn all(
     );
 
     let inner = window.inner(bound);
-    let (tasks_pane, messages_pane) = compute_pane_bounds(
+    let (tasks_pane, messages_pane, _info_pane) = compute_pane_bounds(
         if state.hide_messages { &[] } else { messages },
         inner,
         state.messages_fullscreen,
+        if state.hide_info {
+            &[]
+        } else {
+            &state.information
+        },
     );
 
     draw::tasks::pane(&entries, tasks_pane, &mut state.task_offset, buf);
@@ -60,9 +66,10 @@ fn compute_pane_bounds(
     messages: &[Message],
     inner: Rect,
     messages_fullscreen: bool,
-) -> (Rect, Option<Rect>) {
+    info: &[Line],
+) -> (Rect, Option<Rect>, Option<Rect>) {
     if messages.is_empty() {
-        (inner, None::<Rect>)
+        (inner, None, compute_info_bound(inner, info))
     } else {
         let (task_percent, messages_percent) = if messages_fullscreen {
             (0.1, 0.9)
@@ -72,7 +79,7 @@ fn compute_pane_bounds(
         let tasks_height: u16 = (inner.height as f32 * task_percent).ceil() as u16;
         let messages_height: u16 = (inner.height as f32 * messages_percent).floor() as u16;
         if messages_height < 2 {
-            (inner, None)
+            (inner, None, None)
         } else {
             let messages_title = 1u16;
             let new_messages_height =
@@ -92,7 +99,12 @@ fn compute_pane_bounds(
                     },
                     inner,
                 )),
+                None,
             )
         }
     }
+}
+
+fn compute_info_bound(_bound: Rect, _info: &[Line]) -> Option<Rect> {
+    None
 }
