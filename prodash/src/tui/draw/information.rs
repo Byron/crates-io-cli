@@ -21,6 +21,10 @@ pub fn pane(lines: &[Line], bound: Rect, buf: &mut Buffer) {
     );
 
     let bound = block.inner(bound);
+    let bound = Rect {
+        width: bound.width.saturating_sub(1),
+        ..bound
+    };
     let mut offset = 0;
     for (line, info) in lines.windows(2).enumerate() {
         let (info, next_info) = (&info[0], &info[1]);
@@ -48,14 +52,14 @@ pub fn pane(lines: &[Line], bound: Rect, buf: &mut Buffer) {
     }
 
     if let Some(Line::Text(text)) = lines.last() {
-        draw_text_nowrap(
-            rect::offset_x(
-                rect::line_bound(bound, lines.len().saturating_sub(1) + offset),
-                1,
-            ),
-            buf,
-            text,
-            None,
-        );
+        let line = lines.len().saturating_sub(1) + offset;
+        if line < bound.height as usize {
+            draw_text_nowrap(
+                rect::offset_x(rect::line_bound(bound, line), 1),
+                buf,
+                text,
+                None,
+            );
+        }
     }
 }
