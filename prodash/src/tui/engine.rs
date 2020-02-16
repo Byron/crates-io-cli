@@ -24,6 +24,7 @@ pub struct State {
     pub title: String,
     pub task_offset: u16,
     pub message_offset: u16,
+    pub hide_messages: bool,
     pub user_provided_window_size: Option<Rect>,
     pub duration_per_frame: Duration,
 }
@@ -77,6 +78,7 @@ pub fn render_with_input(
                     Key::Esc | Key::Char('q') | Key::Ctrl('c') | Key::Ctrl('[') => {
                         break;
                     }
+                    Key::Char('`') => state.hide_messages = !state.hide_messages,
                     Key::Char('J') => state.message_offset = state.message_offset.saturating_add(1),
                     Key::Char('j') => state.task_offset = state.task_offset.saturating_add(1),
                     Key::Char('K') => state.message_offset = state.message_offset.saturating_sub(1),

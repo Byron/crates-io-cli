@@ -44,7 +44,8 @@ pub fn all(
     );
 
     let inner = window.inner(bound);
-    let (tasks_pane, messages_pane) = compute_pane_bounds(messages, inner);
+    let (tasks_pane, messages_pane) =
+        compute_pane_bounds(if state.hide_messages { &[] } else { messages }, inner);
 
     draw::tasks::pane(&entries, tasks_pane, &mut state.task_offset, buf);
     if let Some(messages_pane) = messages_pane {
