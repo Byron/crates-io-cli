@@ -20,19 +20,15 @@ async fn work_forever(pool: impl Spawn + Clone + Send + 'static, args: arg::Opti
     // Now we should handle signals to be able to cleanup properly
     let (gui_handle, abort_gui) = launch_ambient_gui(&pool, progress.clone(), args).unwrap();
     let mut gui_handle = Some(gui_handle.boxed());
-    let mut iteration = 0;
 
     loop {
-        iteration += 1;
         let local_work = new_chunk_of_work(
-            format!("{}: local", iteration),
             NestingLevel(thread_rng().gen_range(0, Key::max_level())),
             progress.clone(),
             pool.clone(),
         );
         let pooled_work = (0..thread_rng().gen_range(6, 16usize)).map(|_| {
             pool.spawn_with_handle(new_chunk_of_work(
-                format!("{}: pooled", iteration),
                 NestingLevel(thread_rng().gen_range(0, Key::max_level())),
                 progress.clone(),
                 pool.clone(),
@@ -147,16 +143,10 @@ async fn work_item(mut progress: Item) -> () {
     }
 }
 
-async fn new_chunk_of_work(
-    prefix: impl AsRef<str>,
-    max: NestingLevel,
-    tree: Tree,
-    pool: impl Spawn,
-) -> Result {
+async fn new_chunk_of_work(max: NestingLevel, tree: Tree, pool: impl Spawn) -> Result {
     let NestingLevel(max_level) = max;
     let mut progresses = Vec::new();
-    let mut level_progress =
-        tree.add_child(format!("{}: level {} of {}", prefix.as_ref(), 1, max_level));
+    let mut level_progress = tree.add_child(format!("level {} of {}", 1, max_level));
     let mut handles = Vec::new();
 
     for level in 0..max_level {
