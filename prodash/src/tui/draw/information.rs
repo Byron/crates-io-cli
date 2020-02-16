@@ -46,4 +46,16 @@ pub fn pane(lines: &[Line], bound: Rect, buf: &mut Buffer) {
             offset += 1;
         }
     }
+
+    if let Some(Line::Text(text)) = lines.last() {
+        draw_text_nowrap(
+            rect::offset_x(
+                rect::line_bound(bound, lines.len().saturating_sub(1) + offset),
+                1,
+            ),
+            buf,
+            text,
+            None,
+        );
+    }
 }
