@@ -14,7 +14,6 @@ use unicode_segmentation::UnicodeSegmentation;
 use unicode_width::UnicodeWidthStr;
 
 const TIME_COLUMN_PREFIX: u16 = "20-02-13T".len() as u16;
-
 const TIME_COLUMN_SUFFIX: u16 = "00:51:45".len() as u16;
 
 pub fn pane(

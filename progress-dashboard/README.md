@@ -43,6 +43,11 @@
 
 ## Limitations
 
+* The underlying sync data structure, `dashmap`, does not document every use of unsafe
+  * I also evaluated `evmap`, which has 25% less uses of unsafe, but a more complex interface.
+  * Thus far it seemed 'ok' to use, who knows… we are getting mutable pieces of a hashmap from multiple threads,
+    however, we never hand out multiple handles to the same child which should make actual concurrent access to 
+    the same key impossible.
 * If there are more than 2^16 tasks
   * then
     * running concurrently on a single level of the tree, they start overwriting each other
