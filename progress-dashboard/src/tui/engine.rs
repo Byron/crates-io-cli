@@ -93,7 +93,7 @@ pub fn render_with_input(
                 progress.sorted_snapshot(&mut entries);
                 progress.copy_messages(&mut messages);
 
-                draw::all(&state, &entries, &messages, window_size, buf);
+                draw::all(&mut state, &entries, &messages, window_size, buf);
                 terminal.post_render().expect("post render to work");
             }
         }

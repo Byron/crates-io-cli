@@ -16,15 +16,16 @@ use unicode_width::UnicodeWidthStr;
 
 const MIN_TREE_WIDTH: u16 = 20;
 
-pub fn pane(entries: &[(TreeKey, TreeValue)], mut bound: Rect, offset: u16, buf: &mut Buffer) {
+pub fn pane(entries: &[(TreeKey, TreeValue)], mut bound: Rect, offset: &mut u16, buf: &mut Buffer) {
     let needs_overflow_line =
-        if entries.len() > bound.height as usize || offset.min(entries.len() as u16) > 0 {
+        if entries.len() > bound.height as usize || (*offset).min(entries.len() as u16) > 0 {
             bound.height = bound.height.saturating_sub(1);
             true
         } else {
             false
         };
 
+    *offset = sanitize_offset(*offset, entries.len(), bound.height);
     if !entries.is_empty() {
         let column_width = bound.width / 2;
         let max_tree_draw_width = if column_width >= MIN_TREE_WIDTH {
@@ -32,7 +33,7 @@ pub fn pane(entries: &[(TreeKey, TreeValue)], mut bound: Rect, offset: u16, buf:
                 width: column_width,
                 ..bound
             };
-            draw_tree(entries, buf, prefix_area, offset)
+            draw_tree(entries, buf, prefix_area, *offset)
         } else {
             0
         };
@@ -49,7 +50,7 @@ pub fn pane(entries: &[(TreeKey, TreeValue)], mut bound: Rect, offset: u16, buf:
                 } else {
                     true
                 },
-                offset,
+                *offset,
             );
         }
 
@@ -302,7 +303,6 @@ pub fn draw_tree(
     bound: Rect,
     offset: u16,
 ) -> u16 {
-    let offset = sanitize_offset(offset, entries.len(), bound.height);
     let mut max_prefix_len = 0;
     for (line, (key, TreeValue { progress, title })) in entries
         .iter()

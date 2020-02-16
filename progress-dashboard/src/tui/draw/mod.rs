@@ -11,7 +11,7 @@ use unicode_segmentation::UnicodeSegmentation;
 use unicode_width::UnicodeWidthStr;
 
 pub fn all(
-    state: &State,
+    state: &mut State,
     entries: &[(TreeKey, TreeValue)],
     messages: &[Message],
     bound: Rect,
@@ -39,20 +39,20 @@ pub fn all(
                 .graphemes(true)
                 .map(|s| s.width())
                 .sum::<usize>()
-                + 2) as u16,
+                + (border_width as usize) * 2) as u16,
         ),
     );
 
     let inner = window.inner(bound);
     let (tasks_pane, messages_pane) = compute_pane_bounds(messages, inner);
 
-    draw::tasks::pane(&entries, tasks_pane, state.task_offset, buf);
+    draw::tasks::pane(&entries, tasks_pane, &mut state.task_offset, buf);
     if let Some(messages_pane) = messages_pane {
         draw::messages::pane(
             messages,
             messages_pane,
             rect::line_bound(bound, bound.height.saturating_sub(1) as usize),
-            state.message_offset,
+            &mut state.message_offset,
             buf,
         );
     }

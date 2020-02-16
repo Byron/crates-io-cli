@@ -21,18 +21,18 @@ pub fn pane(
     messages: &[Message],
     bound: Rect,
     overflow_bound: Rect,
-    offset: u16,
+    offset: &mut u16,
     buf: &mut Buffer,
 ) {
     let mut block = Block::default().title("Messages").borders(Borders::TOP);
     block.draw(bound, buf);
 
     let bound = block.inner(bound);
-    let offset = sanitize_offset(offset, messages.len(), bound.height);
+    *offset = sanitize_offset(*offset, messages.len(), bound.height);
     let max_origin_width = messages
         .iter()
         .rev()
-        .skip(offset as usize)
+        .skip(*offset as usize)
         .take(bound.height as usize)
         .fold(0, |state, message| {
             state.max(
@@ -54,7 +54,7 @@ pub fn pane(
     ) in messages
         .iter()
         .rev()
-        .skip(offset as usize)
+        .skip(*offset as usize)
         .take(bound.height as usize)
         .enumerate()
     {
@@ -90,13 +90,13 @@ pub fn pane(
         draw_text_nowrap(message_bound, buf, message, None);
     }
 
-    if (bound.height as usize) < messages.len().saturating_sub(offset as usize)
-        || offset.min(messages.len() as u16) > 0
+    if (bound.height as usize) < messages.len().saturating_sub(*offset as usize)
+        || (*offset).min(messages.len() as u16) > 0
     {
         let messages_below = messages
             .len()
-            .saturating_sub(bound.height.saturating_add(offset) as usize);
-        let messages_skipped = offset.min(messages.len() as u16);
+            .saturating_sub(bound.height.saturating_add(*offset) as usize);
+        let messages_skipped = (*offset).min(messages.len() as u16);
         draw_text_nowrap(
             rect::offset_x(overflow_bound, 2),
             buf,
