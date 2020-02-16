@@ -6,7 +6,7 @@ use dashmap::DashMap;
 use parking_lot::Mutex;
 use std::sync::Arc;
 
-/// A way to configure new [`TreeRoot`](./struct.TreeRoot.html) instances
+/// A way to configure new [`TreeRoot`](./struct.Root.html) instances
 /// ```rust
 /// use prodash::{Tree, TreeConfig};
 /// let tree = TreeConfig::default().create();
@@ -21,7 +21,7 @@ pub struct TreeConfig {
 }
 
 impl TreeConfig {
-    /// Create a new [`TreeRoot`](./struct.TreeRoot.html) instance from the
+    /// Create a new [`TreeRoot`](./struct.Root.html) instance from the
     /// configuration within.
     pub fn create(self) -> Tree {
         self.into()

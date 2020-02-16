@@ -5,16 +5,16 @@ use std::{sync::Arc, time::SystemTime};
 
 /// The top-level of the progress tree.
 #[derive(Clone, Debug)]
-pub struct Tree {
+pub struct Root {
     pub(crate) inner: Arc<Mutex<Item>>,
 }
 
-impl Tree {
+impl Root {
     /// Create a new tree with default configuration.
     ///
-    /// As opposed to [Tree](./struct.Tree.html) instances, this type can be closed and sent
+    /// As opposed to [Item](./struct.Item.html) instances, this type can be closed and sent
     /// safely across threads.
-    pub fn new() -> Tree {
+    pub fn new() -> Root {
         TreeConfig::default().into()
     }
 
@@ -23,16 +23,16 @@ impl Tree {
         self.inner.lock().messages.lock().buf.capacity()
     }
 
-    /// Returns the current amount of tasks currently stored in the TreeRoot.
-    /// **Note** that this is at most a guess as tasks are added and removed in parallel.
+    /// Returns the current amount of `Item`s stored in the tree.
+    /// **Note** that this is at most a guess as tasks can be added and removed in parallel.
     pub fn num_tasks(&self) -> usize {
         self.inner.lock().tree.len()
     }
 
-    /// Adds a new child `Tree`, whose parent is this instance, with the given `name`.
+    /// Adds a new child `tree::Item`, whose parent is this instance, with the given `name`.
     ///
-    /// This builds a hierarchy of tasks, each having their own progress.
-    /// Use this method to [track progress](./struct.Tree.html) of your first tasks.
+    /// This builds a hierarchy of `tree::Item`s, each having their own progress.
+    /// Use this method to [track progress](./struct.Item.html) of your first tasks.
     pub fn add_child(&self, name: impl Into<String>) -> Item {
         self.inner.lock().add_child(name)
     }
@@ -71,7 +71,7 @@ pub enum MessageLevel {
 
 /// A message to be stored along with the progress tree.
 ///
-/// It is created by [`Tree::message(…)`](./struct.Tree.html#method.message).
+/// It is created by [`Tree::message(…)`](./struct.Item.html#method.message).
 #[derive(Debug, Clone)]
 pub struct Message {
     /// The time at which the message was sent.
@@ -134,8 +134,8 @@ impl MessageRingBuffer {
 ///
 /// It can be used to set progress and send messages.
 /// ```rust
-/// let root = prodash::Tree::new();
-/// let mut progress = root.add_child("task 1");
+/// let tree = prodash::Tree::new();
+/// let mut progress = tree.add_child("task 1");
 ///
 /// progress.init(Some(10), Some("elements"));
 /// for p in 0..10 {
@@ -162,16 +162,16 @@ impl Drop for Item {
 }
 
 impl Item {
-    /// Initialize the tree for receiving progress information.
+    /// Initialize the Item for receiving progress information.
     ///
-    /// If `max` is `Some(…)`, it will be treated as upper bound. When progress is [set(…)](./struct.Tree.html#method.set)
+    /// If `max` is `Some(…)`, it will be treated as upper bound. When progress is [set(…)](./struct.Item.html#method.set)
     /// it should not exceed the given maximum.
     /// If `max` is `None`, the progress is unbounded. Use this if the amount of work cannot accurately
     /// be determined.
     ///
     /// If `unit` is `Some(…)`, it is used for display purposes only.
     ///
-    /// If this method is never called, the `Tree` will serve as organizational unit, useful to add more structure
+    /// If this method is never called, this `Item` will serve as organizational unit, useful to add more structure
     /// to the progress tree.
     ///
     /// **Note** that this method can be called multiple times, changing the bounded-ness and unit at will.
@@ -218,7 +218,7 @@ impl Item {
     /// If `eta` is `Some(…)`, it specifies the time at which this task is expected to
     /// make progress again.
     ///
-    /// The blocked-state is undone next time [`Tree::set(…)`](./struct.Tree.html#method.set) is called.
+    /// The blocked-state is undone next time [`tree::Item::set(…)`](./struct.Item.html#method.set) is called.
     pub fn blocked(&mut self, eta: Option<SystemTime>) {
         self.alter_progress(|p| p.state = ProgressState::Blocked(eta));
     }
@@ -366,8 +366,8 @@ impl Progress {
 /// The value associated with a spot in the hierarchy.
 #[derive(Clone, Default, Hash, Eq, PartialEq, Ord, PartialOrd, Debug)]
 pub struct TreeValue {
-    /// The name of the `Tree` or task.
+    /// The name of the `Item` or task.
     pub name: String,
-    /// The progress itself, unless this value belongs to a `Tree` serving as organizational unit.
+    /// The progress itself, unless this value belongs to an `Item` serving as organizational unit.
     pub progress: Option<Progress>,
 }

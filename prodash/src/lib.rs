@@ -21,7 +21,7 @@ mod config;
 pub mod tree;
 
 pub use config::TreeConfig;
-pub use tree::Tree;
+pub use tree::Root as Tree;
 
 #[cfg(feature = "tui-renderer")]
 pub mod tui;
