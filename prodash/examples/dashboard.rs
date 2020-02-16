@@ -7,9 +7,9 @@ use futures::{
     Future, FutureExt, StreamExt,
 };
 use futures_timer::Delay;
-use prodash::tui::Line;
 use prodash::{
     tui,
+    tui::Line,
     tui::{ticker, Event},
     Tree, TreeKey, TreeRoot,
 };
@@ -240,8 +240,7 @@ fn launch_ambient_gui(
 }
 
 fn generate_statistics() -> Vec<Line> {
-    vec![
-        Line::Title("Hello World".into()),
+    let mut lines = vec![
         Line::Text("You can put here what you want".into()),
         Line::Text("as long as it fits one line".into()),
         Line::Text("until a certain limit is reached".into()),
@@ -256,6 +255,11 @@ fn generate_statistics() -> Vec<Line> {
             "and this line is without any doubt very very long and it really doesn't want to stop"
                 .into(),
         ),
+    ];
+    lines.shuffle(&mut thread_rng());
+    lines.insert(0, Line::Title("Hello World".into()));
+
+    lines.extend(vec![
         Line::Title("Statistics".into()),
         Line::Text(format!(
             "lines of unsafe code: {}",
@@ -277,7 +281,8 @@ fn generate_statistics() -> Vec<Line> {
             "bloat in code: {} Kb",
             thread_rng().gen_range(100usize, 5000)
         )),
-    ]
+    ]);
+    lines
 }
 
 fn window_resize_stream(animate: bool) -> impl futures::Stream<Item = Event> {

@@ -116,10 +116,13 @@ fn compute_info_bound(bound: Rect, info: &[Line], maximize: bool) -> (Rect, Opti
     if info.is_empty() {
         return (bound, None);
     }
+    let margin = 1;
     let max_line_width = info.iter().fold(0, |state, l| {
-        state.max(block_width(match l {
-            Line::Text(s) | Line::Title(s) => s,
-        }))
+        state.max(
+            block_width(match l {
+                Line::Text(s) | Line::Title(s) => s,
+            }) + margin,
+        )
     });
     let pane_width = if maximize {
         bound.width.saturating_sub(8).min(max_line_width)
