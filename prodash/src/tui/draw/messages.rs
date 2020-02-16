@@ -25,6 +25,13 @@ pub fn pane(
 ) {
     let mut block = Block::default().title("Messages").borders(Borders::TOP);
     block.draw(bound, buf);
+    let help_text = " ⨯ = `|▢ = ~ ";
+    draw_text_nowrap(
+        rect::snap_to_right(bound, block_width(help_text)),
+        buf,
+        help_text,
+        Some(Style::default().bg(Color::White).fg(Color::Black)),
+    );
 
     let bound = block.inner(bound);
     *offset = sanitize_offset(*offset, messages.len(), bound.height);

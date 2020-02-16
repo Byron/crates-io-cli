@@ -407,9 +407,9 @@ pub fn draw_overflow<'a>(
         label,
         color_text_according_to_progress,
     );
-    let help_text = format!("⇊ = d|↓ = j|⇈ = u|↑ = k ");
+    let help_text = "⇊ = d|↓ = j|⇈ = u|↑ = k ";
     draw_text_nowrap_fn(
-        rect::snap_to_right(bound, block_width(&help_text)),
+        rect::snap_to_right(bound, block_width(help_text)),
         buf,
         help_text,
         color_text_according_to_progress,
