@@ -23,6 +23,7 @@ feature-check: ## build features in commmon combination to be sure it all stays 
 	cargo check --no-default-features --features search
 	cargo check --no-default-features --features mine
 	cargo check --all-features
+	cd prodash && cargo check --no-default-features && cargo check
 
 tests: feature-check unit-tests journey-tests ## Run all tests we have
 
