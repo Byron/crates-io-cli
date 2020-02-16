@@ -20,6 +20,8 @@ By default, a TUI is provided to visualize all state. Have a look at [the exampl
 
 Please have a look at the [dashboard demo](https://github.com/Byron/crates-io-cli-rs/blob/master/prodash/examples/dashboard.rs).
 
+[![asciicast](https://asciinema.org/a/301838.svg)](https://asciinema.org/a/301838)
+
 Run it with `cargo run --example dashboard` and see what else it can do by checking out `cargo run --example dashboard -- --help`.
 
 */
