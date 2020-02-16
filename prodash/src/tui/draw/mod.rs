@@ -1,6 +1,6 @@
 mod all;
 mod information;
 mod messages;
-mod tasks;
+mod progress;
 
 pub use all::{all, State};

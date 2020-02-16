@@ -257,8 +257,9 @@ pub fn draw_progress(
             None => {
                 let center_rect = rect::intersect(
                     Rect {
-                        x: column_line_width
-                            + (line_bound.width.saturating_add(max_title_width as u16 * 2)) / 2,
+                        x: line_bound.x
+                            + column_line_width
+                            + (line_bound.width.saturating_sub(max_title_width as u16)) / 2,
                         width: max_title_width as u16,
                         ..line_bound
                     },

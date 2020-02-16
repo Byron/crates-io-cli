@@ -50,7 +50,7 @@ pub fn all(
     }
 
     let border_width = 1;
-    draw::tasks::headline(
+    draw::progress::headline(
         &entries,
         state.duration_per_frame,
         buf,
@@ -71,7 +71,7 @@ pub fn all(
         state.messages_fullscreen,
     );
 
-    draw::tasks::pane(&entries, tasks_pane, &mut state.task_offset, buf);
+    draw::progress::pane(&entries, tasks_pane, &mut state.task_offset, buf);
     if let Some(messages_pane) = messages_pane {
         draw::messages::pane(
             messages,
