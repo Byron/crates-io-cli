@@ -1,10 +1,10 @@
 use criterion::*;
 
-use prodash::{tree::MessageLevel, Tree, TreeConfig};
+use prodash::{tree::MessageLevel, Tree, TreeOptions};
 
 fn usage(c: &mut Criterion) {
     fn small_tree() -> Tree {
-        TreeConfig {
+        TreeOptions {
             initial_capacity: 10,
             message_buffer_capacity: 2,
         }

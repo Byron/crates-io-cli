@@ -8,19 +8,19 @@ use std::sync::Arc;
 
 /// A way to configure new [`tree::Root`](./tree/struct.Root.html) instances
 /// ```rust
-/// use prodash::{Tree, TreeConfig};
-/// let tree = TreeConfig::default().create();
-/// let tree2 = TreeConfig { message_buffer_capacity: 100, ..TreeConfig::default() }.create();
+/// use prodash::{Tree, TreeOptions};
+/// let tree = TreeOptions::default().create();
+/// let tree2 = TreeOptions { message_buffer_capacity: 100, ..TreeOptions::default() }.create();
 /// ```
 #[derive(Clone, Debug)]
-pub struct TreeConfig {
+pub struct TreeOptions {
     /// The amount of items the tree can hold without being forced to allocate
     pub initial_capacity: usize,
     /// The amount of messages we can hold before we start overwriting old ones
     pub message_buffer_capacity: usize,
 }
 
-impl TreeConfig {
+impl TreeOptions {
     /// Create a new [`Root`](./tree/struct.Root.html) instance from the
     /// configuration within.
     pub fn create(self) -> Tree {
@@ -28,21 +28,21 @@ impl TreeConfig {
     }
 }
 
-impl Default for TreeConfig {
+impl Default for TreeOptions {
     fn default() -> Self {
-        TreeConfig {
+        TreeOptions {
             initial_capacity: 100,
             message_buffer_capacity: 20,
         }
     }
 }
 
-impl From<TreeConfig> for Tree {
+impl From<TreeOptions> for Tree {
     fn from(
-        TreeConfig {
+        TreeOptions {
             initial_capacity,
             message_buffer_capacity,
-        }: TreeConfig,
+        }: TreeOptions,
     ) -> Self {
         Tree {
             inner: Arc::new(Mutex::new(Item {

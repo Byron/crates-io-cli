@@ -20,7 +20,7 @@ Please have a look at the [dashboard demo](https://github.com/Byron/crates-io-cl
 mod config;
 pub mod tree;
 
-pub use config::TreeConfig;
+pub use config::TreeOptions;
 pub use tree::Root as Tree;
 
 #[cfg(feature = "tui-renderer")]

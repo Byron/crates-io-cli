@@ -1,5 +1,7 @@
-use crate::tui::utils::{block_width, draw_text_nowrap};
-use crate::tui::{utils::rect, Line};
+use crate::tui::{
+    utils::{block_width, draw_text_nowrap, rect},
+    Line,
+};
 use tui::{
     buffer::Buffer,
     layout::Rect,

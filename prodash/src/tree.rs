@@ -1,4 +1,4 @@
-use crate::TreeConfig;
+use crate::TreeOptions;
 use dashmap::DashMap;
 use parking_lot::Mutex;
 use std::{sync::Arc, time::SystemTime};
@@ -15,7 +15,7 @@ impl Root {
     /// As opposed to [Item](./struct.Item.html) instances, this type can be closed and sent
     /// safely across threads.
     pub fn new() -> Root {
-        TreeConfig::default().into()
+        TreeOptions::default().into()
     }
 
     /// Returns the maximum amount of messages we can keep before overwriting older ones.

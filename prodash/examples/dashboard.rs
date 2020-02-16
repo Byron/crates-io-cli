@@ -12,9 +12,9 @@ fn main() -> Result {
 }
 
 async fn work_forever(pool: impl Spawn + Clone + Send + 'static, args: arg::Options) -> Result {
-    let progress = prodash::TreeConfig {
+    let progress = prodash::TreeOptions {
         message_buffer_capacity: args.message_scrollback_buffer_size,
-        ..prodash::TreeConfig::default()
+        ..prodash::TreeOptions::default()
     }
     .create();
     // Now we should handle signals to be able to cleanup properly
@@ -69,9 +69,10 @@ fn launch_ambient_gui(
 ) -> std::result::Result<(impl Future<Output = ()>, AbortHandle), std::io::Error> {
     let render_fut = tui::render_with_input(
         progress,
-        tui::Config {
+        tui::TuiOptions {
             title: TITLES.choose(&mut thread_rng()).map(|t| *t).unwrap().into(),
             frames_per_second: args.fps,
+            ..tui::TuiOptions::default()
         },
         futures::stream::select(
             window_resize_stream(args.animate_terminal_size),
