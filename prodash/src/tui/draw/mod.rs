@@ -1,9 +1,11 @@
+mod information;
 mod messages;
 mod tasks;
 
-use crate::tui::utils::block_width;
-use crate::tui::Line;
-use crate::{tui::draw, tui::utils::rect, tui::State, Message, TreeKey, TreeValue};
+use crate::{
+    tui::draw, tui::utils::block_width, tui::utils::rect, tui::Line, tui::State, Message, TreeKey,
+    TreeValue,
+};
 use tui::{
     buffer::Buffer,
     layout::Rect,
@@ -39,7 +41,7 @@ pub fn all(
     );
 
     let inner = window.inner(bound);
-    let (tasks_pane, messages_pane, _info_pane) = compute_pane_bounds(
+    let (tasks_pane, messages_pane, info_pane) = compute_pane_bounds(
         if state.hide_messages { &[] } else { messages },
         inner,
         state.messages_fullscreen,
@@ -60,6 +62,10 @@ pub fn all(
             buf,
         );
     }
+
+    if let Some(info_pane) = info_pane {
+        draw::information::pane(&state.information, info_pane, buf);
+    }
 }
 
 fn compute_pane_bounds(
@@ -79,7 +85,7 @@ fn compute_pane_bounds(
         let tasks_height: u16 = (inner.height as f32 * task_percent).ceil() as u16;
         let messages_height: u16 = (inner.height as f32 * messages_percent).floor() as u16;
         if messages_height < 2 {
-            (inner, None, None)
+            (inner, None, compute_info_bound(inner, info))
         } else {
             let messages_title = 1u16;
             let new_messages_height =
@@ -99,12 +105,23 @@ fn compute_pane_bounds(
                     },
                     inner,
                 )),
-                None,
+                compute_info_bound(inner, info),
             )
         }
     }
 }
 
-fn compute_info_bound(_bound: Rect, _info: &[Line]) -> Option<Rect> {
-    None
+fn compute_info_bound(bound: Rect, info: &[Line]) -> Option<Rect> {
+    if info.is_empty() {
+        return None;
+    }
+    let max_line_width = info.iter().fold(0, |state, l| {
+        state.max(block_width(match l {
+            Line::Text(s) | Line::Title(s) => s,
+        }))
+    });
+    Some(rect::snap_to_right(
+        bound,
+        (bound.width / 2).min(max_line_width),
+    ))
 }
