@@ -1,35 +1,17 @@
-## Goals
+**prodash** is a dashboard for displaying progress of concurrent applications.
 
-* fast insertions and updates
+It's easy to integrate thanks to a pragmatic API, and comes with a terminal user interface by default.
 
-## Non-Goals
-* fast reads
+## How to use…
 
-## Tasks
+Be sure to read the documentation at https://docs.rs/prodash
 
-* example-driven development for tree-interface and visualization
-  * [x] task tree with colored progress, proper resizing 
-  * [x] title-only
-  * [x] bounded progress
-  * [x] unbounded progress
-  * [x] blocking indicator
-    * [x] with optional time-to-unblock
-  * [x] tasks overview headline
-  * [x] fractional FPS
-    * [x] 'last frame at' for FPS < 1.0 in headline
-  * [x] unicode support
-  * [x] Ring-buffer powered message buffer in tree (done, info, warn, error)
-    * [x] display that message buffer in tui
-    * [x] overflow handling
-  * [x] use future streams as sole interface (one unified stream with Messages)
-  * [x] define boundary on the fly using messages (allows incorporating it into other TUIs potentially)
-  * [x] allow scrolling through tasks and messages
-  * [x] set title dynamically
-  * [x] custom statistics window (data sent via message channel)
-* [x] Argh based command-line input
-* [x] some benchmarks
-* [ ] run example as journey test
-* [ ] full documentation and maybe a few smaller examples
+## Features
+
+* fast insertions and updates for transparent progress tracking of highly concurrent programs
+* a messages buffer for information about success and failure
+* a terminal user interface for visualization
+* unicode and multi-width character support
 
 ## Lessons Learned
 
@@ -43,6 +25,7 @@
 
 ## Limitations
 
+* it does copy quite some state each time it displays progress information and messages
 * The underlying sync data structure, `dashmap`, does not document every use of unsafe
   * I also evaluated `evmap`, which has 25% less uses of unsafe, but a more complex interface.
   * Thus far it seemed 'ok' to use, who knows… we are getting mutable pieces of a hashmap from multiple threads,

@@ -12,9 +12,15 @@ is indeed the case.
 
 The **terminal user interface** seems to be the least transparent part, but can be configured to refresh less frequently.
 
-# Examples
+# Terminal User Interface
+
+By default, a TUI is provided to visualize all state. Have a look at [the example provided in the tui module](./tui/index.html).
+
+# A demo application
 
 Please have a look at the [dashboard demo](https://github.com/Byron/crates-io-cli-rs/blob/master/prodash/examples/dashboard.rs).
+
+Run it with `cargo run --example dashboard` and see what else it can do by checking out `cargo run --example dashboard -- --help`.
 
 */
 mod config;
