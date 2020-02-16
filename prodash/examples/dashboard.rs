@@ -307,7 +307,7 @@ mod arg {
         pub fps: f32,
 
         /// the amount of scrollback for task messages.
-        #[argh(option, default = "20")]
+        #[argh(option, default = "80")]
         pub message_scrollback_buffer_size: usize,
     }
 }

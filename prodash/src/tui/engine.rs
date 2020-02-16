@@ -25,6 +25,7 @@ pub struct State {
     pub task_offset: u16,
     pub message_offset: u16,
     pub hide_messages: bool,
+    pub messages_fullscreen: bool,
     pub user_provided_window_size: Option<Rect>,
     pub duration_per_frame: Duration,
 }
@@ -79,6 +80,7 @@ pub fn render_with_input(
                         break;
                     }
                     Key::Char('`') => state.hide_messages = !state.hide_messages,
+                    Key::Char('~') => state.messages_fullscreen = !state.messages_fullscreen,
                     Key::Char('J') => state.message_offset = state.message_offset.saturating_add(1),
                     Key::Char('D') => {
                         state.message_offset = state.message_offset.saturating_add(10)
