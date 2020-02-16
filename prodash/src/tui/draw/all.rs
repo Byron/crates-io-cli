@@ -53,7 +53,10 @@ pub fn all(
         draw::messages::pane(
             messages,
             messages_pane,
-            rect::line_bound(bound, bound.height.saturating_sub(1) as usize),
+            Rect {
+                width: messages_pane.width + 2,
+                ..rect::line_bound(bound, bound.height.saturating_sub(1) as usize)
+            },
             &mut state.message_offset,
             buf,
         );
@@ -70,8 +73,9 @@ fn compute_pane_bounds(
     messages_fullscreen: bool,
     info: &[Line],
 ) -> (Rect, Option<Rect>, Option<Rect>) {
+    let (inner, info_bound) = compute_info_bound(inner, info);
     if messages.is_empty() {
-        (inner, None, compute_info_bound(inner, info))
+        (inner, None, info_bound)
     } else {
         let (task_percent, messages_percent) = if messages_fullscreen {
             (0.1, 0.9)
@@ -81,7 +85,7 @@ fn compute_pane_bounds(
         let tasks_height: u16 = (inner.height as f32 * task_percent).ceil() as u16;
         let messages_height: u16 = (inner.height as f32 * messages_percent).floor() as u16;
         if messages_height < 2 {
-            (inner, None, compute_info_bound(inner, info))
+            (inner, None, info_bound)
         } else {
             let messages_title = 1u16;
             let new_messages_height =
@@ -101,23 +105,27 @@ fn compute_pane_bounds(
                     },
                     inner,
                 )),
-                compute_info_bound(inner, info),
+                info_bound,
             )
         }
     }
 }
 
-fn compute_info_bound(bound: Rect, info: &[Line]) -> Option<Rect> {
+fn compute_info_bound(bound: Rect, info: &[Line]) -> (Rect, Option<Rect>) {
     if info.is_empty() {
-        return None;
+        return (bound, None);
     }
     let max_line_width = info.iter().fold(0, |state, l| {
         state.max(block_width(match l {
             Line::Text(s) | Line::Title(s) => s,
         }))
     });
-    Some(rect::snap_to_right(
-        bound,
-        (bound.width / 2).min(max_line_width),
-    ))
+    let pane_width = (bound.width / 2).min(max_line_width);
+    (
+        Rect {
+            width: bound.width.saturating_sub(pane_width),
+            ..bound
+        },
+        Some(rect::snap_to_right(bound, pane_width)),
+    )
 }
