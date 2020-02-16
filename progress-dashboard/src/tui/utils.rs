@@ -19,6 +19,10 @@ pub fn ticker(dur: Duration) -> impl futures::Stream<Item = ()> {
     })
 }
 
+pub fn sanitize_offset(offset: u16, num_items: usize, num_displayable_lines: u16) -> u16 {
+    offset.min((num_items.saturating_sub(num_displayable_lines as usize)) as u16)
+}
+
 #[derive(Default)]
 pub struct GraphemeCountWriter(pub usize);
 

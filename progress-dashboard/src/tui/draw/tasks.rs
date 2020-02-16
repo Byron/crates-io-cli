@@ -1,4 +1,6 @@
-use crate::tui::utils::{draw_text_nowrap, draw_text_nowrap_fn, rect, GraphemeCountWriter};
+use crate::tui::utils::{
+    draw_text_nowrap, draw_text_nowrap_fn, rect, sanitize_offset, GraphemeCountWriter,
+};
 use crate::{Progress, ProgressStep, TaskState, TreeKey, TreeValue};
 use humantime::format_duration;
 use std::fmt;
@@ -144,6 +146,7 @@ pub fn draw_progress(
     draw_column_line: bool,
     offset: u16,
 ) {
+    let offset = sanitize_offset(offset, entries.len(), bound.height);
     let title_spacing = 2u16 + 1; // 2 on the left, 1 on the right
     let column_line_width = if draw_column_line { 1 } else { 0 };
     let max_progress_label_width = entries
@@ -299,6 +302,7 @@ pub fn draw_tree(
     bound: Rect,
     offset: u16,
 ) -> u16 {
+    let offset = sanitize_offset(offset, entries.len(), bound.height);
     let mut max_prefix_len = 0;
     for (line, (key, TreeValue { progress, title })) in entries
         .iter()

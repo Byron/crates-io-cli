@@ -1,3 +1,4 @@
+use crate::tui::utils::sanitize_offset;
 use crate::{
     tui::utils::{draw_text_nowrap, rect},
     Message, MessageLevel,
@@ -27,6 +28,7 @@ pub fn pane(
     block.draw(bound, buf);
 
     let bound = block.inner(bound);
+    let offset = sanitize_offset(offset, messages.len(), bound.height);
     let max_origin_width = messages
         .iter()
         .rev()
