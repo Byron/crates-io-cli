@@ -12,10 +12,13 @@ is indeed the case.
 
 The **terminal user interface** seems to be the least transparent part, but can be configured to refresh less frequently.
 
-*/
-mod tree;
+# Examples
 
+Please have a look at the [dashboard demo](https://github.com/Byron/crates-io-cli-rs/blob/master/prodash/examples/dashboard.rs).
+
+*/
 mod config;
+mod tree;
 
 pub use config::*;
 pub use tree::*;

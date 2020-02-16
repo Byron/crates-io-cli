@@ -3,7 +3,7 @@ use crate::{
         block_width, draw_text_nowrap, draw_text_nowrap_fn, rect, sanitize_offset,
         GraphemeCountWriter,
     },
-    Progress, ProgressStep, TaskState, TreeKey, TreeValue,
+    Progress, ProgressState, ProgressStep, TreeKey, TreeValue,
 };
 use humantime::format_duration;
 use std::{
@@ -86,8 +86,8 @@ pub fn headline(
         (0, 0, 0),
         |(mut running, mut blocked, mut groups), (_key, TreeValue { progress, .. })| {
             match progress.map(|p| p.state) {
-                Some(TaskState::Running) => running += 1,
-                Some(TaskState::Blocked(_)) => blocked += 1,
+                Some(ProgressState::Running) => running += 1,
+                Some(ProgressState::Blocked(_)) => blocked += 1,
                 None => groups += 1,
             }
             (running, blocked, groups)
@@ -210,7 +210,7 @@ pub fn draw_progress(
         match progress.map(|p| (p.fraction(), p.state, p.step)) {
             Some((Some(fraction), state, _step)) => {
                 let mut progress_text = progress_text;
-                if let TaskState::Blocked(Some(eta)) = state {
+                if let ProgressState::Blocked(Some(eta)) = state {
                     let now = SystemTime::now();
                     if eta > now {
                         progress_text.push_str(&format!(
@@ -221,7 +221,7 @@ pub fn draw_progress(
                 }
                 let (bound, style) =
                     draw_progress_bar_fn(buf, progress_rect, fraction, |fraction| {
-                        if let TaskState::Blocked(_) = state {
+                        if let ProgressState::Blocked(_) = state {
                             return Color::Red;
                         }
                         if fraction >= 0.8 {
@@ -247,7 +247,7 @@ pub fn draw_progress(
                     bar_rect,
                     step,
                     line,
-                    if let TaskState::Blocked(_) = state {
+                    if let ProgressState::Blocked(_) = state {
                         Color::Red
                     } else {
                         Color::White

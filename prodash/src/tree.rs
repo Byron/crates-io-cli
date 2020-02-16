@@ -3,26 +3,42 @@ use dashmap::DashMap;
 use parking_lot::Mutex;
 use std::{sync::Arc, time::SystemTime};
 
-/// The top-level of the progress tree
+/// The top-level of the progress tree.
 #[derive(Clone, Debug)]
 pub struct TreeRoot {
     pub(crate) inner: Arc<Mutex<Tree>>,
 }
 
 impl TreeRoot {
+    /// Create a new tree with default configuration.
+    ///
+    /// As opposed to [Tree](./struct.Tree.html) instances, this type can be closed and sent
+    /// safely across threads.
     pub fn new() -> TreeRoot {
         Config::default().into()
     }
+
+    /// Returns the maximum amount of messages we can keep before overwriting older ones.
     pub fn messages_capacity(&self) -> usize {
         self.inner.lock().messages.lock().buf.capacity()
     }
+
+    /// Returns the current amount of tasks currently stored in the TreeRoot.
+    /// **Note** that this is at most a guess as tasks are added and removed in parallel.
     pub fn num_tasks(&self) -> usize {
         self.inner.lock().tree.len()
     }
-    pub fn add_child(&self, title: impl Into<String>) -> Tree {
-        self.inner.lock().add_child(title)
+
+    /// Adds a new child `Tree`, whose parent is this instance, with the given `name`.
+    ///
+    /// This builds a hierarchy of tasks, each having their own progress.
+    /// Use this method to [track progress](./struct.Tree.html) of your first tasks.
+    pub fn add_child(&self, name: impl Into<String>) -> Tree {
+        self.inner.lock().add_child(name)
     }
 
+    /// Copy the entire progress tree into the given `out` vector, so that
+    /// it can be traversed from beginning to end in order of hierarchy.
     pub fn sorted_snapshot(&self, out: &mut Vec<(TreeKey, TreeValue)>) {
         out.clear();
         out.extend(
@@ -35,23 +51,36 @@ impl TreeRoot {
         out.sort_by_key(|t| t.0);
     }
 
+    /// Copy all messages from the internal ring buffer into the given `out`
+    /// vector. Messages are ordered from oldest to newest.
     pub fn copy_messages(&self, out: &mut Vec<Message>) {
         self.inner.lock().messages.lock().copy_into(out);
     }
 }
 
+/// The severity of a message
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]
 pub enum MessageLevel {
+    /// Rarely sent information related to the progress, not to be confused with the progress itself
     Info,
+    /// Used to indicate that a task has failed, along with the reason
     Failure,
+    /// Indicates a task was completed successfully
     Success,
 }
 
+/// A message to be stored along with the progress tree.
+///
+/// It is created by [`Tree::message(…)`](./struct.Tree.html#method.message).
 #[derive(Debug, Clone)]
 pub struct Message {
+    /// The time at which the message was sent.
     pub time: SystemTime,
+    /// The serverity of the message
     pub level: MessageLevel,
+    /// The name of the task that created the `Message`
     pub origin: String,
+    /// The message itself
     pub message: String,
 }
 
@@ -101,6 +130,23 @@ impl MessageRingBuffer {
     }
 }
 
+/// A `Tree` represents an element of the progress tree.
+///
+/// It can be used to set progress and send messages.
+/// ```rust
+/// let root = prodash::TreeRoot::new();
+/// let mut progress = root.add_child("task 1");
+///
+/// progress.init(Some(10), Some("elements"));
+/// for p in 0..10 {
+///     progress.set(p);
+/// }
+/// progress.done("great success");
+/// let mut  sub_progress = progress.add_child("sub-task 1");
+/// sub_progress.init(None, None);
+/// sub_progress.set(5);
+/// sub_progress.fail("couldn't finish");
+/// ```
 #[derive(Debug)]
 pub struct Tree {
     pub(crate) key: TreeKey,
@@ -116,6 +162,19 @@ impl Drop for Tree {
 }
 
 impl Tree {
+    /// Initialize the tree for receiving progress information.
+    ///
+    /// If `max` is `Some(…)`, it will be treated as upper bound. When progress is [set(…)](./struct.Tree.html#method.set)
+    /// it should not exceed the given maximum.
+    /// If `max` is `None`, the progress is unbounded. Use this if the amount of work cannot accurately
+    /// be determined.
+    ///
+    /// If `unit` is `Some(…)`, it is used for display purposes only.
+    ///
+    /// If this method is never called, the `Tree` will serve as organizational unit, useful to add more structure
+    /// to the progress tree.
+    ///
+    /// **Note** that this method can be called multiple times, changing the bounded-ness and unit at will.
     pub fn init(&mut self, max: Option<ProgressStep>, unit: Option<&'static str>) {
         self.tree.get_mut(&self.key).map(|mut r| {
             r.value_mut().progress = Some(Progress {
@@ -137,23 +196,38 @@ impl Tree {
         });
     }
 
+    /// Set the name of this task's progress to the given `name`.
     pub fn set_name(&mut self, name: impl Into<String>) {
         self.tree.get_mut(&self.key).map(|mut r| {
             r.value_mut().name = name.into();
         });
     }
 
+    /// Set the current progress to the given `step`.
+    ///
+    /// **Note**: that this call has no effect unless `init(…)` was called before.
     pub fn set(&mut self, step: ProgressStep) {
         self.alter_progress(|p| {
             p.step = step;
-            p.state = TaskState::Running;
+            p.state = ProgressState::Running;
         });
     }
 
+    /// Call to indicate that progress cannot be made.
+    ///
+    /// If `eta` is `Some(…)`, it specifies the time at which this task is expected to
+    /// make progress again.
+    ///
+    /// The blocked-state is undone next time [`Tree::set(…)`](./struct.Tree.html#method.set) is called.
     pub fn blocked(&mut self, eta: Option<SystemTime>) {
-        self.alter_progress(|p| p.state = TaskState::Blocked(eta));
+        self.alter_progress(|p| p.state = ProgressState::Blocked(eta));
     }
 
+    /// Adds a new child `Tree`, whose parent is this instance, with the given `name`.
+    ///
+    /// **Important**: The depth of the hierarchy is limited to [`TreeKey::max_level`](./struct.TreeKey.html#method.max_level).
+    /// Exceeding the level will be ignored, and new tasks will be added to this instance's
+    /// level instead.
     pub fn add_child(&mut self, name: impl Into<String>) -> Tree {
         let child_key = self.key.add_child(self.highest_child_id);
         self.tree.insert(
@@ -172,6 +246,10 @@ impl Tree {
         }
     }
 
+    /// Create a `message` of the given `level` and store it with the progress tree.
+    ///
+    /// Use this to provide additional,human-readable information about the progress
+    /// made, including indicating success or failure.
     pub fn message(&mut self, level: MessageLevel, message: impl AsRef<str>) {
         self.messages.lock().push_overwrite(
             level,
@@ -183,20 +261,27 @@ impl Tree {
         )
     }
 
+    /// Create a message indicating the task is done
     pub fn done(&mut self, message: impl AsRef<str>) {
         self.message(MessageLevel::Success, message)
     }
+
+    /// Create a message indicating the task failed
     pub fn fail(&mut self, message: impl AsRef<str>) {
         self.message(MessageLevel::Failure, message)
     }
+
+    /// Create a message providing additional information about the progress thus far.
     pub fn info(&mut self, message: impl AsRef<str>) {
         self.message(MessageLevel::Info, message)
     }
 }
 
 type TreeId = u16; // NOTE: This means we will show weird behaviour if there are more than 2^16 tasks at the same time on a level
+/// The amount of steps a progress can make
 pub type ProgressStep = u32;
 
+/// A type identifying a spot in the hierarchy of `Tree` items.
 #[derive(Copy, Clone, Default, Hash, Eq, PartialEq, Ord, PartialOrd, Debug)]
 pub struct TreeKey(
     (
@@ -237,8 +322,9 @@ impl TreeKey {
     }
 }
 
+/// Indicate whether a progress can or cannot be made.
 #[derive(Copy, Clone, Hash, Eq, PartialEq, Ord, PartialOrd, Debug)]
-pub enum TaskState {
+pub enum ProgressState {
     /// Indicates a task is blocked and cannot make progress, optionally until the
     /// given time.
     Blocked(Option<SystemTime>),
@@ -246,29 +332,42 @@ pub enum TaskState {
     Running,
 }
 
-impl Default for TaskState {
+impl Default for ProgressState {
     fn default() -> Self {
-        TaskState::Running
+        ProgressState::Running
     }
 }
 
+/// Progress associated with some item in the progress tree.
 #[derive(Copy, Clone, Default, Hash, Eq, PartialEq, Ord, PartialOrd, Debug)]
 pub struct Progress {
+    /// The amount of progress currently made
     pub step: ProgressStep,
+    /// The step at which no further progress has to be made.
+    ///
+    /// If unset, the progress is unbounded.
     pub done_at: Option<ProgressStep>,
+    /// The unit associated with the progress.
     pub unit: Option<&'static str>,
-    pub state: TaskState,
+    /// Whether progress can be made or not
+    pub state: ProgressState,
 }
 
 impl Progress {
+    /// Returns a number between `Some(0.0)` and `Some(1.0)`, or `None` if the progress is unbounded.
+    ///
+    /// A task half done would return `Some(0.5)`.
     pub fn fraction(&self) -> Option<f32> {
         self.done_at
             .map(|done_at| self.step as f32 / done_at as f32)
     }
 }
 
+/// The value associated with a spot in the hierarchy.
 #[derive(Clone, Default, Hash, Eq, PartialEq, Ord, PartialOrd, Debug)]
 pub struct TreeValue {
+    /// The name of the `Tree` or task.
     pub name: String,
+    /// The progress itself, unless this value belongs to a `Tree` serving as organizational unit.
     pub progress: Option<Progress>,
 }
