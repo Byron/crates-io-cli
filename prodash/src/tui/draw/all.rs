@@ -121,7 +121,7 @@ fn compute_info_bound(bound: Rect, info: &[Line], maximize: bool) -> (Rect, Opti
         state.max(
             block_width(match l {
                 Line::Text(s) | Line::Title(s) => s,
-            }) + margin,
+            }) + margin * 2,
         )
     });
     let pane_width = if maximize {
