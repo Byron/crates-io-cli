@@ -1,14 +1,13 @@
 mod messages;
 mod tasks;
 
+use crate::tui::utils::block_width;
 use crate::{tui::draw, tui::utils::rect, tui::State, Message, TreeKey, TreeValue};
 use tui::{
     buffer::Buffer,
     layout::Rect,
     widgets::{Block, Borders, Widget},
 };
-use unicode_segmentation::UnicodeSegmentation;
-use unicode_width::UnicodeWidthStr;
 
 pub fn all(
     state: &mut State,
@@ -34,12 +33,7 @@ pub fn all(
                 width: bound.width.saturating_sub(border_width),
                 ..bound
             },
-            (state
-                .title
-                .graphemes(true)
-                .map(|s| s.width())
-                .sum::<usize>()
-                + (border_width as usize) * 2) as u16,
+            block_width(&state.title) + (border_width * 2),
         ),
     );
 

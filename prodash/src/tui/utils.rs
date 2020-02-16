@@ -99,6 +99,10 @@ pub fn draw_text_nowrap_fn(
     }
 }
 
+pub fn block_width(s: &str) -> u16 {
+    s.graphemes(true).map(|g| g.width()).sum::<usize>() as u16
+}
+
 pub mod rect {
     use tui::layout::Rect;
 
@@ -124,6 +128,10 @@ pub mod rect {
             width: r.width.saturating_sub(offset),
             ..r
         }
+    }
+
+    pub fn snap_to_right(bound: Rect, new_width: u16) -> Rect {
+        offset_x(bound, bound.width.saturating_sub(new_width))
     }
 
     pub fn line_bound(bound: Rect, line: usize) -> Rect {

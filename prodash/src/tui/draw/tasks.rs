@@ -1,5 +1,5 @@
 use crate::tui::utils::{
-    draw_text_nowrap, draw_text_nowrap_fn, rect, sanitize_offset, GraphemeCountWriter,
+    block_width, draw_text_nowrap, draw_text_nowrap_fn, rect, sanitize_offset, GraphemeCountWriter,
 };
 use crate::{Progress, ProgressStep, TaskState, TreeKey, TreeValue};
 use humantime::format_duration;
@@ -11,8 +11,6 @@ use tui::{
     style::{Color, Style},
 };
 use tui_react::fill_background;
-use unicode_segmentation::UnicodeSegmentation;
-use unicode_width::UnicodeWidthStr;
 
 const MIN_TREE_WIDTH: u16 = 20;
 
@@ -111,12 +109,7 @@ pub fn headline(
         entries.len()
     );
     draw_text_nowrap(
-        rect::offset_x(
-            bound,
-            bound
-                .width
-                .saturating_sub(text.graphemes(true).map(|s| s.width()).sum::<usize>() as u16 + 1),
-        ),
+        rect::snap_to_right(bound, block_width(&text) + 1),
         buf,
         text,
         None,
@@ -180,11 +173,7 @@ pub fn draw_progress(
                     name: title,
                 },
             )| match progress {
-                None => state.max(
-                    title.graphemes(true).map(|s| s.width()).sum::<usize>()
-                        + key.level() as usize
-                        + title_spacing as usize,
-                ),
+                None => state.max(block_width(title) + key.level() as u16 + title_spacing),
                 Some(_) => state,
             },
         );
@@ -405,16 +394,24 @@ pub fn draw_overflow<'a>(
         buf,
         bg_color,
     );
+    let color_text_according_to_progress = move |_g: &str, x: u16, _y: u16| {
+        if x < progress_rect.right() {
+            style
+        } else {
+            style.bg(bg_color)
+        }
+    };
     draw_text_nowrap_fn(
         rect::offset_x(bound, label_offset),
         buf,
         label,
-        move |_g, x, _y| {
-            if x < progress_rect.right() {
-                style
-            } else {
-                style.bg(bg_color)
-            }
-        },
+        color_text_according_to_progress,
+    );
+    let help_text = format!("⇊ = d|↓ = j|⇈ = u|↑ = k ");
+    draw_text_nowrap_fn(
+        rect::snap_to_right(bound, block_width(&help_text)),
+        buf,
+        help_text,
+        color_text_according_to_progress,
     );
 }

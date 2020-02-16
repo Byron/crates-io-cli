@@ -1,3 +1,4 @@
+use crate::tui::utils::block_width;
 use crate::{
     tui::utils::sanitize_offset,
     tui::utils::{draw_text_nowrap, rect},
@@ -10,7 +11,6 @@ use tui::{
     style::{Color, Modifier, Style},
     widgets::{Block, Borders, Widget},
 };
-use unicode_segmentation::UnicodeSegmentation;
 use unicode_width::UnicodeWidthStr;
 
 const TIME_COLUMN_PREFIX: u16 = "20-02-13T".len() as u16;
@@ -33,15 +33,8 @@ pub fn pane(
         .rev()
         .skip(*offset as usize)
         .take(bound.height as usize)
-        .fold(0, |state, message| {
-            state.max(
-                message
-                    .origin
-                    .graphemes(true)
-                    .map(|g| g.width())
-                    .sum::<usize>(),
-            )
-        }) as u16;
+        .fold(0, |state, message| state.max(block_width(&message.origin)))
+        as u16;
     for (
         line,
         Message {
