@@ -17,6 +17,7 @@ use unicode_width::UnicodeWidthStr;
 const MIN_TREE_WIDTH: u16 = 20;
 
 pub fn pane(entries: &[(TreeKey, TreeValue)], mut bound: Rect, offset: &mut u16, buf: &mut Buffer) {
+    *offset = sanitize_offset(*offset, entries.len(), bound.height);
     let needs_overflow_line =
         if entries.len() > bound.height as usize || (*offset).min(entries.len() as u16) > 0 {
             bound.height = bound.height.saturating_sub(1);
@@ -25,7 +26,6 @@ pub fn pane(entries: &[(TreeKey, TreeValue)], mut bound: Rect, offset: &mut u16,
             false
         };
 
-    *offset = sanitize_offset(*offset, entries.len(), bound.height);
     if !entries.is_empty() {
         let column_width = bound.width / 2;
         let max_tree_draw_width = if column_width >= MIN_TREE_WIDTH {
