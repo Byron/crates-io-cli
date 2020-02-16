@@ -25,7 +25,7 @@
   * [x] define boundary on the fly using messages (allows incorporating it into other TUIs potentially)
   * [x] allow scrolling through tasks and messages
   * [x] set title dynamically
-  * [ ] custom statistics window (data sent via message channel)
+  * [x] custom statistics window (data sent via message channel)
 * [x] Argh based command-line input
 * [x] some benchmarks
 * [ ] run example as journey test

@@ -129,6 +129,11 @@ fn compute_info_bound(bound: Rect, info: &[Line], maximize: bool) -> (Rect, Opti
     } else {
         (bound.width / 3).min(max_line_width)
     };
+
+    if pane_width < max_line_width / 3 {
+        return (bound, None);
+    }
+
     (
         Rect {
             width: bound.width.saturating_sub(pane_width),
