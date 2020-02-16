@@ -80,9 +80,17 @@ pub fn render_with_input(
                     }
                     Key::Char('`') => state.hide_messages = !state.hide_messages,
                     Key::Char('J') => state.message_offset = state.message_offset.saturating_add(1),
+                    Key::Char('D') => {
+                        state.message_offset = state.message_offset.saturating_add(10)
+                    }
                     Key::Char('j') => state.task_offset = state.task_offset.saturating_add(1),
+                    Key::Char('d') => state.task_offset = state.task_offset.saturating_add(10),
                     Key::Char('K') => state.message_offset = state.message_offset.saturating_sub(1),
+                    Key::Char('U') => {
+                        state.message_offset = state.message_offset.saturating_sub(10)
+                    }
                     Key::Char('k') => state.task_offset = state.task_offset.saturating_sub(1),
+                    Key::Char('u') => state.task_offset = state.task_offset.saturating_sub(10),
                     _ => skip_redraw = true,
                 },
                 Event::SetWindowSize(bound) => state.user_provided_window_size = Some(bound),
