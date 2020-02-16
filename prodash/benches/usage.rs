@@ -1,6 +1,6 @@
 use criterion::*;
 
-use progress_dashboard::{Config, MessageLevel, TreeRoot};
+use prodash::{Config, MessageLevel, TreeRoot};
 
 fn usage(c: &mut Criterion) {
     fn small_tree() -> TreeRoot {

@@ -5,7 +5,7 @@ use std::sync::Arc;
 
 /// A way to configure new `TreeRoot` instances
 /// ```rust
-/// use progress_dashboard::{TreeRoot, Config};
+/// use prodash::{TreeRoot, Config};
 /// let tree: TreeRoot = Config::default().create();
 /// ```
 #[derive(Clone, Debug)]

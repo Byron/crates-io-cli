@@ -1,5 +1,5 @@
 [package]
-name = "progress-dashboard"
+name = "prodash"
 version = "0.1.0"
 authors = ["Sebastian Thiel <sebastian.thiel@icloud.com>"]
 description = "A dashboard for highly asynchronous and possibly blocking tasks"

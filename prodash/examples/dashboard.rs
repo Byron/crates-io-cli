@@ -7,7 +7,7 @@ use futures::{
     Future, FutureExt, StreamExt,
 };
 use futures_timer::Delay;
-use progress_dashboard::{
+use prodash::{
     tui,
     tui::{ticker, Event},
     Tree, TreeKey, TreeRoot,
@@ -148,9 +148,9 @@ async fn new_chunk_of_work(
 }
 
 async fn work_forever(pool: impl Spawn + Clone + Send + 'static, args: arg::Options) -> Result {
-    let progress = progress_dashboard::Config {
+    let progress = prodash::Config {
         message_buffer_capacity: args.message_scrollback_buffer_size,
-        ..progress_dashboard::Config::default()
+        ..prodash::Config::default()
     }
     .create();
     // Now we should handle signals to be able to cleanup properly
