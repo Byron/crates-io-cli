@@ -137,6 +137,12 @@ impl Tree {
         });
     }
 
+    pub fn set_name(&mut self, name: impl Into<String>) {
+        self.tree.get_mut(&self.key).map(|mut r| {
+            r.value_mut().name = name.into();
+        });
+    }
+
     pub fn set(&mut self, step: ProgressStep) {
         self.alter_progress(|p| {
             p.step = step;
@@ -148,12 +154,12 @@ impl Tree {
         self.alter_progress(|p| p.state = TaskState::Blocked(eta));
     }
 
-    pub fn add_child(&mut self, title: impl Into<String>) -> Tree {
+    pub fn add_child(&mut self, name: impl Into<String>) -> Tree {
         let child_key = self.key.add_child(self.highest_child_id);
         self.tree.insert(
             child_key,
             TreeValue {
-                title: title.into(),
+                name: name.into(),
                 progress: None,
             },
         );
@@ -171,7 +177,7 @@ impl Tree {
             level,
             self.tree
                 .get(&self.key)
-                .map(|v| v.title.to_owned())
+                .map(|v| v.name.to_owned())
                 .unwrap_or_default(),
             message.as_ref(),
         )
@@ -263,6 +269,6 @@ impl Progress {
 
 #[derive(Clone, Default, Hash, Eq, PartialEq, Ord, PartialOrd, Debug)]
 pub struct TreeValue {
-    pub title: String,
+    pub name: String,
     pub progress: Option<Progress>,
 }

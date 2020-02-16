@@ -170,7 +170,14 @@ pub fn draw_progress(
         .take(bound.height as usize)
         .fold(
             0,
-            |state, (key, TreeValue { progress, title })| match progress {
+            |state,
+             (
+                key,
+                TreeValue {
+                    progress,
+                    name: title,
+                },
+            )| match progress {
                 None => state.max(
                     title.graphemes(true).map(|s| s.width()).sum::<usize>()
                         + key.level() as usize
@@ -180,7 +187,16 @@ pub fn draw_progress(
             },
         );
 
-    for (line, (key, TreeValue { progress, title })) in entries
+    for (
+        line,
+        (
+            key,
+            TreeValue {
+                progress,
+                name: title,
+            },
+        ),
+    ) in entries
         .iter()
         .skip(offset as usize)
         .take(bound.height as usize)
@@ -304,7 +320,16 @@ pub fn draw_tree(
     offset: u16,
 ) -> u16 {
     let mut max_prefix_len = 0;
-    for (line, (key, TreeValue { progress, title })) in entries
+    for (
+        line,
+        (
+            key,
+            TreeValue {
+                progress,
+                name: title,
+            },
+        ),
+    ) in entries
         .iter()
         .skip(offset as usize)
         .take(bound.height as usize)

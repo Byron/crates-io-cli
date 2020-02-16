@@ -1,13 +1,13 @@
-use crate::tui::utils::sanitize_offset;
 use crate::{
+    tui::utils::sanitize_offset,
     tui::utils::{draw_text_nowrap, rect},
     Message, MessageLevel,
 };
 use std::time::SystemTime;
-use tui::style::{Color, Modifier, Style};
 use tui::{
     buffer::Buffer,
     layout::Rect,
+    style::{Color, Modifier, Style},
     widgets::{Block, Borders, Widget},
 };
 use unicode_segmentation::UnicodeSegmentation;

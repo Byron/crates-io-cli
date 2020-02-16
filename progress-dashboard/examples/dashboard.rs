@@ -93,6 +93,9 @@ async fn work_item(mut progress: Tree) -> () {
         if thread_rng().gen_bool(0.01) {
             progress.info(INFO_MESSAGES.choose(&mut thread_rng()).unwrap());
         }
+        if thread_rng().gen_bool(0.01) {
+            progress.set_name(WORK_NAMES.choose(&mut thread_rng()).unwrap().to_string());
+        }
         Delay::new(Duration::from_millis(delay)).await;
     }
     if thread_rng().gen_bool(0.95) {
