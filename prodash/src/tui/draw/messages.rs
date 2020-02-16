@@ -1,5 +1,5 @@
-use crate::tui::utils::block_width;
 use crate::{
+    tui::utils::block_width,
     tui::utils::sanitize_offset,
     tui::utils::{draw_text_nowrap, rect},
     Message, MessageLevel,
@@ -30,7 +30,7 @@ pub fn pane(
         rect::snap_to_right(bound, block_width(help_text)),
         buf,
         help_text,
-        Some(Style::default().bg(Color::White).fg(Color::Black)),
+        None,
     );
 
     let bound = block.inner(bound);
@@ -100,6 +100,13 @@ pub fn pane(
             rect::offset_x(overflow_bound, 2),
             buf,
             format!("… {} skipped and {} more", messages_skipped, messages_below),
+            None,
+        );
+        let help_text = " ⇊ = D|↓ = J|⇈ = U|↑ = K ┘";
+        draw_text_nowrap(
+            rect::snap_to_right(overflow_bound, block_width(help_text)),
+            buf,
+            help_text,
             None,
         );
     }

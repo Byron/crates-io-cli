@@ -1,10 +1,15 @@
-use crate::tui::utils::{
-    block_width, draw_text_nowrap, draw_text_nowrap_fn, rect, sanitize_offset, GraphemeCountWriter,
+use crate::{
+    tui::utils::{
+        block_width, draw_text_nowrap, draw_text_nowrap_fn, rect, sanitize_offset,
+        GraphemeCountWriter,
+    },
+    Progress, ProgressStep, TaskState, TreeKey, TreeValue,
 };
-use crate::{Progress, ProgressStep, TaskState, TreeKey, TreeValue};
 use humantime::format_duration;
-use std::fmt;
-use std::time::{Duration, SystemTime};
+use std::{
+    fmt,
+    time::{Duration, SystemTime},
+};
 use tui::{
     buffer::Buffer,
     layout::Rect,
