@@ -24,7 +24,7 @@
   * [x] use future streams as sole interface (one unified stream with Messages)
   * [x] define boundary on the fly using messages (allows incorporating it into other TUIs potentially)
   * [x] allow scrolling through tasks and messages
-  * [ ] set title dynamically
+  * [x] set title dynamically
   * [ ] custom statistics window (data sent via message channel)
 * [x] Argh based command-line input
 * [x] some benchmarks
