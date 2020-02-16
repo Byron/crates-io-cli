@@ -7,6 +7,7 @@ use futures::{
     Future, FutureExt, StreamExt,
 };
 use futures_timer::Delay;
+use prodash::tui::Line;
 use prodash::{
     tui,
     tui::{ticker, Event},
@@ -216,8 +217,13 @@ fn launch_ambient_gui(
         },
         futures::stream::select(
             window_resize_stream(args.animate_terminal_size),
-            ticker(Duration::from_millis(5000))
-                .map(|_| Event::SetTitle(TITLES.choose(&mut thread_rng()).unwrap().to_string())),
+            ticker(Duration::from_millis(5000)).map(|_| {
+                if thread_rng().gen_bool(0.5) {
+                    Event::SetTitle(TITLES.choose(&mut thread_rng()).unwrap().to_string())
+                } else {
+                    Event::SetInformation(generate_statistics())
+                }
+            }),
         ),
     )?;
     let (render_fut, abort_handle) = abortable(render_fut);
@@ -231,6 +237,37 @@ fn launch_ambient_gui(
         },
         abort_handle,
     ))
+}
+
+fn generate_statistics() -> Vec<Line> {
+    vec![
+        Line::Title("Hello World".into()),
+        Line::Text("You can put here what you want".into()),
+        Line::Text("as long as it fits one line".into()),
+        Line::Text("until a certain limit is reached".into()),
+        Line::Text("which is when truncation happens".into()),
+        Line::Title("Statistics".into()),
+        Line::Text(format!(
+            "lines of unsafe code: {}",
+            thread_rng().gen_range(0usize, 1000000)
+        )),
+        Line::Text(format!(
+            "wasted space in crates: {} Kb",
+            thread_rng().gen_range(100usize, 1000000)
+        )),
+        Line::Text(format!(
+            "unused dependencies: {} crates",
+            thread_rng().gen_range(100usize, 1000)
+        )),
+        Line::Text(format!(
+            "average #dependencies: {} crates",
+            thread_rng().gen_range(0usize, 500)
+        )),
+        Line::Text(format!(
+            "bloat in code: {} Kb",
+            thread_rng().gen_range(100usize, 5000)
+        )),
+    ]
 }
 
 fn window_resize_stream(animate: bool) -> impl futures::Stream<Item = Event> {

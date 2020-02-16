@@ -12,11 +12,17 @@ pub struct Config {
     pub frames_per_second: f32,
 }
 
+pub enum Line {
+    Title(String),
+    Text(String),
+}
+
 pub enum Event {
     Tick,
     Input(Key),
     SetWindowSize(Rect),
     SetTitle(String),
+    SetInformation(Vec<Line>),
 }
 
 #[derive(Default)]
@@ -28,6 +34,7 @@ pub struct State {
     pub messages_fullscreen: bool,
     pub user_provided_window_size: Option<Rect>,
     pub duration_per_frame: Duration,
+    pub information: Vec<Line>,
 }
 
 pub fn render_with_input(
@@ -97,6 +104,7 @@ pub fn render_with_input(
                 },
                 Event::SetWindowSize(bound) => state.user_provided_window_size = Some(bound),
                 Event::SetTitle(title) => state.title = title,
+                Event::SetInformation(info) => state.information = info,
             }
             if !skip_redraw {
                 let window_size = terminal.pre_render().expect("pre-render to work");
