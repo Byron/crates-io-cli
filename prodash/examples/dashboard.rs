@@ -1,67 +1,101 @@
 #![deny(unsafe_code)]
-use futures::{
-    executor::{block_on, ThreadPool},
-    future::{abortable, join_all},
-    future::{AbortHandle, Either},
-    task::{Spawn, SpawnExt},
-    Future, FutureExt, StreamExt,
-};
-use futures_timer::Delay;
-use prodash::{
-    tui,
-    tui::Line,
-    tui::{ticker, Event},
-    Tree, TreeKey, TreeRoot,
-};
-use rand::prelude::*;
-use std::{error::Error, ops::Add, time::Duration, time::SystemTime};
+fn main() -> Result {
+    env_logger::init();
 
-const WORK_STEPS_NEEDED_FOR_UNBOUNDED_TASK: u8 = 100;
-const UNITS: &[&str] = &["Mb", "kb", "items", "files"];
-const TITLES: &[&str] = &[" Dashboard Demo ", " 仪表板演示 "];
-const WORK_NAMES: &[&str] = &[
-    "Downloading Crate",
-    "下载板条箱",
-    "Running 'cargo geiger'",
-    "运行程序 'cargo geiger'",
-    "Counting lines of code",
-    "计数代码行",
-    "Checking for unused dependencies",
-    "检查未使用的依赖项",
-    "Checking for crate-bloat",
-    "检查板条箱膨胀",
-    "Generating report",
-    "生成报告",
-];
-const DONE_MESSAGES: &[&str] = &[
-    "Yeeeehaa! Finally!!",
-    "呀！ 最后！",
-    "It feels good to be done!",
-    "感觉好极了！",
-    "Told you so!!",
-    "告诉过你了！",
-];
-const FAIL_MESSAGES: &[&str] = &[
-    "That didn't seem to work!",
-    "那似乎没有用！",
-    "Oh my… I failed you 😞",
-    "哦，我…我让你失败😞",
-    "This didn't end well…",
-    "结局不好…",
-];
-const INFO_MESSAGES: &[&str] = &[
-    "Making good progress!",
-    "进展良好！",
-    "Humming along…",
-    "嗡嗡作响…",
-    "It will be done soooooon…",
-    "会很快完成的……",
-];
-const WORK_DELAY_MS: u64 = 100;
-const LONG_WORK_DELAY_MS: u64 = 2000;
-const SPAWN_DELAY_MS: u64 = 200;
-const CHANCE_TO_BLOCK_PER_STEP: f64 = 1.0 / 100.0;
-const CHANCE_TO_SHOW_ETA: f64 = 0.5;
+    let args: arg::Options = argh::from_env();
+    // Use spawn as well to simulate Send futures
+    let pool = ThreadPool::builder()
+        .pool_size(1)
+        .create()
+        .expect("pool creation to work (io-error is not Send");
+    block_on(work_forever(pool, args))
+}
+
+async fn work_forever(pool: impl Spawn + Clone + Send + 'static, args: arg::Options) -> Result {
+    let progress = prodash::Config {
+        message_buffer_capacity: args.message_scrollback_buffer_size,
+        ..prodash::Config::default()
+    }
+    .create();
+    // Now we should handle signals to be able to cleanup properly
+    let (gui_handle, abort_gui) = launch_ambient_gui(&pool, progress.clone(), args).unwrap();
+    let mut gui_handle = Some(gui_handle.boxed());
+    let mut iteration = 0;
+
+    loop {
+        iteration += 1;
+        let local_work = new_chunk_of_work(
+            format!("{}: local", iteration),
+            NestingLevel(thread_rng().gen_range(0, TreeKey::max_level())),
+            progress.clone(),
+            pool.clone(),
+        );
+        let pooled_work = (0..thread_rng().gen_range(6, 16usize)).map(|_| {
+            pool.spawn_with_handle(new_chunk_of_work(
+                format!("{}: pooled", iteration),
+                NestingLevel(thread_rng().gen_range(0, TreeKey::max_level())),
+                progress.clone(),
+                pool.clone(),
+            ))
+            .expect("spawning to work - SpawnError cannot be ")
+            .boxed_local()
+        });
+
+        match futures::future::select(
+            join_all(std::iter::once(local_work.boxed_local()).chain(pooled_work)),
+            gui_handle.take().expect("gui handle"),
+        )
+        .await
+        {
+            Either::Left((_workblock_result, running_gui)) => {
+                gui_handle = Some(running_gui);
+                continue;
+            }
+            Either::Right(_gui_shutdown) => break,
+        }
+    }
+
+    abort_gui.abort();
+    if let Some(gui) = gui_handle {
+        gui.await;
+    }
+    Ok(())
+}
+
+fn launch_ambient_gui(
+    pool: &dyn Spawn,
+    progress: TreeRoot,
+    args: arg::Options,
+) -> std::result::Result<(impl Future<Output = ()>, AbortHandle), std::io::Error> {
+    let render_fut = tui::render_with_input(
+        progress,
+        tui::Config {
+            title: TITLES.choose(&mut thread_rng()).map(|t| *t).unwrap().into(),
+            frames_per_second: args.fps,
+        },
+        futures::stream::select(
+            window_resize_stream(args.animate_terminal_size),
+            ticker(Duration::from_millis(1000)).map(|_| {
+                if thread_rng().gen_bool(0.5) {
+                    Event::SetTitle(TITLES.choose(&mut thread_rng()).unwrap().to_string())
+                } else {
+                    Event::SetInformation(generate_statistics())
+                }
+            }),
+        ),
+    )?;
+    let (render_fut, abort_handle) = abortable(render_fut);
+    let handle = pool
+        .spawn_with_handle(render_fut)
+        .expect("GUI to be spawned");
+    Ok((
+        async move {
+            handle.await.ok();
+            ()
+        },
+        abort_handle,
+    ))
+}
 
 async fn work_item(mut progress: Tree) -> () {
     let max: u8 = thread_rng().gen_range(25, 125);
@@ -148,95 +182,9 @@ async fn new_chunk_of_work(
     Ok(())
 }
 
-async fn work_forever(pool: impl Spawn + Clone + Send + 'static, args: arg::Options) -> Result {
-    let progress = prodash::Config {
-        message_buffer_capacity: args.message_scrollback_buffer_size,
-        ..prodash::Config::default()
-    }
-    .create();
-    // Now we should handle signals to be able to cleanup properly
-    let (gui_handle, abort_gui) = launch_ambient_gui(&pool, progress.clone(), args).unwrap();
-    let mut gui_handle = Some(gui_handle.boxed());
-    let mut iteration = 0;
-
-    loop {
-        iteration += 1;
-        let local_work = new_chunk_of_work(
-            format!("{}: local", iteration),
-            NestingLevel(thread_rng().gen_range(0, TreeKey::max_level())),
-            progress.clone(),
-            pool.clone(),
-        );
-        let pooled_work = (0..thread_rng().gen_range(6, 16usize)).map(|_| {
-            pool.spawn_with_handle(new_chunk_of_work(
-                format!("{}: pooled", iteration),
-                NestingLevel(thread_rng().gen_range(0, TreeKey::max_level())),
-                progress.clone(),
-                pool.clone(),
-            ))
-            .expect("spawning to work - SpawnError cannot be ")
-            .boxed_local()
-        });
-
-        match futures::future::select(
-            join_all(std::iter::once(local_work.boxed_local()).chain(pooled_work)),
-            gui_handle.take().expect("gui handle"),
-        )
-        .await
-        {
-            Either::Left((_workblock_result, running_gui)) => {
-                gui_handle = Some(running_gui);
-                continue;
-            }
-            Either::Right(_gui_shutdown) => break,
-        }
-    }
-
-    abort_gui.abort();
-    if let Some(gui) = gui_handle {
-        gui.await;
-    }
-    Ok(())
-}
-
 enum Direction {
     Shrink,
     Grow,
-}
-
-fn launch_ambient_gui(
-    pool: &dyn Spawn,
-    progress: TreeRoot,
-    args: arg::Options,
-) -> std::result::Result<(impl Future<Output = ()>, AbortHandle), std::io::Error> {
-    let render_fut = tui::render_with_input(
-        progress,
-        tui::Config {
-            title: TITLES.choose(&mut thread_rng()).map(|t| *t).unwrap().into(),
-            frames_per_second: args.fps,
-        },
-        futures::stream::select(
-            window_resize_stream(args.animate_terminal_size),
-            ticker(Duration::from_millis(1000)).map(|_| {
-                if thread_rng().gen_bool(0.5) {
-                    Event::SetTitle(TITLES.choose(&mut thread_rng()).unwrap().to_string())
-                } else {
-                    Event::SetInformation(generate_statistics())
-                }
-            }),
-        ),
-    )?;
-    let (render_fut, abort_handle) = abortable(render_fut);
-    let handle = pool
-        .spawn_with_handle(render_fut)
-        .expect("GUI to be spawned");
-    Ok((
-        async move {
-            handle.await.ok();
-            ()
-        },
-        abort_handle,
-    ))
 }
 
 fn generate_statistics() -> Vec<Line> {
@@ -328,18 +276,6 @@ fn window_resize_stream(animate: bool) -> impl futures::Stream<Item = Event> {
         .boxed()
 }
 
-fn main() -> Result {
-    env_logger::init();
-
-    let args: arg::Options = argh::from_env();
-    // Use spawn as well to simulate Send futures
-    let pool = ThreadPool::builder()
-        .pool_size(1)
-        .create()
-        .expect("pool creation to work (io-error is not Send");
-    block_on(work_forever(pool, args))
-}
-
 struct NestingLevel(u8);
 type Result = std::result::Result<(), Box<dyn Error + Send>>;
 
@@ -363,3 +299,67 @@ mod arg {
         pub message_scrollback_buffer_size: usize,
     }
 }
+
+use futures::{
+    executor::{block_on, ThreadPool},
+    future::{abortable, join_all},
+    future::{AbortHandle, Either},
+    task::{Spawn, SpawnExt},
+    Future, FutureExt, StreamExt,
+};
+use futures_timer::Delay;
+use prodash::{
+    tui,
+    tui::Line,
+    tui::{ticker, Event},
+    Tree, TreeKey, TreeRoot,
+};
+use rand::prelude::*;
+use std::{error::Error, ops::Add, time::Duration, time::SystemTime};
+
+const WORK_STEPS_NEEDED_FOR_UNBOUNDED_TASK: u8 = 100;
+const UNITS: &[&str] = &["Mb", "kb", "items", "files"];
+const TITLES: &[&str] = &[" Dashboard Demo ", " 仪表板演示 "];
+const WORK_NAMES: &[&str] = &[
+    "Downloading Crate",
+    "下载板条箱",
+    "Running 'cargo geiger'",
+    "运行程序 'cargo geiger'",
+    "Counting lines of code",
+    "计数代码行",
+    "Checking for unused dependencies",
+    "检查未使用的依赖项",
+    "Checking for crate-bloat",
+    "检查板条箱膨胀",
+    "Generating report",
+    "生成报告",
+];
+const DONE_MESSAGES: &[&str] = &[
+    "Yeeeehaa! Finally!!",
+    "呀！ 最后！",
+    "It feels good to be done!",
+    "感觉好极了！",
+    "Told you so!!",
+    "告诉过你了！",
+];
+const FAIL_MESSAGES: &[&str] = &[
+    "That didn't seem to work!",
+    "那似乎没有用！",
+    "Oh my… I failed you 😞",
+    "哦，我…我让你失败😞",
+    "This didn't end well…",
+    "结局不好…",
+];
+const INFO_MESSAGES: &[&str] = &[
+    "Making good progress!",
+    "进展良好！",
+    "Humming along…",
+    "嗡嗡作响…",
+    "It will be done soooooon…",
+    "会很快完成的……",
+];
+const WORK_DELAY_MS: u64 = 100;
+const LONG_WORK_DELAY_MS: u64 = 2000;
+const SPAWN_DELAY_MS: u64 = 200;
+const CHANCE_TO_BLOCK_PER_STEP: f64 = 1.0 / 100.0;
+const CHANCE_TO_SHOW_ETA: f64 = 0.5;
