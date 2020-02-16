@@ -1,11 +1,10 @@
 [package]
 name = "prodash"
-version = "0.1.0"
+version = "1.0.0"
 authors = ["Sebastian Thiel <sebastian.thiel@icloud.com>"]
-description = "A dashboard for highly asynchronous and possibly blocking tasks"
+description = "A dashboard for visualizing progress of asynchronous and possibly blocking tasks"
 edition = "2018"
-publish = false
-include = ["src/**/*", "Cargo.*"]
+include = ["src/**/*", "Cargo.toml", "LICENSE.md"]
 license = "MIT"
 repository = "https://github.com/Byron/crates-io-cli-rs"
 readme = "README.md"
