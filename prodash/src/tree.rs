@@ -169,7 +169,7 @@ impl Item {
     /// If `max` is `None`, the progress is unbounded. Use this if the amount of work cannot accurately
     /// be determined.
     ///
-    /// If `unit` is `Some(…)`, it is used for display purposes only.
+    /// If `unit` is `Some(…)`, it is used for display purposes only. It should be using the plural.
     ///
     /// If this method is never called, this `Item` will serve as organizational unit, useful to add more structure
     /// to the progress tree.
