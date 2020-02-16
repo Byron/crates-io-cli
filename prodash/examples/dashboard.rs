@@ -26,14 +26,14 @@ async fn work_forever(pool: impl Spawn + Clone + Send + 'static, args: arg::Opti
         iteration += 1;
         let local_work = new_chunk_of_work(
             format!("{}: local", iteration),
-            NestingLevel(thread_rng().gen_range(0, TreeKey::max_level())),
+            NestingLevel(thread_rng().gen_range(0, Key::max_level())),
             progress.clone(),
             pool.clone(),
         );
         let pooled_work = (0..thread_rng().gen_range(6, 16usize)).map(|_| {
             pool.spawn_with_handle(new_chunk_of_work(
                 format!("{}: pooled", iteration),
-                NestingLevel(thread_rng().gen_range(0, TreeKey::max_level())),
+                NestingLevel(thread_rng().gen_range(0, Key::max_level())),
                 progress.clone(),
                 pool.clone(),
             ))
@@ -316,7 +316,7 @@ use futures::{
 use futures_timer::Delay;
 use prodash::tree::Item;
 use prodash::{
-    tree::TreeKey,
+    tree::Key,
     tui::{self, ticker, Event, Line},
     Tree,
 };

@@ -1,5 +1,5 @@
 use crate::{
-    tree::{Message, TreeKey, TreeValue},
+    tree::{Key, Message, Value},
     tui::draw,
     tui::utils::block_width,
     tui::utils::rect,
@@ -14,7 +14,7 @@ use tui::{
 
 pub fn all(
     state: &mut State,
-    entries: &[(TreeKey, TreeValue)],
+    entries: &[(Key, Value)],
     messages: &[Message],
     bound: Rect,
     buf: &mut Buffer,

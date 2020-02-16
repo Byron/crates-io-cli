@@ -1,12 +1,12 @@
 use crate::{
-    tree::{Item, MessageRingBuffer, TreeKey},
+    tree::{Item, Key, MessageRingBuffer},
     Tree,
 };
 use dashmap::DashMap;
 use parking_lot::Mutex;
 use std::sync::Arc;
 
-/// A way to configure new [`TreeRoot`](./struct.Root.html) instances
+/// A way to configure new [`tree::Root`](./tree/struct.Root.html) instances
 /// ```rust
 /// use prodash::{Tree, TreeConfig};
 /// let tree = TreeConfig::default().create();
@@ -21,7 +21,7 @@ pub struct TreeConfig {
 }
 
 impl TreeConfig {
-    /// Create a new [`TreeRoot`](./struct.Root.html) instance from the
+    /// Create a new [`Root`](./tree/struct.Root.html) instance from the
     /// configuration within.
     pub fn create(self) -> Tree {
         self.into()
@@ -47,7 +47,7 @@ impl From<TreeConfig> for Tree {
         Tree {
             inner: Arc::new(Mutex::new(Item {
                 highest_child_id: 0,
-                key: TreeKey::default(),
+                key: Key::default(),
                 tree: Arc::new(DashMap::with_capacity(initial_capacity)),
                 messages: Arc::new(Mutex::new(MessageRingBuffer::with_capacity(
                     message_buffer_capacity,

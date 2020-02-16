@@ -39,7 +39,7 @@ impl Root {
 
     /// Copy the entire progress tree into the given `out` vector, so that
     /// it can be traversed from beginning to end in order of hierarchy.
-    pub fn sorted_snapshot(&self, out: &mut Vec<(TreeKey, TreeValue)>) {
+    pub fn sorted_snapshot(&self, out: &mut Vec<(Key, Value)>) {
         out.clear();
         out.extend(
             self.inner
@@ -149,9 +149,9 @@ impl MessageRingBuffer {
 /// ```
 #[derive(Debug)]
 pub struct Item {
-    pub(crate) key: TreeKey,
-    pub(crate) highest_child_id: TreeId,
-    pub(crate) tree: Arc<DashMap<TreeKey, TreeValue>>,
+    pub(crate) key: Key,
+    pub(crate) highest_child_id: ItemId,
+    pub(crate) tree: Arc<DashMap<Key, Value>>,
     pub(crate) messages: Arc<Mutex<MessageRingBuffer>>,
 }
 
@@ -225,14 +225,14 @@ impl Item {
 
     /// Adds a new child `Tree`, whose parent is this instance, with the given `name`.
     ///
-    /// **Important**: The depth of the hierarchy is limited to [`TreeKey::max_level`](./struct.TreeKey.html#method.max_level).
+    /// **Important**: The depth of the hierarchy is limited to [`tree::Key::max_level`](./struct.Key.html#method.max_level).
     /// Exceeding the level will be ignored, and new tasks will be added to this instance's
     /// level instead.
     pub fn add_child(&mut self, name: impl Into<String>) -> Item {
         let child_key = self.key.add_child(self.highest_child_id);
         self.tree.insert(
             child_key,
-            TreeValue {
+            Value {
                 name: name.into(),
                 progress: None,
             },
@@ -277,29 +277,29 @@ impl Item {
     }
 }
 
-type TreeId = u16; // NOTE: This means we will show weird behaviour if there are more than 2^16 tasks at the same time on a level
+type ItemId = u16; // NOTE: This means we will show weird behaviour if there are more than 2^16 tasks at the same time on a level
 /// The amount of steps a progress can make
 pub type ProgressStep = u32;
 
 /// A type identifying a spot in the hierarchy of `Tree` items.
 #[derive(Copy, Clone, Default, Hash, Eq, PartialEq, Ord, PartialOrd, Debug)]
-pub struct TreeKey(
+pub struct Key(
     (
-        Option<TreeId>,
-        Option<TreeId>,
-        Option<TreeId>,
-        Option<TreeId>,
+        Option<ItemId>,
+        Option<ItemId>,
+        Option<ItemId>,
+        Option<ItemId>,
     ),
 );
 
-impl TreeKey {
-    fn add_child(self, child_id: TreeId) -> TreeKey {
-        TreeKey(match self {
-            TreeKey((None, None, None, None)) => (Some(child_id), None, None, None),
-            TreeKey((a, None, None, None)) => (a, Some(child_id), None, None),
-            TreeKey((a, b, None, None)) => (a, b, Some(child_id), None),
-            TreeKey((a, b, c, None)) => (a, b, c, Some(child_id)),
-            TreeKey((a, b, c, _d)) => {
+impl Key {
+    fn add_child(self, child_id: ItemId) -> Key {
+        Key(match self {
+            Key((None, None, None, None)) => (Some(child_id), None, None, None),
+            Key((a, None, None, None)) => (a, Some(child_id), None, None),
+            Key((a, b, None, None)) => (a, b, Some(child_id), None),
+            Key((a, b, c, None)) => (a, b, c, Some(child_id)),
+            Key((a, b, c, _d)) => {
                 log::warn!("Maximum nesting level reached. Adding tasks to current parent");
                 (a, b, c, Some(child_id))
             }
@@ -308,11 +308,11 @@ impl TreeKey {
 
     pub fn level(&self) -> u8 {
         match self {
-            TreeKey((None, None, None, None)) => 0,
-            TreeKey((Some(_), None, None, None)) => 1,
-            TreeKey((Some(_), Some(_), None, None)) => 2,
-            TreeKey((Some(_), Some(_), Some(_), None)) => 3,
-            TreeKey((Some(_), Some(_), Some(_), Some(_))) => 4,
+            Key((None, None, None, None)) => 0,
+            Key((Some(_), None, None, None)) => 1,
+            Key((Some(_), Some(_), None, None)) => 2,
+            Key((Some(_), Some(_), Some(_), None)) => 3,
+            Key((Some(_), Some(_), Some(_), Some(_))) => 4,
             _ => unreachable!("This is a bug - Keys follow a certain pattern"),
         }
     }
@@ -365,7 +365,7 @@ impl Progress {
 
 /// The value associated with a spot in the hierarchy.
 #[derive(Clone, Default, Hash, Eq, PartialEq, Ord, PartialOrd, Debug)]
-pub struct TreeValue {
+pub struct Value {
     /// The name of the `Item` or task.
     pub name: String,
     /// The progress itself, unless this value belongs to an `Item` serving as organizational unit.

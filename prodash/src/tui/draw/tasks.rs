@@ -1,5 +1,5 @@
 use crate::{
-    tree::{Progress, ProgressState, ProgressStep, TreeKey, TreeValue},
+    tree::{Key, Progress, ProgressState, ProgressStep, Value},
     tui::utils::{
         block_width, draw_text_nowrap, draw_text_nowrap_fn, rect, sanitize_offset,
         GraphemeCountWriter,
@@ -19,7 +19,7 @@ use tui_react::fill_background;
 
 const MIN_TREE_WIDTH: u16 = 20;
 
-pub fn pane(entries: &[(TreeKey, TreeValue)], mut bound: Rect, offset: &mut u16, buf: &mut Buffer) {
+pub fn pane(entries: &[(Key, Value)], mut bound: Rect, offset: &mut u16, buf: &mut Buffer) {
     *offset = sanitize_offset(*offset, entries.len(), bound.height);
     let needs_overflow_line =
         if entries.len() > bound.height as usize || (*offset).min(entries.len() as u16) > 0 {
@@ -77,14 +77,14 @@ pub fn pane(entries: &[(TreeKey, TreeValue)], mut bound: Rect, offset: &mut u16,
 }
 
 pub fn headline(
-    entries: &[(TreeKey, TreeValue)],
+    entries: &[(Key, Value)],
     duration_per_frame: Duration,
     buf: &mut Buffer,
     bound: Rect,
 ) {
     let (num_running_tasks, num_blocked_tasks, num_groups) = entries.iter().fold(
         (0, 0, 0),
-        |(mut running, mut blocked, mut groups), (_key, TreeValue { progress, .. })| {
+        |(mut running, mut blocked, mut groups), (_key, Value { progress, .. })| {
             match progress.map(|p| p.state) {
                 Some(ProgressState::Running) => running += 1,
                 Some(ProgressState::Blocked(_)) => blocked += 1,
@@ -142,7 +142,7 @@ impl<'a> fmt::Display for ProgressFormat<'a> {
 }
 
 pub fn draw_progress(
-    entries: &[(TreeKey, TreeValue)],
+    entries: &[(Key, Value)],
     buf: &mut Buffer,
     bound: Rect,
     draw_column_line: bool,
@@ -154,7 +154,7 @@ pub fn draw_progress(
         .iter()
         .skip(offset as usize)
         .take(bound.height as usize)
-        .map(|(_, TreeValue { progress, .. })| progress)
+        .map(|(_, Value { progress, .. })| progress)
         .fold(0, |state, progress| match progress {
             progress @ Some(_) => {
                 use std::io::Write;
@@ -173,7 +173,7 @@ pub fn draw_progress(
             |state,
              (
                 key,
-                TreeValue {
+                Value {
                     progress,
                     name: title,
                 },
@@ -187,7 +187,7 @@ pub fn draw_progress(
         line,
         (
             key,
-            TreeValue {
+            Value {
                 progress,
                 name: title,
             },
@@ -309,18 +309,13 @@ fn draw_progress_bar_fn(
     )
 }
 
-pub fn draw_tree(
-    entries: &[(TreeKey, TreeValue)],
-    buf: &mut Buffer,
-    bound: Rect,
-    offset: u16,
-) -> u16 {
+pub fn draw_tree(entries: &[(Key, Value)], buf: &mut Buffer, bound: Rect, offset: u16) -> u16 {
     let mut max_prefix_len = 0;
     for (
         line,
         (
             key,
-            TreeValue {
+            Value {
                 progress,
                 name: title,
             },
@@ -352,7 +347,7 @@ pub fn draw_tree(
 }
 
 pub fn draw_overflow<'a>(
-    entries: &[(TreeKey, TreeValue)],
+    entries: &[(Key, Value)],
     buf: &mut Buffer,
     bound: Rect,
     label_offset: u16,
