@@ -126,6 +126,12 @@ async fn work_item(mut progress: Tree) -> () {
             WORK_DELAY_MS
         };
         if thread_rng().gen_bool(0.01) {
+            progress.init(
+                Some(max.into()),
+                UNITS.choose(&mut thread_rng()).map(|&s| s),
+            )
+        }
+        if thread_rng().gen_bool(0.01) {
             progress.info(INFO_MESSAGES.choose(&mut thread_rng()).unwrap());
         }
         if thread_rng().gen_bool(0.01) {
