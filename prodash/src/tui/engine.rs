@@ -1,4 +1,4 @@
-use crate::{tree::TreeRoot, tui::draw, tui::ticker};
+use crate::{tree::Tree, tui::draw, tui::ticker};
 
 use futures::{channel::mpsc, SinkExt, StreamExt};
 use std::{io, time::Duration};
@@ -40,7 +40,7 @@ pub struct State {
 }
 
 pub fn render_with_input(
-    progress: TreeRoot,
+    progress: Tree,
     Config {
         title,
         frames_per_second,
@@ -126,7 +126,7 @@ pub fn render_with_input(
 }
 
 pub fn render(
-    progress: TreeRoot,
+    progress: Tree,
     config: Config,
 ) -> Result<impl std::future::Future<Output = ()>, std::io::Error> {
     return render_with_input(progress, config, futures::stream::pending());

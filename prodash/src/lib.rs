@@ -18,10 +18,10 @@ Please have a look at the [dashboard demo](https://github.com/Byron/crates-io-cl
 
 */
 mod config;
-mod tree;
+pub mod tree;
 
-pub use config::*;
-pub use tree::*;
+pub use config::TreeConfig;
+pub use tree::Tree;
 
 #[cfg(feature = "tui-renderer")]
 pub mod tui;

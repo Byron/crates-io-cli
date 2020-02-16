@@ -1,9 +1,9 @@
 use crate::{
+    tree::{Progress, ProgressState, ProgressStep, TreeKey, TreeValue},
     tui::utils::{
         block_width, draw_text_nowrap, draw_text_nowrap_fn, rect, sanitize_offset,
         GraphemeCountWriter,
     },
-    Progress, ProgressState, ProgressStep, TreeKey, TreeValue,
 };
 use humantime::format_duration;
 use std::{

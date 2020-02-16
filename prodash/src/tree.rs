@@ -1,21 +1,21 @@
-use crate::Config;
+use crate::TreeConfig;
 use dashmap::DashMap;
 use parking_lot::Mutex;
 use std::{sync::Arc, time::SystemTime};
 
 /// The top-level of the progress tree.
 #[derive(Clone, Debug)]
-pub struct TreeRoot {
-    pub(crate) inner: Arc<Mutex<Tree>>,
+pub struct Tree {
+    pub(crate) inner: Arc<Mutex<Item>>,
 }
 
-impl TreeRoot {
+impl Tree {
     /// Create a new tree with default configuration.
     ///
     /// As opposed to [Tree](./struct.Tree.html) instances, this type can be closed and sent
     /// safely across threads.
-    pub fn new() -> TreeRoot {
-        Config::default().into()
+    pub fn new() -> Tree {
+        TreeConfig::default().into()
     }
 
     /// Returns the maximum amount of messages we can keep before overwriting older ones.
@@ -33,7 +33,7 @@ impl TreeRoot {
     ///
     /// This builds a hierarchy of tasks, each having their own progress.
     /// Use this method to [track progress](./struct.Tree.html) of your first tasks.
-    pub fn add_child(&self, name: impl Into<String>) -> Tree {
+    pub fn add_child(&self, name: impl Into<String>) -> Item {
         self.inner.lock().add_child(name)
     }
 
@@ -134,7 +134,7 @@ impl MessageRingBuffer {
 ///
 /// It can be used to set progress and send messages.
 /// ```rust
-/// let root = prodash::TreeRoot::new();
+/// let root = prodash::Tree::new();
 /// let mut progress = root.add_child("task 1");
 ///
 /// progress.init(Some(10), Some("elements"));
@@ -148,20 +148,20 @@ impl MessageRingBuffer {
 /// sub_progress.fail("couldn't finish");
 /// ```
 #[derive(Debug)]
-pub struct Tree {
+pub struct Item {
     pub(crate) key: TreeKey,
     pub(crate) highest_child_id: TreeId,
     pub(crate) tree: Arc<DashMap<TreeKey, TreeValue>>,
     pub(crate) messages: Arc<Mutex<MessageRingBuffer>>,
 }
 
-impl Drop for Tree {
+impl Drop for Item {
     fn drop(&mut self) {
         self.tree.remove(&self.key);
     }
 }
 
-impl Tree {
+impl Item {
     /// Initialize the tree for receiving progress information.
     ///
     /// If `max` is `Some(…)`, it will be treated as upper bound. When progress is [set(…)](./struct.Tree.html#method.set)
@@ -228,7 +228,7 @@ impl Tree {
     /// **Important**: The depth of the hierarchy is limited to [`TreeKey::max_level`](./struct.TreeKey.html#method.max_level).
     /// Exceeding the level will be ignored, and new tasks will be added to this instance's
     /// level instead.
-    pub fn add_child(&mut self, name: impl Into<String>) -> Tree {
+    pub fn add_child(&mut self, name: impl Into<String>) -> Item {
         let child_key = self.key.add_child(self.highest_child_id);
         self.tree.insert(
             child_key,
@@ -238,7 +238,7 @@ impl Tree {
             },
         );
         self.highest_child_id = self.highest_child_id.wrapping_add(1);
-        Tree {
+        Item {
             highest_child_id: 0,
             key: child_key,
             tree: self.tree.clone(),

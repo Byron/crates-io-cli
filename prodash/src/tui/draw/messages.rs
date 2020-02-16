@@ -1,8 +1,6 @@
 use crate::{
-    tui::utils::block_width,
-    tui::utils::sanitize_offset,
-    tui::utils::{draw_text_nowrap, rect},
-    Message, MessageLevel,
+    tree::{Message, MessageLevel},
+    tui::utils::{block_width, draw_text_nowrap, rect, sanitize_offset},
 };
 use std::time::SystemTime;
 use tui::{

@@ -1,6 +1,10 @@
 use crate::{
-    tui::draw, tui::utils::block_width, tui::utils::rect, tui::Line, tui::State, Message, TreeKey,
-    TreeValue,
+    tree::{Message, TreeKey, TreeValue},
+    tui::draw,
+    tui::utils::block_width,
+    tui::utils::rect,
+    tui::Line,
+    tui::State,
 };
 use tui::{
     buffer::Buffer,

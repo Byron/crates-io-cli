@@ -1,48 +1,51 @@
-use crate::{MessageRingBuffer, Tree, TreeKey, TreeRoot};
+use crate::{
+    tree::{Item, MessageRingBuffer, TreeKey},
+    Tree,
+};
 use dashmap::DashMap;
 use parking_lot::Mutex;
 use std::sync::Arc;
 
 /// A way to configure new [`TreeRoot`](./struct.TreeRoot.html) instances
 /// ```rust
-/// use prodash::{TreeRoot, Config};
-/// let tree = Config::default().create();
-/// let tree2 = Config { message_buffer_capacity: 100, ..Config::default() }.create();
+/// use prodash::{Tree, TreeConfig};
+/// let tree = TreeConfig::default().create();
+/// let tree2 = TreeConfig { message_buffer_capacity: 100, ..TreeConfig::default() }.create();
 /// ```
 #[derive(Clone, Debug)]
-pub struct Config {
+pub struct TreeConfig {
     /// The amount of items the tree can hold without being forced to allocate
     pub initial_capacity: usize,
     /// The amount of messages we can hold before we start overwriting old ones
     pub message_buffer_capacity: usize,
 }
 
-impl Config {
+impl TreeConfig {
     /// Create a new [`TreeRoot`](./struct.TreeRoot.html) instance from the
     /// configuration within.
-    pub fn create(self) -> TreeRoot {
+    pub fn create(self) -> Tree {
         self.into()
     }
 }
 
-impl Default for Config {
+impl Default for TreeConfig {
     fn default() -> Self {
-        Config {
+        TreeConfig {
             initial_capacity: 100,
             message_buffer_capacity: 20,
         }
     }
 }
 
-impl From<Config> for TreeRoot {
+impl From<TreeConfig> for Tree {
     fn from(
-        Config {
+        TreeConfig {
             initial_capacity,
             message_buffer_capacity,
-        }: Config,
+        }: TreeConfig,
     ) -> Self {
-        TreeRoot {
-            inner: Arc::new(Mutex::new(Tree {
+        Tree {
+            inner: Arc::new(Mutex::new(Item {
                 highest_child_id: 0,
                 key: TreeKey::default(),
                 tree: Arc::new(DashMap::with_capacity(initial_capacity)),

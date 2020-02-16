@@ -12,9 +12,9 @@ fn main() -> Result {
 }
 
 async fn work_forever(pool: impl Spawn + Clone + Send + 'static, args: arg::Options) -> Result {
-    let progress = prodash::Config {
+    let progress = prodash::TreeConfig {
         message_buffer_capacity: args.message_scrollback_buffer_size,
-        ..prodash::Config::default()
+        ..prodash::TreeConfig::default()
     }
     .create();
     // Now we should handle signals to be able to cleanup properly
@@ -64,7 +64,7 @@ async fn work_forever(pool: impl Spawn + Clone + Send + 'static, args: arg::Opti
 
 fn launch_ambient_gui(
     pool: &dyn Spawn,
-    progress: TreeRoot,
+    progress: Tree,
     args: arg::Options,
 ) -> std::result::Result<(impl Future<Output = ()>, AbortHandle), std::io::Error> {
     let render_fut = tui::render_with_input(
@@ -97,7 +97,7 @@ fn launch_ambient_gui(
     ))
 }
 
-async fn work_item(mut progress: Tree) -> () {
+async fn work_item(mut progress: Item) -> () {
     let max: u8 = thread_rng().gen_range(25, 125);
     progress.init(
         if max > WORK_STEPS_NEEDED_FOR_UNBOUNDED_TASK {
@@ -149,7 +149,7 @@ async fn work_item(mut progress: Tree) -> () {
 async fn new_chunk_of_work(
     prefix: impl AsRef<str>,
     max: NestingLevel,
-    tree: TreeRoot,
+    tree: Tree,
     pool: impl Spawn,
 ) -> Result {
     let NestingLevel(max_level) = max;
@@ -314,11 +314,11 @@ use futures::{
     Future, FutureExt, StreamExt,
 };
 use futures_timer::Delay;
+use prodash::tree::Item;
 use prodash::{
-    tui,
-    tui::Line,
-    tui::{ticker, Event},
-    Tree, TreeKey, TreeRoot,
+    tree::TreeKey,
+    tui::{self, ticker, Event, Line},
+    Tree,
 };
 use rand::prelude::*;
 use std::{error::Error, ops::Add, time::Duration, time::SystemTime};
