@@ -134,29 +134,7 @@ pub fn run_blocking(
             title: "Criner".into(),
             ..prodash::tui::TuiOptions::default()
         },
-        prodash::tui::ticker(Duration::from_secs(1)).map({
-            let db = db.clone();
-            move |_| {
-                db.context()
-                    .iter()
-                    .next_back()
-                    .and_then(Result::ok)
-                    .map(|(_, c): (_, model::Context)| {
-                        let lines = vec![
-                            Line::Title("Durations".into()),
-                            Line::Text(format!(
-                                "fetch-crate-versions: {:?}",
-                                c.durations.fetch_crate_versions
-                            )),
-                            Line::Title("Counts".into()),
-                            Line::Text(format!("crate-versions: {}", c.counts.crate_versions)),
-                            Line::Text(format!("        crates: {}", c.counts.crates)),
-                        ];
-                        Event::SetInformation(lines)
-                    })
-                    .unwrap_or(Event::Tick)
-            }
-        }),
+        context_stream(&db),
     )?;
 
     // dropping the work handle will stop (non-blocking) futures
@@ -192,4 +170,30 @@ pub fn run_blocking(
     );
     info!("{:#?}", db.context().iter().next_back().expect("one")?);
     Ok(())
+}
+
+fn context_stream(db: &Db) -> impl futures::Stream<Item = Event> {
+    prodash::tui::ticker(Duration::from_secs(1)).map({
+        let db = db.clone();
+        move |_| {
+            db.context()
+                .iter()
+                .next_back()
+                .and_then(Result::ok)
+                .map(|(_, c): (_, model::Context)| {
+                    let lines = vec![
+                        Line::Title("Durations".into()),
+                        Line::Text(format!(
+                            "fetch-crate-versions: {:?}",
+                            c.durations.fetch_crate_versions
+                        )),
+                        Line::Title("Counts".into()),
+                        Line::Text(format!("crate-versions: {}", c.counts.crate_versions)),
+                        Line::Text(format!("        crates: {}", c.counts.crates)),
+                    ];
+                    Event::SetInformation(lines)
+                })
+                .unwrap_or(Event::Tick)
+        }
+    })
 }
