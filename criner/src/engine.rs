@@ -5,8 +5,9 @@ use crate::{
     utils::*,
 };
 use crates_index_diff::Index;
+use futures::future::Either;
 use futures::{
-    executor::ThreadPool,
+    executor::{block_on, ThreadPool},
     future::FutureExt,
     stream::StreamExt,
     task::{Spawn, SpawnExt},
@@ -128,14 +129,14 @@ pub fn run_blocking(
     let db = Db::open(db)?;
 
     let root = prodash::Tree::new();
-    let gui = prodash::tui::render_with_input(
+    let (gui, abort_handle) = futures::future::abortable(prodash::tui::render_with_input(
         root.clone(),
         prodash::tui::TuiOptions {
             title: "Criner".into(),
             ..prodash::tui::TuiOptions::default()
         },
-        context_stream(&db),
-    )?;
+        context_stream(&db, start_of_computation),
+    )?);
 
     // dropping the work handle will stop (non-blocking) futures
     let _work_handle = blocking_task_pool.spawn_with_handle(
@@ -149,30 +150,32 @@ pub fn run_blocking(
         .map(|_| ()),
     )?;
 
-    // this is like a timeout where only one future is supposed to win - the gui would just stop showing new data if work
-    // stops first.
-    // This makes the main thread the GUI thread - GUI is cheap, and we can consider scheduling non-blocking workers onto
-    // the local pool and then use LocalPool::run_until(gui);
-    // TODO: race - there can be a deadline
-    futures::executor::block_on(gui);
+    let either = block_on(futures::future::select(_work_handle, gui.boxed_local()));
+    match either {
+        Either::Left((_, gui)) => {
+            abort_handle.abort();
+            block_on(gui).ok();
+        }
+        Either::Right((_, work_handle)) => work_handle.forget(),
+    }
+
     // Make sure the terminal can reset when the gui is done.
     std::io::stdout().flush()?;
 
     // at this point, we forget all currently running computation, and since it's in the local thread, it's all
     // destroyed/dropped properly.
-    info!(
-        "Wallclock elapsed: {}",
-        humantime::format_duration(
-            SystemTime::now()
-                .duration_since(start_of_computation)
-                .unwrap_or_default()
-        )
-    );
-    info!("{:#?}", db.context().iter().next_back().expect("one")?);
+    info!("{}", wallclock(start_of_computation));
     Ok(())
 }
 
-fn context_stream(db: &Db) -> impl futures::Stream<Item = Event> {
+fn wallclock(since: SystemTime) -> String {
+    format!(
+        "Wallclock elapsed: {}",
+        humantime::format_duration(SystemTime::now().duration_since(since).unwrap_or_default())
+    )
+}
+
+fn context_stream(db: &Db, start_of_computation: SystemTime) -> impl futures::Stream<Item = Event> {
     prodash::tui::ticker(Duration::from_secs(1)).map({
         let db = db.clone();
         move |_| {
@@ -182,6 +185,7 @@ fn context_stream(db: &Db) -> impl futures::Stream<Item = Event> {
                 .and_then(Result::ok)
                 .map(|(_, c): (_, model::Context)| {
                     let lines = vec![
+                        Line::Text(wallclock(start_of_computation)),
                         Line::Title("Durations".into()),
                         Line::Text(format!(
                             "fetch-crate-versions: {:?}",
