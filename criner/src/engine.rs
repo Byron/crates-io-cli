@@ -23,8 +23,6 @@ async fn process_changes(
 ) -> Result<()> {
     let start = SystemTime::now();
     progress.info("Potentially cloning crates index - this can take a while…");
-    progress.init(None, None);
-    progress.blocked(None);
     let index = enforce_blocking(
         deadline,
         {
@@ -90,7 +88,6 @@ pub async fn run(
     progress: prodash::Tree,
     pool: impl Spawn,
 ) -> Result<()> {
-    let start_of_computation = SystemTime::now();
     check(deadline)?;
 
     let res = {
@@ -105,15 +102,6 @@ pub async fn run(
         .await
     };
 
-    info!(
-        "Wallclock elapsed: {}",
-        humantime::format_duration(
-            SystemTime::now()
-                .duration_since(start_of_computation)
-                .unwrap_or_default()
-        )
-    );
-    info!("{:#?}", db.context()?.iter().next_back().expect("one")?);
     res
 }
 
@@ -123,6 +111,7 @@ pub fn run_blocking(
     crates_io_path: impl AsRef<Path>,
     deadline: Option<SystemTime>,
 ) -> Result<()> {
+    let start_of_computation = SystemTime::now();
     // NOTE: pool should be big enough to hold all possible blocking tasks running in parallel.
     // The main thread is expected to pool non-blocking tasks.
     // Of course, non-blocking tasks may also be scheduled there, which is when you probably want
@@ -131,6 +120,7 @@ pub fn run_blocking(
     let pool_size = 2;
     let blocking_task_pool = ThreadPool::builder().pool_size(pool_size).create()?;
     let mut local_pool = LocalPool::new();
+    let db = Db::open(db)?;
 
     let root = prodash::Tree::new();
     let gui = prodash::tui::render(
@@ -140,21 +130,33 @@ pub fn run_blocking(
             ..prodash::tui::TuiOptions::default()
         },
     )?;
-    let db = Db::open(db)?;
 
-    local_pool.spawner().spawn(
+    let work_handle = blocking_task_pool.spawn_with_handle(
         run(
-            db,
+            db.clone(),
             crates_io_path.as_ref().into(),
             deadline,
             root,
-            blocking_task_pool,
+            blocking_task_pool.clone(),
         )
         .map(|_| ()),
     )?;
 
+    // this is like a timeout where only one future is supposed to win - the gui would just stop showing new data if work
+    // stops first.
+    local_pool.spawner().spawn(work_handle)?;
     local_pool.run_until(gui);
+
     // at this point, we forget all currently running computation, and since it's in the local thread, it's all
     // destroyed/dropped properly.
+    info!(
+        "Wallclock elapsed: {}",
+        humantime::format_duration(
+            SystemTime::now()
+                .duration_since(start_of_computation)
+                .unwrap_or_default()
+        )
+    );
+    info!("{:#?}", db.context()?.iter().next_back().expect("one")?);
     Ok(())
 }
