@@ -29,7 +29,8 @@ async fn process_changes(
     mut progress: prodash::tree::Item,
 ) -> Result<()> {
     let start = SystemTime::now();
-    progress.info("Potentially cloning crates index - this can take a while…");
+    let mut subprogress =
+        progress.add_child("Potentially cloning crates index - this can take a while…");
     let index = enforce_blocking(
         deadline,
         {
@@ -39,10 +40,12 @@ async fn process_changes(
         &pool,
     )
     .await??;
-    progress.info("Fetching crates index to see changes");
+    subprogress.set_name("Fetching crates index to see changes");
     let crate_versions = enforce_blocking(deadline, move || index.fetch_changes(), &pool).await??;
 
     progress.done(format!("Fetched {} changed crates", crate_versions.len()));
+    drop(subprogress);
+
     let mut store_progress = progress.add_child("processing new crates");
     store_progress.init(Some(crate_versions.len() as u32), Some("crates"));
 
@@ -75,6 +78,10 @@ async fn process_changes(
                         .duration_since(start)
                         .unwrap_or_else(|_| Duration::default())
                 })?;
+                store_progress.done(format!(
+                    "Stored {} crate versions to database",
+                    crate_versions.len()
+                ));
                 Ok::<_, Error>(())
             }
         },
@@ -139,7 +146,7 @@ pub fn run_blocking(
     )?);
 
     // dropping the work handle will stop (non-blocking) futures
-    let _work_handle = blocking_task_pool.spawn_with_handle(
+    let work_handle = blocking_task_pool.spawn_with_handle(
         run(
             db.clone(),
             crates_io_path.as_ref().into(),
@@ -150,7 +157,7 @@ pub fn run_blocking(
         .map(|_| ()),
     )?;
 
-    let either = block_on(futures::future::select(_work_handle, gui.boxed_local()));
+    let either = block_on(futures::future::select(work_handle, gui.boxed_local()));
     match either {
         Either::Left((_, gui)) => {
             abort_handle.abort();
