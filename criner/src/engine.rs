@@ -4,13 +4,12 @@ use crate::{
     utils::*,
 };
 use crates_index_diff::Index;
-use futures::executor::LocalPool;
-use futures::task::SpawnExt;
-use futures::{executor::ThreadPool, future::FutureExt, task::Spawn};
+use futures::{executor::ThreadPool, future::FutureExt, task::Spawn, task::SpawnExt};
 use log::info;
-use std::path::PathBuf;
 use std::{
+    io::Write,
     path::Path,
+    path::PathBuf,
     time::{Duration, SystemTime},
 };
 
@@ -119,7 +118,6 @@ pub fn run_blocking(
     // All this is theory.
     let pool_size = 2;
     let blocking_task_pool = ThreadPool::builder().pool_size(pool_size).create()?;
-    let mut local_pool = LocalPool::new();
     let db = Db::open(db)?;
 
     let root = prodash::Tree::new();
@@ -144,8 +142,9 @@ pub fn run_blocking(
 
     // this is like a timeout where only one future is supposed to win - the gui would just stop showing new data if work
     // stops first.
-    local_pool.spawner().spawn(work_handle)?;
-    local_pool.run_until(gui);
+    futures::executor::block_on(gui);
+    // Make sure the terminal can reset when the gui is done.
+    std::io::stdout().flush()?;
 
     // at this point, we forget all currently running computation, and since it's in the local thread, it's all
     // destroyed/dropped properly.
