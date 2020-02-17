@@ -18,6 +18,7 @@ async fn work_forever(pool: impl Spawn + Clone + Send + 'static, args: arg::Opti
     }
     .create();
     // Now we should handle signals to be able to cleanup properly
+    let speed = args.speed_multitplier;
     let (gui_handle, abort_gui) = launch_ambient_gui(&pool, progress.clone(), args).unwrap();
     let mut gui_handle = Some(gui_handle.boxed());
 
@@ -26,12 +27,14 @@ async fn work_forever(pool: impl Spawn + Clone + Send + 'static, args: arg::Opti
             NestingLevel(thread_rng().gen_range(0, Key::max_level())),
             progress.clone(),
             pool.clone(),
+            speed,
         );
         let pooled_work = (0..thread_rng().gen_range(6, 16usize)).map(|_| {
             pool.spawn_with_handle(new_chunk_of_work(
                 NestingLevel(thread_rng().gen_range(0, Key::max_level())),
                 progress.clone(),
                 pool.clone(),
+                speed,
             ))
             .expect("spawning to work - SpawnError cannot be ")
             .boxed_local()
@@ -94,7 +97,7 @@ fn launch_ambient_gui(
     ))
 }
 
-async fn work_item(mut progress: Item) -> () {
+async fn work_item(mut progress: Item, speed: f32) -> () {
     let max: u8 = thread_rng().gen_range(25, 125);
     progress.init(
         if max > WORK_STEPS_NEEDED_FOR_UNBOUNDED_TASK {
@@ -111,7 +114,7 @@ async fn work_item(mut progress: Item) -> () {
 
     for step in 0..max {
         progress.set(step as u32);
-        let delay = if thread_rng().gen_bool(CHANCE_TO_BLOCK_PER_STEP) {
+        let delay_ms = if thread_rng().gen_bool(CHANCE_TO_BLOCK_PER_STEP) {
             let eta = if thread_rng().gen_bool(CHANCE_TO_SHOW_ETA) {
                 Some(SystemTime::now().add(Duration::from_millis(LONG_WORK_DELAY_MS)))
             } else {
@@ -120,7 +123,7 @@ async fn work_item(mut progress: Item) -> () {
             progress.blocked(eta);
             thread_rng().gen_range(WORK_DELAY_MS, LONG_WORK_DELAY_MS)
         } else {
-            WORK_DELAY_MS
+            thread_rng().gen_range(SHORT_DELAY_MS, WORK_DELAY_MS)
         };
         if thread_rng().gen_bool(0.01) {
             progress.init(
@@ -134,7 +137,7 @@ async fn work_item(mut progress: Item) -> () {
         if thread_rng().gen_bool(0.01) {
             progress.set_name(WORK_NAMES.choose(&mut thread_rng()).unwrap().to_string());
         }
-        Delay::new(Duration::from_millis(delay)).await;
+        Delay::new(Duration::from_millis((delay_ms as f32 / speed) as u64)).await;
     }
     if thread_rng().gen_bool(0.95) {
         progress.done(DONE_MESSAGES.choose(&mut thread_rng()).unwrap());
@@ -143,7 +146,7 @@ async fn work_item(mut progress: Item) -> () {
     }
 }
 
-async fn new_chunk_of_work(max: NestingLevel, tree: Tree, pool: impl Spawn) -> Result {
+async fn new_chunk_of_work(max: NestingLevel, tree: Tree, pool: impl Spawn, speed: f32) -> Result {
     let NestingLevel(max_level) = max;
     let mut progresses = Vec::new();
     let mut level_progress = tree.add_child(format!("level {} of {}", 1, max_level));
@@ -154,15 +157,21 @@ async fn new_chunk_of_work(max: NestingLevel, tree: Tree, pool: impl Spawn) -> R
         let num_tasks = max_level as usize * 2;
         for id in 0..num_tasks {
             let handle = pool
-                .spawn_with_handle(work_item(level_progress.add_child(format!(
-                    "{} {}",
-                    WORK_NAMES.choose(&mut thread_rng()).unwrap(),
-                    id + 1
-                ))))
+                .spawn_with_handle(work_item(
+                    level_progress.add_child(format!(
+                        "{} {}",
+                        WORK_NAMES.choose(&mut thread_rng()).unwrap(),
+                        id + 1
+                    )),
+                    speed,
+                ))
                 .expect("spawn to work");
             handles.push(handle);
 
-            Delay::new(Duration::from_millis(SPAWN_DELAY_MS)).await;
+            Delay::new(Duration::from_millis(
+                (SPAWN_DELAY_MS as f32 / speed) as u64,
+            ))
+            .await;
         }
         if level + 1 != max_level {
             let tmp = level_progress.add_child(format!("Level {}", level + 1));
@@ -294,6 +303,11 @@ mod arg {
         /// the amount of scrollback for task messages.
         #[argh(option, default = "80")]
         pub message_scrollback_buffer_size: usize,
+
+        /// multiplies the speed at which tasks seem to be running. Driving this down makes the TUI easier on the eyes
+        /// Defaults to 1.0. A valud of 0.5 halves the speed.
+        #[argh(option, short = 's', default = "1.0")]
+        pub speed_multitplier: f32,
     }
 }
 
@@ -305,8 +319,8 @@ use futures::{
     Future, FutureExt, StreamExt,
 };
 use futures_timer::Delay;
-use prodash::tree::Item;
 use prodash::{
+    tree::Item,
     tree::Key,
     tui::{self, ticker, Event, Line},
     Tree,
@@ -355,6 +369,7 @@ const INFO_MESSAGES: &[&str] = &[
     "It will be done soooooon…",
     "会很快完成的……",
 ];
+const SHORT_DELAY_MS: u64 = 50;
 const WORK_DELAY_MS: u64 = 100;
 const LONG_WORK_DELAY_MS: u64 = 2000;
 const SPAWN_DELAY_MS: u64 = 200;
