@@ -4,7 +4,13 @@ use crate::{
     utils::*,
 };
 use crates_index_diff::Index;
-use futures::{executor::ThreadPool, task::Spawn};
+use futures::task::SpawnExt;
+use futures::{
+    executor::ThreadPool,
+    future::{AbortHandle, Abortable},
+    task::Spawn,
+    FutureExt,
+};
 use log::info;
 use std::{
     path::Path,
@@ -16,9 +22,12 @@ async fn process_changes(
     crates_io_path: impl AsRef<Path>,
     deadline: Option<SystemTime>,
     pool: impl Spawn,
+    mut progress: prodash::tree::Item,
 ) -> Result<()> {
     let start = SystemTime::now();
-    info!("Potentially cloning crates index - this can take a while…");
+    progress.info("Potentially cloning crates index - this can take a while…");
+    progress.init(None, None);
+    progress.blocked(None);
     let index = enforce_blocking(
         deadline,
         {
@@ -28,11 +37,13 @@ async fn process_changes(
         &pool,
     )
     .await??;
-    info!("Fetching crates index to see changes");
+    progress.info("Fetching crates index to see changes");
     let crate_versions = enforce_blocking(deadline, move || index.fetch_changes(), &pool).await??;
 
-    info!("Fetched {} changed crates", crate_versions.len());
-    let check_interval = std::cmp::max(crate_versions.len() / 100, 1);
+    progress.done(format!("Fetched {} changed crates", crate_versions.len()));
+    let mut store_progress = progress.add_child("processing new crates");
+    store_progress.init(Some(crate_versions.len() as u32), Some("crates"));
+
     enforce_blocking(
         deadline,
         {
@@ -55,13 +66,7 @@ async fn process_changes(
                     if krate.upsert(&version)? {
                         context.update_today(|c| c.counts.crates += 1)?;
                     }
-                    if versions_stored % check_interval == 0 {
-                        info!(
-                            "Stored {} of {} crate versions in database",
-                            versions_stored + 1,
-                            crate_versions.len()
-                        );
-                    }
+                    store_progress.set((versions_stored + 1) as u32);
                 }
                 context.update_today(|c| {
                     c.durations.fetch_crate_versions += SystemTime::now()
@@ -85,22 +90,30 @@ pub async fn run(
     db: impl AsRef<Path>,
     crates_io_path: impl AsRef<Path>,
     deadline: Option<SystemTime>,
+    pool: impl Spawn,
 ) -> Result<()> {
     let start_of_computation = SystemTime::now();
     check(deadline)?;
 
-    // NOTE: pool should be big enough to hold all possible blocking tasks running in parallel.
-    // The main thread is expected to pool non-blocking tasks.
-    // Of course, non-blocking tasks may also be scheduled there, which is when you probably want
-    // to have another free thread just for that.
-    // All this is theory.
-    let pool_size = 2;
-    let blocking_task_pool = ThreadPool::builder().pool_size(pool_size).create()?;
+    let root = prodash::Tree::new();
+    let (gui, abort_handle) = try_running_gui(root.clone())?;
+    pool.spawn(gui.map(|_| ()))?;
+
     let db = Db::open(db)?;
     let res = {
         let db = db.clone();
-        process_changes(db, crates_io_path, deadline, blocking_task_pool).await
+        process_changes(
+            db,
+            crates_io_path,
+            deadline,
+            pool,
+            root.add_child("crates.io refresh"),
+        )
+        .await
     };
+
+    abort_handle.abort();
+    //    gui.await.ok();
     info!(
         "Wallclock elapsed: {}",
         humantime::format_duration(
@@ -113,11 +126,33 @@ pub async fn run(
     res
 }
 
+fn try_running_gui(
+    progress: prodash::Tree,
+) -> Result<(Abortable<impl std::future::Future>, AbortHandle)> {
+    // Configure the gui, provide it with a handle to the ever-changing tree
+    let render_fut = prodash::tui::render(
+        progress,
+        prodash::tui::TuiOptions {
+            title: "minimal example".into(),
+            ..prodash::tui::TuiOptions::default()
+        },
+    )?;
+    Ok(futures::future::abortable(render_fut))
+}
+
 /// For convenience, run the engine and block until done.
 pub fn run_blocking(
     db: impl AsRef<Path>,
     crates_io_path: impl AsRef<Path>,
     deadline: Option<SystemTime>,
 ) -> Result<()> {
-    futures::executor::block_on(run(db, crates_io_path, deadline))
+    // NOTE: pool should be big enough to hold all possible blocking tasks running in parallel.
+    // The main thread is expected to pool non-blocking tasks.
+    // Of course, non-blocking tasks may also be scheduled there, which is when you probably want
+    // to have another free thread just for that.
+    // All this is theory.
+    let pool_size = 2;
+    let blocking_task_pool = ThreadPool::builder().pool_size(pool_size).create()?;
+
+    futures::executor::block_on(run(db, crates_io_path, deadline, blocking_task_pool))
 }
