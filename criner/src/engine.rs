@@ -4,14 +4,11 @@ use crate::{
     utils::*,
 };
 use crates_index_diff::Index;
+use futures::executor::LocalPool;
 use futures::task::SpawnExt;
-use futures::{
-    executor::ThreadPool,
-    future::{AbortHandle, Abortable},
-    task::Spawn,
-    FutureExt,
-};
+use futures::{executor::ThreadPool, future::FutureExt, task::Spawn};
 use log::info;
+use std::path::PathBuf;
 use std::{
     path::Path,
     time::{Duration, SystemTime},
@@ -87,19 +84,15 @@ async fn process_changes(
 /// Even though timeouts can be achieved from outside of the future, knowing the deadline may be used
 /// by the engine to manage its time even more efficiently.
 pub async fn run(
-    db: impl AsRef<Path>,
-    crates_io_path: impl AsRef<Path>,
+    db: Db,
+    crates_io_path: PathBuf,
     deadline: Option<SystemTime>,
+    progress: prodash::Tree,
     pool: impl Spawn,
 ) -> Result<()> {
     let start_of_computation = SystemTime::now();
     check(deadline)?;
 
-    let root = prodash::Tree::new();
-    let (gui, abort_handle) = try_running_gui(root.clone())?;
-    pool.spawn(gui.map(|_| ()))?;
-
-    let db = Db::open(db)?;
     let res = {
         let db = db.clone();
         process_changes(
@@ -107,13 +100,11 @@ pub async fn run(
             crates_io_path,
             deadline,
             pool,
-            root.add_child("crates.io refresh"),
+            progress.add_child("crates.io refresh"),
         )
         .await
     };
 
-    abort_handle.abort();
-    //    gui.await.ok();
     info!(
         "Wallclock elapsed: {}",
         humantime::format_duration(
@@ -124,20 +115,6 @@ pub async fn run(
     );
     info!("{:#?}", db.context()?.iter().next_back().expect("one")?);
     res
-}
-
-fn try_running_gui(
-    progress: prodash::Tree,
-) -> Result<(Abortable<impl std::future::Future>, AbortHandle)> {
-    // Configure the gui, provide it with a handle to the ever-changing tree
-    let render_fut = prodash::tui::render(
-        progress,
-        prodash::tui::TuiOptions {
-            title: "minimal example".into(),
-            ..prodash::tui::TuiOptions::default()
-        },
-    )?;
-    Ok(futures::future::abortable(render_fut))
 }
 
 /// For convenience, run the engine and block until done.
@@ -153,6 +130,31 @@ pub fn run_blocking(
     // All this is theory.
     let pool_size = 2;
     let blocking_task_pool = ThreadPool::builder().pool_size(pool_size).create()?;
+    let mut local_pool = LocalPool::new();
 
-    futures::executor::block_on(run(db, crates_io_path, deadline, blocking_task_pool))
+    let root = prodash::Tree::new();
+    let gui = prodash::tui::render(
+        root.clone(),
+        prodash::tui::TuiOptions {
+            title: "minimal example".into(),
+            ..prodash::tui::TuiOptions::default()
+        },
+    )?;
+    let db = Db::open(db)?;
+
+    local_pool.spawner().spawn(
+        run(
+            db,
+            crates_io_path.as_ref().into(),
+            deadline,
+            root,
+            blocking_task_pool,
+        )
+        .map(|_| ()),
+    )?;
+
+    local_pool.run_until(gui);
+    // at this point, we forget all currently running computation, and since it's in the local thread, it's all
+    // destroyed/dropped properly.
+    Ok(())
 }
