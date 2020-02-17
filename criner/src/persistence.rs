@@ -36,8 +36,8 @@ impl Db {
         })
     }
 
-    pub fn context(&self) -> Result<ContextTree> {
-        Ok(ContextTree { inner: &self.meta })
+    pub fn context(&self) -> ContextTree {
+        ContextTree { inner: &self.meta }
     }
 }
 

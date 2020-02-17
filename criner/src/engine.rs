@@ -1,11 +1,18 @@
 use crate::{
     error::{Error, Result},
+    model,
     persistence::{Db, TreeAccess},
     utils::*,
 };
 use crates_index_diff::Index;
-use futures::{executor::ThreadPool, future::FutureExt, task::Spawn, task::SpawnExt};
+use futures::{
+    executor::ThreadPool,
+    future::FutureExt,
+    stream::StreamExt,
+    task::{Spawn, SpawnExt},
+};
 use log::info;
+use prodash::tui::{Event, Line};
 use std::{
     io::Write,
     path::Path,
@@ -45,7 +52,7 @@ async fn process_changes(
             move || {
                 let versions = db.open_crate_versions()?;
                 let krate = db.open_crates()?;
-                let context = db.context()?;
+                let context = db.context();
                 // NOTE: this loop can also be a stream, but that makes computation slower due to overhead
                 // Thus we just do this 'quickly' on the main thread, knowing that criner really needs its
                 // own executor or resources.
@@ -121,15 +128,39 @@ pub fn run_blocking(
     let db = Db::open(db)?;
 
     let root = prodash::Tree::new();
-    let gui = prodash::tui::render(
+    let gui = prodash::tui::render_with_input(
         root.clone(),
         prodash::tui::TuiOptions {
-            title: "minimal example".into(),
+            title: "Criner".into(),
             ..prodash::tui::TuiOptions::default()
         },
+        prodash::tui::ticker(Duration::from_secs(1)).map({
+            let db = db.clone();
+            move |_| {
+                db.context()
+                    .iter()
+                    .next_back()
+                    .and_then(Result::ok)
+                    .map(|(_, c): (_, model::Context)| {
+                        let lines = vec![
+                            Line::Title("Durations".into()),
+                            Line::Text(format!(
+                                "fetch-crate-versions: {:?}",
+                                c.durations.fetch_crate_versions
+                            )),
+                            Line::Title("Counts".into()),
+                            Line::Text(format!("crate-versions: {}", c.counts.crate_versions)),
+                            Line::Text(format!("        crates: {}", c.counts.crates)),
+                        ];
+                        Event::SetInformation(lines)
+                    })
+                    .unwrap_or(Event::Tick)
+            }
+        }),
     )?;
 
-    let work_handle = blocking_task_pool.spawn_with_handle(
+    // dropping the work handle will stop (non-blocking) futures
+    let _work_handle = blocking_task_pool.spawn_with_handle(
         run(
             db.clone(),
             crates_io_path.as_ref().into(),
@@ -142,6 +173,9 @@ pub fn run_blocking(
 
     // this is like a timeout where only one future is supposed to win - the gui would just stop showing new data if work
     // stops first.
+    // This makes the main thread the GUI thread - GUI is cheap, and we can consider scheduling non-blocking workers onto
+    // the local pool and then use LocalPool::run_until(gui);
+    // TODO: race - there can be a deadline
     futures::executor::block_on(gui);
     // Make sure the terminal can reset when the gui is done.
     std::io::stdout().flush()?;
@@ -156,6 +190,6 @@ pub fn run_blocking(
                 .unwrap_or_default()
         )
     );
-    info!("{:#?}", db.context()?.iter().next_back().expect("one")?);
+    info!("{:#?}", db.context().iter().next_back().expect("one")?);
     Ok(())
 }
