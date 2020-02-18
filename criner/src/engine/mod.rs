@@ -1,7 +1,8 @@
-use crate::persistence::CrateVersionsTree;
 use crate::{
+    engine::workers::{schedule_tasks, AsyncResult, Scheduling},
     error::{Error, Result},
     model,
+    persistence::CrateVersionsTree,
     persistence::{Db, TreeAccess},
     utils::*,
 };
@@ -22,6 +23,8 @@ use std::{
     path::PathBuf,
     time::{Duration, SystemTime},
 };
+
+mod workers;
 
 async fn process_changes(
     db: Db,
@@ -109,31 +112,6 @@ async fn process_changes(
     )
     .await??;
     Ok(())
-}
-
-enum Scheduling {
-    //   /// Considers work done if everything was done. Will block to assure that
-    //    All,
-    //    /// Considers the work done if at least one task was scheduled. Will block to wait otherwise.
-    //    AtLeastOne,
-    /// Prefer to never wait for workers to perform a task and instead return without having scheduled anything
-    NeverBlock,
-}
-
-enum AsyncResult {
-    /// The required scheduling cannot be fulfilled without blocking
-    WouldBlock,
-    /// The minimal scheduling requirement was met
-    Done,
-}
-
-async fn schedule_tasks(
-    _version: &crates_index_diff::CrateVersion,
-    mut progress: prodash::tree::Item,
-    _mode: Scheduling,
-) -> Result<AsyncResult> {
-    progress.init(None, Some("tasks"));
-    Ok(AsyncResult::WouldBlock)
 }
 
 /// Runs the statistics and mining engine.
