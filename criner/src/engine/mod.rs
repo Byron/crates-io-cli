@@ -22,7 +22,7 @@ pub struct Context {
     db: Db,
     progress: prodash::tree::Item,
     deadline: Option<SystemTime>,
-    download: async_std::sync::Sender<()>,
+    download: async_std::sync::Sender<worker::DownloadTask>,
 }
 
 /// Runs the statistics and mining engine.

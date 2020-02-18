@@ -20,23 +20,32 @@ pub enum AsyncResult {
 }
 
 pub async fn schedule_tasks(
-    _version: &crates_index_diff::CrateVersion,
+    version: &crates_index_diff::CrateVersion,
     mut progress: prodash::tree::Item,
     _mode: Scheduling,
-    download: &async_std::sync::Sender<()>,
+    download: &async_std::sync::Sender<DownloadTask>,
 ) -> Result<AsyncResult> {
     progress.init(None, Some("tasks"));
     Ok(if download.is_full() {
         AsyncResult::WouldBlock
     } else {
-        download.send(()).await;
+        download
+            .send(DownloadTask {
+                name: format!("↓ {}:{}", version.name, version.version),
+            })
+            .await;
         AsyncResult::Done
     })
 }
 
-pub async fn download(mut progress: prodash::tree::Item, r: Receiver<()>) -> () {
+pub struct DownloadTask {
+    name: String,
+}
+
+pub async fn download(mut progress: prodash::tree::Item, r: Receiver<DownloadTask>) -> () {
     progress.init(None, Some("Kb"));
-    while let Some(()) = r.recv().await {
+    while let Some(DownloadTask { name }) = r.recv().await {
+        progress.set_name(name);
         for it in 1..=10 {
             Delay::new(Duration::from_secs(1)).await;
             progress.set(it)
