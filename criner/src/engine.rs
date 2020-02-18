@@ -154,7 +154,7 @@ pub async fn run(
 
     let mut downloaders = progress.add_child("Downloads");
     for idx in 0..10 {
-        local.spawn({
+        blocking.spawn({
             let mut progress = downloaders.add_child(format!("DL {} - idle", idx + 1));
             async move {
                 let mut iteration = 0;
@@ -211,7 +211,7 @@ pub fn run_blocking(
     )?);
 
     // dropping the work handle will stop (non-blocking) futures
-    let work_handle = blocking_task_pool.spawn_with_handle(run(
+    let work_handle = task_pool.spawn_with_handle(run(
         db.clone(),
         crates_io_path.as_ref().into(),
         deadline,
