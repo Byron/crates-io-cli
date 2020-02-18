@@ -27,8 +27,7 @@ async fn process_changes(
     db: Db,
     crates_io_path: impl AsRef<Path>,
     deadline: Option<SystemTime>,
-    _local: impl Spawn,
-    blocking: impl Spawn,
+    pool: impl Spawn,
     mut progress: prodash::tree::Item,
 ) -> Result<()> {
     let start = SystemTime::now();
@@ -40,12 +39,11 @@ async fn process_changes(
             let path = crates_io_path.as_ref().to_path_buf();
             || Index::from_path_or_cloned(path)
         },
-        &blocking,
+        &pool,
     )
     .await??;
     subprogress.set_name("Fetching crates index to see changes");
-    let crate_versions =
-        enforce_blocking(deadline, move || index.fetch_changes(), &blocking).await??;
+    let crate_versions = enforce_blocking(deadline, move || index.fetch_changes(), &pool).await??;
 
     progress.done(format!("Fetched {} changed crates", crate_versions.len()));
     drop(subprogress);
@@ -107,7 +105,7 @@ async fn process_changes(
                 Ok::<_, Error>(())
             }
         },
-        &blocking,
+        &pool,
     )
     .await??;
     Ok(())
@@ -147,14 +145,13 @@ pub async fn run(
     crates_io_path: PathBuf,
     deadline: Option<SystemTime>,
     progress: prodash::Tree,
-    local: impl Spawn,
-    blocking: impl Spawn,
+    pool: impl Spawn,
 ) -> Result<()> {
     check(deadline)?;
 
     let mut downloaders = progress.add_child("Downloads");
     for idx in 0..10 {
-        blocking.spawn({
+        pool.spawn({
             let mut progress = downloaders.add_child(format!("DL {} - idle", idx + 1));
             async move {
                 let mut iteration = 0;
@@ -174,8 +171,7 @@ pub async fn run(
             db,
             crates_io_path,
             deadline,
-            blocking,
-            local,
+            pool,
             progress.add_child("crates.io refresh"),
         )
         .await
@@ -191,13 +187,12 @@ pub fn run_blocking(
     deadline: Option<SystemTime>,
 ) -> Result<()> {
     let start_of_computation = SystemTime::now();
-    // NOTE: pool should be big enough to hold all possible blocking tasks running in parallel.
+    // NOTE: pool should be big enough to hold all possible blocking tasks running in parallel, +1 for
+    // additional non-blocking tasks.
     // The main thread is expected to pool non-blocking tasks.
-    let pool_size = 1;
-    let blocking_task_pool = ThreadPool::builder().pool_size(pool_size).create()?;
-    // Non-blocking tasks should be scheduled here - we can't use the local pool for this, as its spawner
-    // cannot be sent across threads, and thus doesn't work in 'run'
-    let task_pool = ThreadPool::builder().pool_size(1).create()?;
+    // I admit I don't fully understand why multi-pool setups aren't making progress… . So just one pool for now.
+    let pool_size = 1 + 1;
+    let task_pool = ThreadPool::builder().pool_size(pool_size).create()?;
     let db = Db::open(db)?;
 
     let root = prodash::Tree::new();
@@ -217,7 +212,6 @@ pub fn run_blocking(
         deadline,
         root,
         task_pool.clone(),
-        blocking_task_pool.clone(),
     ))?;
 
     let either = block_on(futures::future::select(work_handle, gui.boxed_local()));
