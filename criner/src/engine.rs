@@ -1,3 +1,4 @@
+use crate::persistence::CrateVersionsTree;
 use crate::{
     error::{Error, Result},
     model,
@@ -47,16 +48,17 @@ async fn process_changes(
     drop(subprogress);
 
     let mut store_progress = progress.add_child("processing new crates");
-    store_progress.init(Some(crate_versions.len() as u32), Some("crates"));
+    store_progress.init(Some(crate_versions.len() as u32), Some("crate versions"));
 
-    enforce_blocking(
+    enforce_future(
         deadline,
         {
             let db = db.clone();
-            move || {
+            async move {
                 let versions = db.open_crate_versions()?;
                 let krate = db.open_crates()?;
                 let context = db.context();
+                let mut may_schedule_tasks = true;
                 // NOTE: this loop can also be a stream, but that makes computation slower due to overhead
                 // Thus we just do this 'quickly' on the main thread, knowing that criner really needs its
                 // own executor or resources.
@@ -70,6 +72,23 @@ async fn process_changes(
                     }
                     if krate.upsert(&version)? {
                         context.update_today(|c| c.counts.crates += 1)?;
+                    }
+
+                    // There is enough scheduling capacity for this not to block
+                    // TODO: one day we may decide based on other context whether to continue
+                    // blocking while trying, or not, or try again a bit later after storing
+                    // a chunk of versions
+                    if may_schedule_tasks {
+                        let res = schedule_tasks(
+                                version,
+                                store_progress.add_child(format!("schedule {}", CrateVersionsTree::key_str(version))),
+                                Scheduling::NeverBlock,
+                            )
+                            .await?;
+                        if let AsyncResult::WouldBlock  = res {
+                            store_progress.info("Skipping further task scheduling in preference for storing new versions");
+                            may_schedule_tasks = false;
+                        }
                     }
                     store_progress.set((versions_stored + 1) as u32);
                 }
@@ -89,6 +108,31 @@ async fn process_changes(
     )
     .await??;
     Ok(())
+}
+
+enum Scheduling {
+    //   /// Considers work done if everything was done. Will block to assure that
+    //    All,
+    //    /// Considers the work done if at least one task was scheduled. Will block to wait otherwise.
+    //    AtLeastOne,
+    /// Prefer to never wait for workers to perform a task and instead return without having scheduled anything
+    NeverBlock,
+}
+
+enum AsyncResult {
+    /// The required scheduling cannot be fulfilled without blocking
+    WouldBlock,
+    /// The minimal scheduling requirement was met
+    Done,
+}
+
+async fn schedule_tasks(
+    _version: &crates_index_diff::CrateVersion,
+    mut progress: prodash::tree::Item,
+    _mode: Scheduling,
+) -> Result<AsyncResult> {
+    progress.init(None, Some("tasks"));
+    Ok(AsyncResult::WouldBlock)
 }
 
 /// Runs the statistics and mining engine.

@@ -196,6 +196,16 @@ pub struct CrateVersionsTree {
     inner: sled::Tree,
 }
 
+impl CrateVersionsTree {
+    pub fn key_str(v: &crates_index_diff::CrateVersion) -> String {
+        let mut id = String::with_capacity(v.name.len() + v.version.len() + 1);
+        id.push_str(&v.name);
+        id.push(':');
+        id.push_str(&v.version);
+        id
+    }
+}
+
 impl TreeAccess for CrateVersionsTree {
     type StorageItem = CrateVersion;
     type InsertItem = crates_index_diff::CrateVersion;
