@@ -2,8 +2,9 @@ use crate::{
     engine::worker::{schedule_tasks, AsyncResult, Scheduling},
     error::{Error, Result},
     persistence::CrateVersionsTree,
-    persistence::{Db, TreeAccess},
+    persistence::TreeAccess,
     utils::*,
+    Context,
 };
 use crates_index_diff::Index;
 use futures::task::Spawn;
@@ -13,11 +14,14 @@ use std::{
 };
 
 pub async fn process(
-    db: Db,
     crates_io_path: impl AsRef<Path>,
-    deadline: Option<SystemTime>,
     pool: impl Spawn,
-    mut progress: prodash::tree::Item,
+    Context {
+        db,
+        mut progress,
+        deadline,
+        download,
+    }: Context,
 ) -> Result<()> {
     let start = SystemTime::now();
     let mut subprogress =
@@ -73,6 +77,7 @@ pub async fn process(
                             version,
                             store_progress.add_child(format!("schedule {}", CrateVersionsTree::key_str(version))),
                             Scheduling::NeverBlock,
+                            &download
                         )
                             .await?;
                         if let AsyncResult::WouldBlock = res {

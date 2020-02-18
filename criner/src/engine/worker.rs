@@ -1,4 +1,5 @@
 use crate::error::Result;
+use async_std::sync::Receiver;
 use futures_timer::Delay;
 use std::time::Duration;
 
@@ -22,17 +23,23 @@ pub async fn schedule_tasks(
     _version: &crates_index_diff::CrateVersion,
     mut progress: prodash::tree::Item,
     _mode: Scheduling,
+    download: &async_std::sync::Sender<()>,
 ) -> Result<AsyncResult> {
     progress.init(None, Some("tasks"));
-    Ok(AsyncResult::WouldBlock)
+    Ok(if download.is_full() {
+        AsyncResult::WouldBlock
+    } else {
+        download.send(()).await;
+        AsyncResult::Done
+    })
 }
 
-pub async fn download(mut progress: prodash::tree::Item) -> () {
-    let mut iteration = 0;
+pub async fn download(mut progress: prodash::tree::Item, r: Receiver<()>) -> () {
     progress.init(None, Some("Kb"));
-    loop {
-        iteration += 1;
-        Delay::new(Duration::from_secs(1)).await;
-        progress.set(iteration)
+    while let Some(()) = r.recv().await {
+        for it in 1..=10 {
+            Delay::new(Duration::from_secs(1)).await;
+            progress.set(it)
+        }
     }
 }

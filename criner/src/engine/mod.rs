@@ -18,6 +18,13 @@ use std::{
 mod changes;
 mod worker;
 
+pub struct Context {
+    db: Db,
+    progress: prodash::tree::Item,
+    deadline: Option<SystemTime>,
+    download: async_std::sync::Sender<()>,
+}
+
 /// Runs the statistics and mining engine.
 /// May run for a long time unless a deadline is specified.
 /// Even though timeouts can be achieved from outside of the future, knowing the deadline may be used
@@ -32,20 +39,25 @@ pub async fn run(
     check(deadline)?;
 
     let mut downloaders = progress.add_child("Downloads");
+    let (tx, rx) = async_std::sync::channel(1);
     for idx in 0..10 {
         pool.spawn(worker::download(
             downloaders.add_child(format!("DL {} - idle", idx + 1)),
+            rx.clone(),
         ))?;
     }
 
     let res = {
         let db = db.clone();
         changes::process(
-            db,
             crates_io_path,
-            deadline,
             pool,
-            progress.add_child("crates.io refresh"),
+            Context {
+                db,
+                progress: progress.add_child("crates.io refresh"),
+                deadline,
+                download: tx,
+            },
         )
         .await
     };
