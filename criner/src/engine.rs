@@ -6,13 +6,14 @@ use crate::{
     utils::*,
 };
 use crates_index_diff::Index;
-use futures::future::Either;
 use futures::{
     executor::{block_on, ThreadPool},
+    future::Either,
     future::FutureExt,
     stream::StreamExt,
     task::{Spawn, SpawnExt},
 };
+use futures_timer::Delay;
 use log::info;
 use prodash::tui::{Event, Line};
 use std::{
@@ -26,7 +27,8 @@ async fn process_changes(
     db: Db,
     crates_io_path: impl AsRef<Path>,
     deadline: Option<SystemTime>,
-    pool: impl Spawn,
+    _local: impl Spawn,
+    blocking: impl Spawn,
     mut progress: prodash::tree::Item,
 ) -> Result<()> {
     let start = SystemTime::now();
@@ -38,11 +40,12 @@ async fn process_changes(
             let path = crates_io_path.as_ref().to_path_buf();
             || Index::from_path_or_cloned(path)
         },
-        &pool,
+        &blocking,
     )
     .await??;
     subprogress.set_name("Fetching crates index to see changes");
-    let crate_versions = enforce_blocking(deadline, move || index.fetch_changes(), &pool).await??;
+    let crate_versions =
+        enforce_blocking(deadline, move || index.fetch_changes(), &blocking).await??;
 
     progress.done(format!("Fetched {} changed crates", crate_versions.len()));
     drop(subprogress);
@@ -104,7 +107,7 @@ async fn process_changes(
                 Ok::<_, Error>(())
             }
         },
-        &pool,
+        &blocking,
     )
     .await??;
     Ok(())
@@ -144,9 +147,26 @@ pub async fn run(
     crates_io_path: PathBuf,
     deadline: Option<SystemTime>,
     progress: prodash::Tree,
-    pool: impl Spawn,
+    local: impl Spawn,
+    blocking: impl Spawn,
 ) -> Result<()> {
     check(deadline)?;
+
+    let mut downloaders = progress.add_child("Downloads");
+    for idx in 0..10 {
+        local.spawn({
+            let mut progress = downloaders.add_child(format!("DL {} - idle", idx + 1));
+            async move {
+                let mut iteration = 0;
+                progress.init(None, Some("Kb"));
+                loop {
+                    iteration += 1;
+                    Delay::new(Duration::from_secs(1)).await;
+                    progress.set(iteration)
+                }
+            }
+        })?;
+    }
 
     let res = {
         let db = db.clone();
@@ -154,7 +174,8 @@ pub async fn run(
             db,
             crates_io_path,
             deadline,
-            pool,
+            blocking,
+            local,
             progress.add_child("crates.io refresh"),
         )
         .await
@@ -172,11 +193,11 @@ pub fn run_blocking(
     let start_of_computation = SystemTime::now();
     // NOTE: pool should be big enough to hold all possible blocking tasks running in parallel.
     // The main thread is expected to pool non-blocking tasks.
-    // Of course, non-blocking tasks may also be scheduled there, which is when you probably want
-    // to have another free thread just for that.
-    // All this is theory.
-    let pool_size = 2;
+    let pool_size = 1;
     let blocking_task_pool = ThreadPool::builder().pool_size(pool_size).create()?;
+    // Non-blocking tasks should be scheduled here - we can't use the local pool for this, as its spawner
+    // cannot be sent across threads, and thus doesn't work in 'run'
+    let task_pool = ThreadPool::builder().pool_size(1).create()?;
     let db = Db::open(db)?;
 
     let root = prodash::Tree::new();
@@ -190,16 +211,14 @@ pub fn run_blocking(
     )?);
 
     // dropping the work handle will stop (non-blocking) futures
-    let work_handle = blocking_task_pool.spawn_with_handle(
-        run(
-            db.clone(),
-            crates_io_path.as_ref().into(),
-            deadline,
-            root,
-            blocking_task_pool.clone(),
-        )
-        .map(|_| ()),
-    )?;
+    let work_handle = blocking_task_pool.spawn_with_handle(run(
+        db.clone(),
+        crates_io_path.as_ref().into(),
+        deadline,
+        root,
+        task_pool.clone(),
+        blocking_task_pool.clone(),
+    ))?;
 
     let either = block_on(futures::future::select(work_handle, gui.boxed_local()));
     match either {
