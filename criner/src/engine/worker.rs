@@ -1,4 +1,6 @@
 use crate::error::Result;
+use futures_timer::Delay;
+use std::time::Duration;
 
 pub enum Scheduling {
     //   /// Considers work done if everything was done. Will block to assure that
@@ -23,4 +25,14 @@ pub async fn schedule_tasks(
 ) -> Result<AsyncResult> {
     progress.init(None, Some("tasks"));
     Ok(AsyncResult::WouldBlock)
+}
+
+pub async fn download(mut progress: prodash::tree::Item) -> () {
+    let mut iteration = 0;
+    progress.init(None, Some("Kb"));
+    loop {
+        iteration += 1;
+        Delay::new(Duration::from_secs(1)).await;
+        progress.set(iteration)
+    }
 }

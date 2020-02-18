@@ -1,5 +1,5 @@
 use crate::{
-    engine::workers::{schedule_tasks, AsyncResult, Scheduling},
+    engine::worker::{schedule_tasks, AsyncResult, Scheduling},
     error::{Error, Result},
     model,
     persistence::CrateVersionsTree,
@@ -14,7 +14,6 @@ use futures::{
     stream::StreamExt,
     task::{Spawn, SpawnExt},
 };
-use futures_timer::Delay;
 use log::info;
 use prodash::tui::{Event, Line};
 use std::{
@@ -24,7 +23,7 @@ use std::{
     time::{Duration, SystemTime},
 };
 
-mod workers;
+mod worker;
 
 async fn process_changes(
     db: Db,
@@ -129,18 +128,9 @@ pub async fn run(
 
     let mut downloaders = progress.add_child("Downloads");
     for idx in 0..10 {
-        pool.spawn({
-            let mut progress = downloaders.add_child(format!("DL {} - idle", idx + 1));
-            async move {
-                let mut iteration = 0;
-                progress.init(None, Some("Kb"));
-                loop {
-                    iteration += 1;
-                    Delay::new(Duration::from_secs(1)).await;
-                    progress.set(iteration)
-                }
-            }
-        })?;
+        pool.spawn(worker::download(
+            downloaders.add_child(format!("DL {} - idle", idx + 1)),
+        ))?;
     }
 
     let res = {
