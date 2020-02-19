@@ -1,5 +1,5 @@
 use crate::{
-    engine::worker::{schedule_tasks, AsyncResult, Scheduling},
+    engine::worker::{schedule_tasks, Scheduling},
     error::Result,
     model,
     persistence::Db,
@@ -59,16 +59,14 @@ pub async fn run(
         async move {
             let versions = db.open_crate_versions()?;
             let mut ofs = 0;
-            let mut may_schedule_tasks = true;
-            progress.init(None, Some("crate version"));
             loop {
                 let chunk = {
                     let tree_iter = versions.tree().iter();
                     tree_iter.rev().skip(ofs).take(1000).collect::<Vec<_>>()
                 };
+                progress.init(Some((ofs + chunk.len()) as u32), Some("crate version"));
                 if chunk.is_empty() {
                     ofs = 0;
-                    may_schedule_tasks = false;
                     continue;
                 }
                 let chunk_len = chunk.len();
@@ -81,24 +79,22 @@ pub async fn run(
                     // TODO: one day we may decide based on other context whether to continue
                     // blocking while trying, or not, or try again a bit later after storing
                     // a chunk of versions
-                    if may_schedule_tasks {
-                        let res = schedule_tasks(
-                            &version,
-                            progress.add_child(format!("schedule {}", CrateVersionsTree::key_str(&version))),
-                            Scheduling::NeverBlock,
-                            &tx
-                        )
-                            .await?;
-                        if let AsyncResult::WouldBlock = res {
-                            progress.info("Skipping further task scheduling in preference for storing new versions");
-                            may_schedule_tasks = false;
-                        }
-                    }
+                    progress.blocked(None);
+                    schedule_tasks(
+                        &version,
+                        progress.add_child(format!(
+                            "schedule {}",
+                            CrateVersionsTree::key_str(&version)
+                        )),
+                        Scheduling::AtLeastOne,
+                        &tx,
+                    )
+                    .await?;
                 }
                 ofs += chunk_len;
             }
         }
-            .map(|_: Result<()>| ())
+        .map(|_: Result<()>| ())
     })?;
 
     let interval_s = 5;
