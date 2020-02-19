@@ -75,10 +75,6 @@ pub async fn run(
                     progress.set((ofs + idx + 1) as u32);
                     let version: model::CrateVersion = value.into();
 
-                    // There is enough scheduling capacity for this not to block
-                    // TODO: one day we may decide based on other context whether to continue
-                    // blocking while trying, or not, or try again a bit later after storing
-                    // a chunk of versions
                     progress.blocked(None);
                     schedule_tasks(
                         &version,

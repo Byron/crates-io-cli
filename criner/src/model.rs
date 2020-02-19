@@ -1,5 +1,7 @@
 use serde_derive::{Deserialize, Serialize};
+use std::borrow::Cow;
 use std::ops::Add;
+use std::time::SystemTime;
 use std::{collections::HashMap, time::Duration};
 
 /// Represents a top-level crate and associated information
@@ -79,6 +81,27 @@ pub struct CrateVersion {
     /// All crate dependencies
     #[serde(rename = "deps")]
     pub dependencies: Vec<crates_index_diff::Dependency>,
+}
+
+/// Information about a process
+#[derive(Debug, Serialize, Deserialize, Default, Clone)]
+pub struct TaskMetaData<'a> {
+    last_run_at: Option<SystemTime>,
+    /// How often did we try to run the task to success
+    attempts: u8,
+    /// Information about the process that we used to run
+    process: Cow<'a, str>,
+    /// Information about the process version
+    version: Cow<'a, str>,
+}
+
+/// A download with meta data and the downloaded blob itself
+#[derive(Debug, Serialize, Deserialize, Default, Clone)]
+pub struct Download<'a> {
+    meta: TaskMetaData<'a>,
+    content_length: usize,
+    content_type: Option<Cow<'a, str>>,
+    data: Option<Result<Cow<'a, [u8]>, Cow<'a, str>>>,
 }
 
 impl From<&crates_index_diff::CrateVersion> for CrateVersion {
