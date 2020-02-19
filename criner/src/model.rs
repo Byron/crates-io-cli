@@ -62,6 +62,48 @@ impl Add<&Context> for Context {
     }
 }
 
+/// A single dependency of a specific crate version
+#[derive(Clone, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq, Debug)]
+pub struct Dependency {
+    /// The crate name
+    pub name: String,
+    /// The version the parent crate requires of this dependency
+    #[serde(rename = "req")]
+    pub required_version: String,
+    /// All cargo features configured by the parent crate
+    pub features: Vec<String>,
+    /// True if this is an optional dependency
+    pub optional: bool,
+    /// True if default features are enabled
+    pub default_features: bool,
+    /// The name of the build target
+    pub target: Option<String>,
+    /// The kind of dependency, usually 'normal' or 'dev'
+    pub kind: Option<String>,
+    /// The package this crate is contained in
+    pub package: Option<String>,
+}
+
+impl From<&crates_index_diff::Dependency> for Dependency {
+    fn from(v: &crates_index_diff::Dependency) -> Self {
+        Dependency {
+            name: v.name.to_owned().into(),
+            required_version: v.required_version.to_owned().into(),
+            features: v
+                .features
+                .iter()
+                .map(ToOwned::to_owned)
+                .map(Into::into)
+                .collect(),
+            optional: v.optional,
+            default_features: v.default_features,
+            target: v.target.as_ref().map(|v| v.to_owned().into()),
+            kind: v.kind.as_ref().map(|v| v.to_owned().into()),
+            package: v.package.as_ref().map(|v| v.to_owned().into()),
+        }
+    }
+}
+
 /// Pack all information we know about a change made to a version of a crate.
 #[derive(Debug, Serialize, Deserialize, Default, Clone)]
 pub struct CrateVersion<'a> {
@@ -80,7 +122,7 @@ pub struct CrateVersion<'a> {
     pub features: HashMap<String, Vec<String>>,
     /// All crate dependencies
     #[serde(rename = "deps")]
-    pub dependencies: Vec<crates_index_diff::Dependency>,
+    pub dependencies: Vec<Dependency>,
 }
 
 /// Information about a process
@@ -121,7 +163,7 @@ impl<'a> From<&crates_index_diff::CrateVersion> for CrateVersion<'a> {
             version: version.clone().into(),
             checksum: checksum.clone().into(),
             features: features.clone(),
-            dependencies: dependencies.clone(),
+            dependencies: dependencies.iter().map(Into::into).collect(),
         }
     }
 }
