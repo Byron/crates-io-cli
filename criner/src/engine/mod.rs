@@ -62,7 +62,7 @@ pub async fn run(
             loop {
                 let chunk = {
                     let tree_iter = versions.tree().iter();
-                    tree_iter.rev().skip(ofs).take(1000).collect::<Vec<_>>()
+                    tree_iter.skip(ofs).take(1000).collect::<Vec<_>>()
                 };
                 progress.init(Some((ofs + chunk.len()) as u32), Some("crate version"));
                 if chunk.is_empty() {
