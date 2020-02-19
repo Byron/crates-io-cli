@@ -1,7 +1,5 @@
 use crate::{
-    engine::worker::{schedule_tasks, AsyncResult, Scheduling},
     error::{Error, Result},
-    persistence::CrateVersionsTree,
     persistence::TreeAccess,
     utils::*,
     Context,
@@ -68,23 +66,6 @@ pub async fn process(
                         context.update_today(|c| c.counts.crates += 1)?;
                     }
 
-                    // There is enough scheduling capacity for this not to block
-                    // TODO: one day we may decide based on other context whether to continue
-                    // blocking while trying, or not, or try again a bit later after storing
-                    // a chunk of versions
-                    if may_schedule_tasks {
-                        let res = schedule_tasks(
-                            version,
-                            store_progress.add_child(format!("schedule {}", CrateVersionsTree::key_str(version))),
-                            Scheduling::NeverBlock,
-                            &download
-                        )
-                            .await?;
-                        if let AsyncResult::WouldBlock = res {
-                            store_progress.info("Skipping further task scheduling in preference for storing new versions");
-                            may_schedule_tasks = false;
-                        }
-                    }
                     store_progress.set((versions_stored + 1) as u32);
                 }
                 context.update_today(|c| {
@@ -101,6 +82,6 @@ pub async fn process(
         },
         &pool,
     )
-        .await??;
+    .await??;
     Ok(())
 }

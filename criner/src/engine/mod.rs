@@ -1,4 +1,11 @@
-use crate::{error::Result, model, persistence::Db, utils::*};
+use crate::{
+    engine::worker::{schedule_tasks, AsyncResult, Scheduling},
+    error::Result,
+    model,
+    persistence::Db,
+    persistence::{CrateVersionsTree, TreeAccess},
+    utils::*,
+};
 use futures::{
     executor::{block_on, ThreadPool},
     future::Either,
@@ -46,6 +53,44 @@ pub async fn run(
             rx.clone(),
         ))?;
     }
+
+    pool.spawn({
+        let db = db.clone();
+        let mut progress = progress.add_child("Process Crate Versions");
+        async move {
+            let versions = db.open_crate_versions()?;
+            let mut tree_iter = versions.tree().iter();
+            let mut may_schedule_tasks = true;
+            let mut count = 0;
+            progress.init(None, Some("crate version"));
+            while let Some(res) = tree_iter.next_back() {
+                let (_key, value) = res?;
+                count += 1;
+                progress.set(count);
+                let version: model::CrateVersion = value.into();
+
+                // There is enough scheduling capacity for this not to block
+                // TODO: one day we may decide based on other context whether to continue
+                // blocking while trying, or not, or try again a bit later after storing
+                // a chunk of versions
+                if may_schedule_tasks {
+                    let res = schedule_tasks(
+                        &version,
+                        progress.add_child(format!("schedule {}", CrateVersionsTree::key_str(&version))),
+                        Scheduling::NeverBlock,
+                        &tx
+                    )
+                        .await?;
+                    if let AsyncResult::WouldBlock = res {
+                        progress.info("Skipping further task scheduling in preference for storing new versions");
+                        may_schedule_tasks = false;
+                    }
+                }
+            }
+            Ok(())
+        }
+            .map(|_: Result<()>| ())
+    })?;
 
     let interval_s = 5;
     repeat_every_s(

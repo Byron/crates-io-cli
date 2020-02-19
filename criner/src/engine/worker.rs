@@ -1,4 +1,5 @@
 use crate::error::Result;
+use crate::model;
 use async_std::sync::Receiver;
 use futures_timer::Delay;
 use std::time::Duration;
@@ -20,7 +21,7 @@ pub enum AsyncResult {
 }
 
 pub async fn schedule_tasks(
-    version: &crates_index_diff::CrateVersion,
+    version: &model::CrateVersion,
     mut progress: prodash::tree::Item,
     _mode: Scheduling,
     download: &async_std::sync::Sender<DownloadTask>,

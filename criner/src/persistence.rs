@@ -1,6 +1,7 @@
 use crate::model::CrateVersion;
 use crate::{
     error::{Error, Result},
+    model,
     model::{Context, Crate},
 };
 use sled::{IVec, Tree};
@@ -197,7 +198,8 @@ pub struct CrateVersionsTree {
 }
 
 impl CrateVersionsTree {
-    pub fn key_str(v: &crates_index_diff::CrateVersion) -> String {
+    /// TODO: keys should rather be using an extension trait, impl Key for T, so that can be used as long as you have T
+    pub fn key_str(v: &model::CrateVersion) -> String {
         let mut id = String::with_capacity(v.name.len() + v.version.len() + 1);
         id.push_str(&v.name);
         id.push(':');
