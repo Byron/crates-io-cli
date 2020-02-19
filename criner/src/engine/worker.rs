@@ -43,6 +43,7 @@ pub struct DownloadTask {
     name: String,
 }
 
+/// "https://crates.io/api/v1/crates/#{name}/#{version}/download"
 pub async fn download(mut progress: prodash::tree::Item, r: Receiver<DownloadTask>) -> () {
     progress.init(None, Some("Kb"));
     while let Some(DownloadTask { name }) = r.recv().await {

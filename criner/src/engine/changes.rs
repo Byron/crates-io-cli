@@ -18,7 +18,6 @@ pub async fn process(
         db,
         mut progress,
         deadline,
-        download,
     }: Context,
 ) -> Result<()> {
     let start = SystemTime::now();
@@ -50,7 +49,6 @@ pub async fn process(
                 let versions = db.open_crate_versions()?;
                 let krate = db.open_crates()?;
                 let context = db.context();
-                let mut may_schedule_tasks = true;
                 // NOTE: this loop can also be a stream, but that makes computation slower due to overhead
                 // Thus we just do this 'quickly' on the main thread, knowing that criner really needs its
                 // own executor or resources.
