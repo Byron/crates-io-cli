@@ -9,7 +9,7 @@ use std::{future::Future, time::Duration, time::SystemTime};
 
 pub async fn wait_with_progress(
     duration_s: u32,
-    progress: &mut prodash::tree::Item,
+    mut progress: prodash::tree::Item,
     deadline: Option<SystemTime>,
 ) -> Result<()> {
     progress.init(Some(duration_s), Some("s"));
@@ -21,19 +21,20 @@ pub async fn wait_with_progress(
     Ok(())
 }
 
-pub async fn repeat_every_s<MakeFut, Fut, T>(
+pub async fn repeat_every_s<MakeFut, MakeProgress, Fut, T>(
     interval_s: u32,
-    mut wait_progress: prodash::tree::Item,
+    mut make_progress: MakeProgress,
     deadline: Option<SystemTime>,
     mut make_future: MakeFut,
 ) -> Result<()>
 where
     Fut: Future<Output = Result<T>>,
     MakeFut: FnMut() -> Fut,
+    MakeProgress: FnMut() -> prodash::tree::Item,
 {
     loop {
         make_future().await?;
-        wait_with_progress(interval_s, &mut wait_progress, deadline).await?;
+        wait_with_progress(interval_s, make_progress(), deadline).await?;
     }
 }
 

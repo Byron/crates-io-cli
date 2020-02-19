@@ -47,10 +47,13 @@ pub async fn run(
         ))?;
     }
 
-    let interval_s = 30;
+    let interval_s = 5;
     repeat_every_s(
         interval_s,
-        progress.add_child("Fetch Timer"),
+        {
+            let p = progress.clone();
+            move || p.add_child("Fetch Timer")
+        },
         deadline,
         move || {
             changes::process(
