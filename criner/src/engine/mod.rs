@@ -6,6 +6,7 @@ use futures::{
     stream::StreamExt,
     task::{Spawn, SpawnExt},
 };
+use futures_timer::Delay;
 use log::info;
 use prodash::tui::{Event, Line};
 use std::{
@@ -47,22 +48,30 @@ pub async fn run(
         ))?;
     }
 
-    let res = {
-        let db = db.clone();
-        changes::process(
-            crates_io_path,
-            pool,
-            Context {
-                db,
-                progress: progress.add_child("crates.io refresh"),
-                deadline,
-                download: tx,
-            },
-        )
-        .await
-    };
-
-    res
+    let period_s = 60;
+    async move {
+        loop {
+            let db = db.clone();
+            changes::process(
+                crates_io_path.clone(),
+                &pool,
+                Context {
+                    db,
+                    progress: progress.add_child("crates.io refresh"),
+                    deadline,
+                    download: tx.clone(),
+                },
+            )
+            .await?;
+            let mut fetch_interval_progress = progress.add_child("Fetch Timer");
+            fetch_interval_progress.init(Some(period_s), Some("s"));
+            for s in 1..=period_s {
+                Delay::new(Duration::from_secs(1)).await;
+                fetch_interval_progress.set(s);
+            }
+        }
+    }
+    .await
 }
 
 /// For convenience, run the engine and block until done.
