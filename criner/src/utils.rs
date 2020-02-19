@@ -5,7 +5,21 @@ use futures::{
     task::Spawn,
 };
 use futures_timer::Delay;
-use std::{future::Future, time::SystemTime};
+use std::{future::Future, time::Duration, time::SystemTime};
+
+pub async fn wait_with_progress(
+    duration_s: u32,
+    progress: &mut prodash::tree::Item,
+    deadline: Option<SystemTime>,
+) -> Result<()> {
+    progress.init(Some(duration_s), Some("s"));
+    for s in 1..=duration_s {
+        Delay::new(Duration::from_secs(1)).await;
+        check(deadline)?;
+        progress.set(s);
+    }
+    Ok(())
+}
 
 pub fn check(deadline: Option<SystemTime>) -> Result<()> {
     deadline
