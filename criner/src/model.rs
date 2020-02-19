@@ -64,27 +64,27 @@ impl Add<&Context> for Context {
 
 /// A single dependency of a specific crate version
 #[derive(Clone, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq, Debug)]
-pub struct Dependency {
+pub struct Dependency<'a> {
     /// The crate name
-    pub name: String,
+    pub name: Cow<'a, str>,
     /// The version the parent crate requires of this dependency
     #[serde(rename = "req")]
-    pub required_version: String,
+    pub required_version: Cow<'a, str>,
     /// All cargo features configured by the parent crate
-    pub features: Vec<String>,
+    pub features: Vec<Cow<'a, str>>,
     /// True if this is an optional dependency
     pub optional: bool,
     /// True if default features are enabled
     pub default_features: bool,
     /// The name of the build target
-    pub target: Option<String>,
+    pub target: Option<Cow<'a, str>>,
     /// The kind of dependency, usually 'normal' or 'dev'
-    pub kind: Option<String>,
+    pub kind: Option<Cow<'a, str>>,
     /// The package this crate is contained in
-    pub package: Option<String>,
+    pub package: Option<Cow<'a, str>>,
 }
 
-impl From<&crates_index_diff::Dependency> for Dependency {
+impl<'a> From<&crates_index_diff::Dependency> for Dependency<'a> {
     fn from(v: &crates_index_diff::Dependency) -> Self {
         Dependency {
             name: v.name.to_owned().into(),
@@ -122,7 +122,7 @@ pub struct CrateVersion<'a> {
     pub features: HashMap<Cow<'a, str>, Vec<Cow<'a, str>>>,
     /// All crate dependencies
     #[serde(rename = "deps")]
-    pub dependencies: Vec<Dependency>,
+    pub dependencies: Vec<Dependency<'a>>,
 }
 
 /// Information about a process
