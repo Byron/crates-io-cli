@@ -11,6 +11,7 @@ use std::{path::Path, time::SystemTime};
 pub struct Db {
     pub inner: sled::Db,
     meta: sled::Tree,
+    versions: sled::Tree,
 }
 
 impl Db {
@@ -22,12 +23,17 @@ impl Db {
         // NOTE: Databases with and without compression need migration.
         let inner = sled::Config::new().path(path).open()?;
         let meta = inner.open_tree("meta")?;
-        Ok(Db { inner, meta })
+        let versions = inner.open_tree("crate_versions")?;
+        Ok(Db {
+            inner,
+            meta,
+            versions,
+        })
     }
 
     pub fn open_crate_versions(&self) -> Result<CrateVersionsTree> {
         Ok(CrateVersionsTree {
-            inner: self.inner.open_tree("crate_versions")?,
+            inner: &self.versions,
         })
     }
 
@@ -193,11 +199,11 @@ impl TreeAccess for CratesTree {
 }
 
 #[derive(Clone)]
-pub struct CrateVersionsTree {
-    inner: sled::Tree,
+pub struct CrateVersionsTree<'a> {
+    inner: &'a sled::Tree,
 }
 
-impl CrateVersionsTree {
+impl<'a> CrateVersionsTree<'a> {
     /// TODO: keys should rather be using an extension trait, impl Key for T, so that can be used as long as you have T
     pub fn key_str(v: &model::CrateVersion) -> String {
         let mut id = String::with_capacity(v.name.len() + v.version.len() + 1);
@@ -208,8 +214,8 @@ impl CrateVersionsTree {
     }
 }
 
-impl TreeAccess for CrateVersionsTree {
-    type StorageItem = CrateVersion;
+impl<'a> TreeAccess for CrateVersionsTree<'a> {
+    type StorageItem = CrateVersion<'a>;
     type InsertItem = crates_index_diff::CrateVersion;
     type InsertResult = ();
 
@@ -262,5 +268,5 @@ macro_rules! impl_ivec_transform {
 
 impl_ivec_transform!(Crate);
 impl_ivec_transform!(Download<'_>);
-impl_ivec_transform!(CrateVersion);
+impl_ivec_transform!(CrateVersion<'_>);
 impl_ivec_transform!(Context);

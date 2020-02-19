@@ -64,18 +64,18 @@ impl Add<&Context> for Context {
 
 /// Pack all information we know about a change made to a version of a crate.
 #[derive(Debug, Serialize, Deserialize, Default, Clone)]
-pub struct CrateVersion {
+pub struct CrateVersion<'a> {
     /// The crate name, i.e. `clap`.
-    pub name: String,
+    pub name: Cow<'a, str>,
     /// The kind of change.
     #[serde(rename = "yanked")]
     pub kind: crates_index_diff::ChangeKind,
     /// The semantic version of the crate.
     #[serde(rename = "vers")]
-    pub version: String,
+    pub version: Cow<'a, str>,
     /// The checksum over the crate archive
     #[serde(rename = "cksum")]
-    pub checksum: String,
+    pub checksum: Cow<'a, str>,
     /// All cargo features
     pub features: HashMap<String, Vec<String>>,
     /// All crate dependencies
@@ -104,7 +104,7 @@ pub struct Download<'a> {
     data: Option<Result<Cow<'a, [u8]>, Cow<'a, str>>>,
 }
 
-impl From<&crates_index_diff::CrateVersion> for CrateVersion {
+impl<'a> From<&crates_index_diff::CrateVersion> for CrateVersion<'a> {
     fn from(
         crates_index_diff::CrateVersion {
             name,
@@ -116,10 +116,10 @@ impl From<&crates_index_diff::CrateVersion> for CrateVersion {
         }: &crates_index_diff::CrateVersion,
     ) -> Self {
         CrateVersion {
-            name: name.clone(),
+            name: name.clone().into(),
             kind: *kind,
-            version: version.clone(),
-            checksum: checksum.clone(),
+            version: version.clone().into(),
+            checksum: checksum.clone().into(),
             features: features.clone(),
             dependencies: dependencies.clone(),
         }

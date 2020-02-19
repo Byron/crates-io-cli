@@ -21,7 +21,7 @@ pub enum AsyncResult {
 }
 
 pub async fn schedule_tasks(
-    version: &model::CrateVersion,
+    version: &model::CrateVersion<'_>,
     mut progress: prodash::tree::Item,
     _mode: Scheduling,
     download: &async_std::sync::Sender<DownloadTask>,
