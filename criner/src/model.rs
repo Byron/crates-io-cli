@@ -6,16 +6,16 @@ use std::{collections::HashMap, time::Duration};
 
 /// Represents a top-level crate and associated information
 #[derive(Serialize, Deserialize, Default, Clone)]
-pub struct Crate {
+pub struct Crate<'a> {
     /// All versions published to crates.io, guaranteed to be sorted so that the most recent version is last.
     /// The format is as specified in Cargo.toml:version
-    pub versions: Vec<String>,
+    pub versions: Vec<Cow<'a, str>>,
 }
 
-impl From<&crates_index_diff::CrateVersion> for Crate {
+impl<'a> From<&crates_index_diff::CrateVersion> for Crate<'a> {
     fn from(v: &crates_index_diff::CrateVersion) -> Self {
         Crate {
-            versions: vec![v.version.to_owned()],
+            versions: vec![v.version.to_owned().into()],
         }
     }
 }

@@ -12,6 +12,7 @@ pub struct Db {
     pub inner: sled::Db,
     meta: sled::Tree,
     versions: sled::Tree,
+    crates: sled::Tree,
 }
 
 impl Db {
@@ -24,10 +25,12 @@ impl Db {
         let inner = sled::Config::new().path(path).open()?;
         let meta = inner.open_tree("meta")?;
         let versions = inner.open_tree("crate_versions")?;
+        let crates = inner.open_tree("crates")?;
         Ok(Db {
             inner,
             meta,
             versions,
+            crates,
         })
     }
 
@@ -39,7 +42,7 @@ impl Db {
 
     pub fn open_crates(&self) -> Result<CratesTree> {
         Ok(CratesTree {
-            inner: self.inner.open_tree("crates")?,
+            inner: &self.crates,
         })
     }
 
@@ -156,17 +159,17 @@ impl<'a> ContextTree<'a> {
 }
 
 #[derive(Clone)]
-pub struct CratesTree {
-    inner: sled::Tree,
+pub struct CratesTree<'a> {
+    inner: &'a sled::Tree,
 }
 
-impl TreeAccess for CratesTree {
-    type StorageItem = Crate;
+impl<'a> TreeAccess for CratesTree<'a> {
+    type StorageItem = Crate<'a>;
     type InsertItem = crates_index_diff::CrateVersion;
     type InsertResult = bool;
 
     fn tree(&self) -> &Tree {
-        &self.inner
+        self.inner
     }
 
     fn key(&self, item: &crates_index_diff::CrateVersion) -> Vec<u8> {
@@ -181,14 +184,17 @@ impl TreeAccess for CratesTree {
     fn merge(
         &self,
         new_item: &crates_index_diff::CrateVersion,
-        existing_item: Option<Crate>,
-    ) -> Option<Crate> {
+        existing_item: Option<Crate<'a>>,
+    ) -> Option<Crate<'a>> {
         Some(match existing_item {
             Some(mut c) => {
                 // NOTE: We assume that a version can only be added once! They are immutable.
                 // However, idempotence is more important
-                if !c.versions.contains(&new_item.version) {
-                    c.versions.push(new_item.version.to_owned());
+                if !c
+                    .versions
+                    .contains(&std::borrow::Cow::from(&new_item.version))
+                {
+                    c.versions.push(new_item.version.to_owned().into());
                 }
                 c.versions.sort();
                 c
@@ -220,7 +226,7 @@ impl<'a> TreeAccess for CrateVersionsTree<'a> {
     type InsertResult = ();
 
     fn tree(&self) -> &Tree {
-        &self.inner
+        self.inner
     }
 
     fn key(&self, v: &crates_index_diff::CrateVersion) -> Vec<u8> {
@@ -266,7 +272,7 @@ macro_rules! impl_ivec_transform {
     };
 }
 
-impl_ivec_transform!(Crate);
+impl_ivec_transform!(Crate<'_>);
 impl_ivec_transform!(Download<'_>);
 impl_ivec_transform!(CrateVersion<'_>);
 impl_ivec_transform!(Context);
