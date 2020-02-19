@@ -21,6 +21,22 @@ pub async fn wait_with_progress(
     Ok(())
 }
 
+pub async fn repeat_every_s<MakeFut, Fut, T>(
+    interval_s: u32,
+    mut wait_progress: prodash::tree::Item,
+    deadline: Option<SystemTime>,
+    mut make_future: MakeFut,
+) -> Result<()>
+where
+    Fut: Future<Output = Result<T>>,
+    MakeFut: FnMut() -> Fut,
+{
+    loop {
+        make_future().await?;
+        wait_with_progress(interval_s, &mut wait_progress, deadline).await?;
+    }
+}
+
 pub fn check(deadline: Option<SystemTime>) -> Result<()> {
     deadline
         .map(|d| {

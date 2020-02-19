@@ -15,7 +15,7 @@ use std::{
 
 pub async fn process(
     crates_io_path: impl AsRef<Path>,
-    pool: &impl Spawn,
+    pool: impl Spawn,
     Context {
         db,
         mut progress,

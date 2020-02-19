@@ -34,7 +34,7 @@ pub async fn run(
     crates_io_path: PathBuf,
     deadline: Option<SystemTime>,
     progress: prodash::Tree,
-    pool: impl Spawn,
+    pool: impl Spawn + Clone,
 ) -> Result<()> {
     check(deadline)?;
 
@@ -47,25 +47,24 @@ pub async fn run(
         ))?;
     }
 
-    let interval_s = 60;
-    async move {
-        loop {
-            let db = db.clone();
+    let interval_s = 30;
+    repeat_every_s(
+        interval_s,
+        progress.add_child("Fetch Timer"),
+        deadline,
+        move || {
             changes::process(
                 crates_io_path.clone(),
-                &pool,
+                pool.clone(),
                 Context {
-                    db,
+                    db: db.clone(),
                     progress: progress.add_child("crates.io refresh"),
                     deadline,
                     download: tx.clone(),
                 },
             )
-            .await?;
-            let mut fetch_interval_progress = progress.add_child("Fetch Timer");
-            wait_with_progress(interval_s, &mut fetch_interval_progress, deadline).await?;
-        }
-    }
+        },
+    )
     .await
 }
 
