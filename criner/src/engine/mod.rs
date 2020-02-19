@@ -7,7 +7,7 @@ use futures::{
     task::{Spawn, SpawnExt},
 };
 use futures_timer::Delay;
-use log::info;
+use log::{info, warn};
 use prodash::tui::{Event, Line};
 use std::{
     io::Write,
@@ -67,6 +67,7 @@ pub async fn run(
             fetch_interval_progress.init(Some(period_s), Some("s"));
             for s in 1..=period_s {
                 Delay::new(Duration::from_secs(1)).await;
+                check(deadline)?;
                 fetch_interval_progress.set(s);
             }
         }
@@ -110,9 +111,12 @@ pub fn run_blocking(
 
     let either = block_on(futures::future::select(work_handle, gui.boxed_local()));
     match either {
-        Either::Left((_, gui)) => {
+        Either::Left((work_result, gui)) => {
             abort_handle.abort();
             block_on(gui).ok();
+            if let Err(e) = work_result {
+                warn!("{}", e);
+            }
         }
         Either::Right((_, work_handle)) => work_handle.forget(),
     }
