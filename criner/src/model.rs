@@ -1,8 +1,8 @@
 use serde_derive::{Deserialize, Serialize};
-use std::borrow::Cow;
-use std::ops::Add;
-use std::time::SystemTime;
-use std::{collections::HashMap, time::Duration};
+use std::{
+    borrow::Cow, collections::HashMap, iter::FromIterator, ops::Add, time::Duration,
+    time::SystemTime,
+};
 
 /// Represents a top-level crate and associated information
 #[derive(Serialize, Deserialize, Default, Clone)]
@@ -119,7 +119,7 @@ pub struct CrateVersion<'a> {
     #[serde(rename = "cksum")]
     pub checksum: Cow<'a, str>,
     /// All cargo features
-    pub features: HashMap<String, Vec<String>>,
+    pub features: HashMap<Cow<'a, str>, Vec<Cow<'a, str>>>,
     /// All crate dependencies
     #[serde(rename = "deps")]
     pub dependencies: Vec<Dependency>,
@@ -162,7 +162,12 @@ impl<'a> From<&crates_index_diff::CrateVersion> for CrateVersion<'a> {
             kind: *kind,
             version: version.clone().into(),
             checksum: checksum.clone().into(),
-            features: features.clone(),
+            features: HashMap::from_iter(features.iter().map(|(k, v)| {
+                (
+                    k.to_owned().into(),
+                    v.iter().map(|v| v.to_owned().into()).collect(),
+                )
+            })),
             dependencies: dependencies.iter().map(Into::into).collect(),
         }
     }
