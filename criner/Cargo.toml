@@ -27,3 +27,4 @@ humantime = "2.0.0"
 log = "0.4.8"
 async-std = { version = "1.5.0", default-features = false, features = ["unstable"] }
 itertools = "0.8.2"
+isahc = "0.8.2"
