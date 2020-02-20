@@ -180,11 +180,18 @@ impl<'a> TreeAccess for TasksTree<'a> {
     fn merge(
         &self,
         (_v, t): &Self::InsertItem,
-        _existing_item: Option<Self::StorageItem>,
+        existing_item: Option<Self::StorageItem>,
     ) -> Option<Self::StorageItem> {
         let mut t = t.clone();
         t.stored_at = SystemTime::now();
-        Some(t)
+        Some(match existing_item {
+            Some(existing_item) => {
+                let new_state = existing_item.state.merged(&t.state);
+                t.state = new_state;
+                t
+            }
+            None => t,
+        })
     }
 }
 

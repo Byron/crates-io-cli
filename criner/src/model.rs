@@ -126,18 +126,31 @@ pub struct CrateVersion<'a> {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub enum TaskState<'a> {
+pub enum TaskState {
     /// The task was never started
     NotStarted,
     /// The task tried to run, but failed N time with errors
-    AttemptsWithFailure(Vec<Cow<'a, str>>),
+    AttemptsWithFailure(Vec<String>),
     /// The task completed successfully
     Complete,
     /// The task was suspended and is only partially complete
     Incomplete,
 }
 
-impl<'a> Default for TaskState<'a> {
+impl TaskState {
+    pub fn merged(&self, other: &TaskState) -> TaskState {
+        match (self, other) {
+            (TaskState::AttemptsWithFailure(existing), TaskState::AttemptsWithFailure(new)) => {
+                let mut merged = existing.clone();
+                merged.extend(new.iter().map(|e| e.clone()));
+                TaskState::AttemptsWithFailure(merged)
+            }
+            (_, other) => other.clone(),
+        }
+    }
+}
+
+impl Default for TaskState {
     fn default() -> Self {
         TaskState::NotStarted
     }
@@ -152,7 +165,7 @@ pub struct Task<'a> {
     pub process: Cow<'a, str>,
     /// Information about the process version
     pub version: Cow<'a, str>,
-    pub state: TaskState<'a>,
+    pub state: TaskState,
 }
 
 impl<'a> Default for Task<'a> {
