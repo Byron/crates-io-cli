@@ -1,4 +1,4 @@
-use crate::model::{CrateVersion, Download};
+use crate::model::{CrateVersion, Task, TaskResult};
 use crate::{
     error::{Error, Result},
     model,
@@ -273,6 +273,7 @@ macro_rules! impl_ivec_transform {
 }
 
 impl_ivec_transform!(Crate<'_>);
-impl_ivec_transform!(Download<'_>);
+impl_ivec_transform!(Task<'_>);
+impl_ivec_transform!(TaskResult<'_>);
 impl_ivec_transform!(CrateVersion<'_>);
 impl_ivec_transform!(Context);

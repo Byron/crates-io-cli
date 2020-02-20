@@ -125,25 +125,44 @@ pub struct CrateVersion<'a> {
     pub dependencies: Vec<Dependency<'a>>,
 }
 
-/// Information about a process
+#[derive(Debug, Serialize, Deserialize, Clone, Copy)]
+pub enum TaskState {
+    /// The task was never started
+    NotStarted,
+    /// The task tried to run, but failed N times
+    AttemptsWithFailure(u16),
+    /// The task completed successfully
+    Complete,
+    /// The task was suspended and is only partially complete
+    Incomplete,
+}
+
+impl Default for TaskState {
+    fn default() -> Self {
+        TaskState::NotStarted
+    }
+}
+
+/// Information about a task
 #[derive(Debug, Serialize, Deserialize, Default, Clone)]
-pub struct TaskMetaData<'a> {
+pub struct Task<'a> {
     last_run_at: Option<SystemTime>,
-    /// How often did we try to run the task to success
-    attempts: u8,
     /// Information about the process that we used to run
     process: Cow<'a, str>,
     /// Information about the process version
     version: Cow<'a, str>,
+    state: TaskState,
 }
 
-/// A download with meta data and the downloaded blob itself
-#[derive(Debug, Serialize, Deserialize, Default, Clone)]
-pub struct Download<'a> {
-    meta: TaskMetaData<'a>,
-    content_length: usize,
-    content_type: Option<Cow<'a, str>>,
-    data: Option<Result<Cow<'a, [u8]>, Cow<'a, str>>>,
+/// Append-variant-only data structure, otherwise migrations are needed
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub enum TaskResult<'a> {
+    /// A download with meta data and the downloaded blob itself
+    Download {
+        content_length: usize,
+        content_type: Cow<'a, str>,
+        data: Option<Result<Cow<'a, [u8]>, Cow<'a, str>>>,
+    },
 }
 
 impl<'a> From<&crates_index_diff::CrateVersion> for CrateVersion<'a> {
