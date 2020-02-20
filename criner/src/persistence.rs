@@ -109,7 +109,7 @@ pub trait TreeAccess {
     type InsertResult;
 
     fn tree(&self) -> &sled::Tree;
-    fn key(&self, item: &Self::InsertItem) -> Vec<u8>;
+    fn key(item: &Self::InsertItem) -> Vec<u8>;
     fn map_insert_return_value(&self, v: IVec) -> Self::InsertResult;
     fn merge(
         &self,
@@ -152,7 +152,7 @@ pub trait TreeAccess {
     /// Similar to 'update', but provides full control over the default
     fn upsert(&self, item: &Self::InsertItem) -> Result<Self::InsertResult> {
         self.tree()
-            .update_and_fetch(self.key(item), |existing: Option<&[u8]>| {
+            .update_and_fetch(Self::key(item), |existing: Option<&[u8]>| {
                 self.merge(item, existing.map(From::from)).map(Into::into)
             })?
             .ok_or_else(|| Error::Bug("We always put a value or update the existing one"))
@@ -161,7 +161,7 @@ pub trait TreeAccess {
 
     fn insert(&self, v: &Self::InsertItem) -> Result<()> {
         self.tree()
-            .insert(self.key(v), rmp_serde::to_vec(v)?)
+            .insert(Self::key(v), rmp_serde::to_vec(v)?)
             .map_err(Error::from)
             .map(|_| ())
     }
@@ -180,7 +180,7 @@ impl<'a> TreeAccess for TasksTree<'a> {
         self.inner
     }
 
-    fn key(&self, (name, version, t): &Self::InsertItem) -> Vec<u8> {
+    fn key((name, version, t): &Self::InsertItem) -> Vec<u8> {
         let mut buf = Vec::with_capacity(32);
         CrateVersion::key_from(name, version, &mut buf);
         buf.push(KEY_SEP);
@@ -223,7 +223,7 @@ impl<'a> TreeAccess for ContextTree<'a> {
         self.inner
     }
 
-    fn key(&self, _item: &Self::InsertItem) -> Vec<u8> {
+    fn key(_item: &Self::InsertItem) -> Vec<u8> {
         format!(
             "context/{}",
             humantime::format_rfc3339(SystemTime::now())
@@ -247,7 +247,7 @@ impl<'a> TreeAccess for ContextTree<'a> {
 
 impl<'a> ContextTree<'a> {
     pub fn update_today(&self, f: impl Fn(&mut Context)) -> Result<Context> {
-        self.update(self.key(&Context::default()), f)
+        self.update(Self::key(&Context::default()), f)
     }
 
     // NOTE: impl iterator is not allowed in traits unfortunately, but one could implement one manually
@@ -278,7 +278,7 @@ impl<'a> TreeAccess for CratesTree<'a> {
         self.inner
     }
 
-    fn key(&self, item: &crates_index_diff::CrateVersion) -> Vec<u8> {
+    fn key(item: &crates_index_diff::CrateVersion) -> Vec<u8> {
         item.name.clone().into_bytes()
     }
 
@@ -324,7 +324,7 @@ impl<'a> TreeAccess for CrateVersionsTree<'a> {
         self.inner
     }
 
-    fn key(&self, v: &crates_index_diff::CrateVersion) -> Vec<u8> {
+    fn key(v: &crates_index_diff::CrateVersion) -> Vec<u8> {
         v.key_bytes()
     }
 
