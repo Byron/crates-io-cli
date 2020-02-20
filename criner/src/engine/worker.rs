@@ -1,10 +1,9 @@
-use crate::error::Result;
+use crate::error::{Error, Result};
 use crate::model;
-use crate::model::Task;
+use crate::model::{Task, TaskState};
 use crate::persistence::{Db, TasksTree, TreeAccess};
 use async_std::sync::Receiver;
-use futures_timer::Delay;
-use std::time::{Duration, SystemTime};
+use std::time::SystemTime;
 
 pub enum Scheduling {
     //   /// Considers work done if everything was done. Will block to assure that
@@ -51,7 +50,6 @@ pub async fn download(
     mut progress: prodash::tree::Item,
     r: Receiver<DownloadTask>,
 ) -> Result<()> {
-    progress.init(None, Some("Kb"));
     const TASK_NAME: &str = "download";
     const TASK_VERSION: &str = "1.0.0";
     let mut dummy = Task {
@@ -73,12 +71,39 @@ pub async fn download(
         dummy = kt.2;
 
         let mut task = tasks.update(&key, |_| ())?;
-        task.process = "download".into();
-        task.version = "1.0.0".into(); // careful - if this changes, we have to download everything again
-        for it in 1..=10 {
-            Delay::new(Duration::from_secs(1)).await;
-            progress.set(it)
+        task.process = TASK_NAME.into();
+        task.version = TASK_VERSION.into();
+
+        progress.blocked(None);
+        let download_url = format!(
+            "https://crates.io/api/v1/crates/{name}/{version}/download",
+            name = name,
+            version = semver
+        );
+        let res = {
+            let mut response = surf::get(&download_url).await?;
+            let size: u32 = response
+                .header("Content-Length")
+                .ok_or(Error::InvalidHeader("expected content-length"))
+                .and_then(|l| l.parse().map_err(Into::into))?;
+            progress.init(Some(size / 1024), Some("Kb"));
+            progress.done(format!("HEAD:{}:content-size = {}", download_url, size));
+            progress.blocked(None);
+            let body = response.body_bytes().await?;
+            progress.set(size);
+            progress.done(format!("GET:{}:body bytes = {}", download_url, body.len()));
+            Ok(())
         }
+        .map_err(|e: crate::error::Error| {
+            let e = e.to_string();
+            progress.fail(format!("Failed to download '{}': {}", download_url, e));
+            e
+        });
+
+        task.state = match res {
+            Ok(_) => TaskState::Complete,
+            Err(err) => TaskState::AttemptsWithFailure(vec![err]),
+        };
         kt.2 = task;
         tasks.upsert(&kt)?;
     }

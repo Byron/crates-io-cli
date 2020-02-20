@@ -28,6 +28,9 @@ quick_error! {
         Bug(d: &'static str) {
             display("{}", d)
         }
+        InvalidHeader(d: &'static str) {
+            display("{}", d)
+        }
         DeadlineExceeded(d: FormatDeadline) {
             display("Stopped computation as deadline was reached {}.", d)
         }
@@ -52,6 +55,13 @@ quick_error! {
             cause(err)
         }
         FromUtf8(err: std::string::FromUtf8Error) {
+            from()
+            cause(err)
+        }
+        Surf(err: surf::Exception) {
+            from()
+        }
+        ParseInt(err: std::num::ParseIntError) {
             from()
             cause(err)
         }

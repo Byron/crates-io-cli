@@ -172,7 +172,12 @@ pub struct Task<'a> {
 
 impl<'a> Default for Task<'a> {
     fn default() -> Self {
-        unimplemented!()
+        Task {
+            stored_at: SystemTime::now(),
+            process: Default::default(),
+            version: Default::default(),
+            state: Default::default(),
+        }
     }
 }
 
@@ -181,7 +186,7 @@ impl<'a> Default for Task<'a> {
 pub enum TaskResult<'a> {
     /// A download with meta data and the downloaded blob itself
     Download {
-        content_length: usize,
+        content_length: u32,
         content_type: Cow<'a, str>,
         data: Option<Result<Cow<'a, [u8]>, Cow<'a, str>>>,
     },
