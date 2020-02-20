@@ -1,10 +1,4 @@
-use crate::{
-    engine::worker::{schedule_tasks, Scheduling},
-    error::Result,
-    model,
-    persistence::{Db, Keyed, TreeAccess},
-    utils::*,
-};
+use crate::{error::Result, model, persistence::Db, utils::*};
 use futures::{
     executor::{block_on, ThreadPool},
     future::Either,
@@ -22,6 +16,7 @@ use std::{
 };
 
 mod changes;
+mod tasks;
 mod worker;
 
 pub struct Context {
@@ -53,7 +48,7 @@ pub async fn run(
     }
 
     pool.spawn(
-        tasks(
+        tasks::process(
             db.clone(),
             progress.add_child("Process Crate Versions"),
             tx.clone(),
@@ -82,42 +77,6 @@ pub async fn run(
         },
     )
     .await
-}
-
-async fn tasks(
-    db: Db,
-    mut progress: prodash::tree::Item,
-    tx: async_std::sync::Sender<worker::DownloadTask>,
-) -> Result<()> {
-    let versions = db.crate_versions()?;
-    let mut ofs = 0;
-    loop {
-        let chunk = {
-            let tree_iter = versions.tree().iter();
-            tree_iter.skip(ofs).take(1000).collect::<Vec<_>>()
-        };
-        progress.init(Some((ofs + chunk.len()) as u32), Some("crate version"));
-        if chunk.is_empty() {
-            ofs = 0;
-            continue;
-        }
-        let chunk_len = chunk.len();
-        for (idx, res) in chunk.into_iter().enumerate() {
-            let (_key, value) = res?;
-            progress.set((ofs + idx + 1) as u32);
-            let version: model::CrateVersion = value.into();
-
-            progress.blocked(None);
-            schedule_tasks(
-                &version,
-                progress.add_child(format!("schedule {}", version.key_string()?)),
-                Scheduling::AtLeastOne,
-                &tx,
-            )
-            .await?;
-        }
-        ofs += chunk_len;
-    }
 }
 
 /// For convenience, run the engine and block until done.
