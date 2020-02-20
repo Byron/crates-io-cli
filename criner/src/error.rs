@@ -58,9 +58,6 @@ quick_error! {
             from()
             cause(err)
         }
-        Surf(err: surf::Exception) {
-            from()
-        }
         ParseInt(err: std::num::ParseIntError) {
             from()
             cause(err)

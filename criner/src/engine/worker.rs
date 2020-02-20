@@ -1,4 +1,4 @@
-use crate::error::{Error, Result};
+use crate::error::Result;
 use crate::model;
 use crate::model::{Task, TaskState};
 use crate::persistence::{Db, TasksTree, TreeAccess};
@@ -81,17 +81,10 @@ pub async fn download(
             version = semver
         );
         let res = {
-            let mut response = surf::get(&download_url).await?;
-            let size: u32 = response
-                .header("Content-Length")
-                .ok_or(Error::InvalidHeader("expected content-length"))
-                .and_then(|l| l.parse().map_err(Into::into))?;
-            progress.init(Some(size / 1024), Some("Kb"));
-            progress.done(format!("HEAD:{}:content-size = {}", download_url, size));
-            progress.blocked(None);
-            let body = response.body_bytes().await?;
-            progress.set(size);
-            progress.done(format!("GET:{}:body bytes = {}", download_url, body.len()));
+            // let size: u32 = response
+            //     .header("Content-Length")
+            //     .ok_or(Error::InvalidHeader("expected content-length"))
+            //     .and_then(|l| l.parse().map_err(Into::into))?;
             Ok(())
         }
         .map_err(|e: crate::error::Error| {
