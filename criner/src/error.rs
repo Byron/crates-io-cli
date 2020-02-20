@@ -51,5 +51,9 @@ quick_error! {
             from()
             cause(err)
         }
+        FromUtf8(err: std::string::FromUtf8Error) {
+            from()
+            cause(err)
+        }
     }
 }

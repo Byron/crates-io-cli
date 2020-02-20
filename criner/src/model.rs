@@ -146,12 +146,12 @@ impl Default for TaskState {
 /// Information about a task
 #[derive(Debug, Serialize, Deserialize, Default, Clone)]
 pub struct Task<'a> {
-    last_run_at: Option<SystemTime>,
+    pub last_run_at: Option<SystemTime>,
     /// Information about the process that we used to run
-    process: Cow<'a, str>,
+    pub process: Cow<'a, str>,
     /// Information about the process version
-    version: Cow<'a, str>,
-    state: TaskState,
+    pub version: Cow<'a, str>,
+    pub state: TaskState,
 }
 
 /// Append-variant-only data structure, otherwise migrations are needed

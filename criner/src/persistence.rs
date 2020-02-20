@@ -1,7 +1,6 @@
 use crate::model::{CrateVersion, Task, TaskResult};
 use crate::{
     error::{Error, Result},
-    model,
     model::{Context, Crate},
 };
 use sled::{IVec, Tree};
@@ -48,6 +47,45 @@ impl Db {
 
     pub fn context(&self) -> ContextTree {
         ContextTree { inner: &self.meta }
+    }
+}
+
+const KEY_SEP: u8 = b':';
+
+pub trait Keyed {
+    fn key_bytes(&self) -> Vec<u8>;
+    fn key_string(&self) -> Result<String> {
+        String::from_utf8(self.key_bytes()).map_err(Into::into)
+    }
+}
+
+impl<'a> Keyed for Task<'a> {
+    fn key_bytes(&self) -> Vec<u8> {
+        let mut id = Vec::with_capacity(self.process.len() + 1 + self.version.len());
+        id.extend_from_slice(&self.process.as_bytes());
+        id.push(KEY_SEP);
+        id.extend_from_slice(&self.version.as_bytes());
+        id
+    }
+}
+
+impl Keyed for crates_index_diff::CrateVersion {
+    fn key_bytes(&self) -> Vec<u8> {
+        let mut id = Vec::with_capacity(self.name.len() + self.version.len() + 1);
+        id.extend_from_slice(&self.name.as_bytes());
+        id.push(KEY_SEP);
+        id.extend_from_slice(&self.version.as_bytes());
+        id
+    }
+}
+
+impl<'a> Keyed for CrateVersion<'a> {
+    fn key_bytes(&self) -> Vec<u8> {
+        let mut id = Vec::with_capacity(self.name.len() + self.version.len() + 1);
+        id.extend_from_slice(&self.name.as_bytes());
+        id.push(KEY_SEP);
+        id.extend_from_slice(&self.version.as_bytes());
+        id
     }
 }
 
@@ -209,17 +247,6 @@ pub struct CrateVersionsTree<'a> {
     inner: &'a sled::Tree,
 }
 
-impl<'a> CrateVersionsTree<'a> {
-    /// TODO: keys should rather be using an extension trait, impl Key for T, so that can be used as long as you have T
-    pub fn key_str(v: &model::CrateVersion) -> String {
-        let mut id = String::with_capacity(v.name.len() + v.version.len() + 1);
-        id.push_str(&v.name);
-        id.push(':');
-        id.push_str(&v.version);
-        id
-    }
-}
-
 impl<'a> TreeAccess for CrateVersionsTree<'a> {
     type StorageItem = CrateVersion<'a>;
     type InsertItem = crates_index_diff::CrateVersion;
@@ -230,11 +257,7 @@ impl<'a> TreeAccess for CrateVersionsTree<'a> {
     }
 
     fn key(&self, v: &crates_index_diff::CrateVersion) -> Vec<u8> {
-        let mut id = Vec::with_capacity(v.name.len() + v.version.len() + 1);
-        id.extend_from_slice(&v.name.as_bytes());
-        id.push(b':');
-        id.extend_from_slice(&v.version.as_bytes());
-        id
+        v.key_bytes()
     }
 
     fn map_insert_return_value(&self, _v: IVec) -> Self::InsertResult {

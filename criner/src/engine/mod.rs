@@ -2,8 +2,7 @@ use crate::{
     engine::worker::{schedule_tasks, Scheduling},
     error::Result,
     model,
-    persistence::Db,
-    persistence::{CrateVersionsTree, TreeAccess},
+    persistence::{Db, Keyed, TreeAccess},
     utils::*,
 };
 use futures::{
@@ -78,10 +77,7 @@ pub async fn run(
                     progress.blocked(None);
                     schedule_tasks(
                         &version,
-                        progress.add_child(format!(
-                            "schedule {}",
-                            CrateVersionsTree::key_str(&version)
-                        )),
+                        progress.add_child(format!("schedule {}", version.key_string()?)),
                         Scheduling::AtLeastOne,
                         &tx,
                     )
