@@ -58,6 +58,10 @@ quick_error! {
             from()
             cause(err)
         }
+        Reqwest(err: reqwest::Error) {
+            from()
+            cause(err)
+        }
         ParseInt(err: std::num::ParseIntError) {
             from()
             cause(err)

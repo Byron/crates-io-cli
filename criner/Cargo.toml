@@ -26,3 +26,5 @@ serde = "1.0.104"
 humantime = "2.0.0"
 log = "0.4.8"
 async-std = { version = "1.5.0", default-features = false, features = ["unstable"] }
+reqwest = "0.10.1"
+http = "0.2.0"
