@@ -12,6 +12,7 @@ pub struct Db {
     meta: sled::Tree,
     versions: sled::Tree,
     crates: sled::Tree,
+    tasks: sled::Tree,
 }
 
 impl Db {
@@ -25,24 +26,30 @@ impl Db {
         let meta = inner.open_tree("meta")?;
         let versions = inner.open_tree("crate_versions")?;
         let crates = inner.open_tree("crates")?;
+        let tasks = inner.open_tree("tasks")?;
         Ok(Db {
             inner,
             meta,
             versions,
             crates,
+            tasks,
         })
     }
 
-    pub fn open_crate_versions(&self) -> Result<CrateVersionsTree> {
+    pub fn crate_versions(&self) -> Result<CrateVersionsTree> {
         Ok(CrateVersionsTree {
             inner: &self.versions,
         })
     }
 
-    pub fn open_crates(&self) -> Result<CratesTree> {
+    pub fn crates(&self) -> Result<CratesTree> {
         Ok(CratesTree {
             inner: &self.crates,
         })
+    }
+
+    pub fn tasks(&self) -> Result<TasksTree> {
+        Ok(TasksTree { inner: &self.tasks })
     }
 
     pub fn context(&self) -> ContextTree {
@@ -139,6 +146,43 @@ pub trait TreeAccess {
             .insert(self.key(v), rmp_serde::to_vec(v)?)
             .map_err(Error::from)
             .map(|_| ())
+    }
+}
+
+pub struct TasksTree<'a> {
+    inner: &'a sled::Tree,
+}
+
+impl<'a> TreeAccess for TasksTree<'a> {
+    type StorageItem = Task<'a>;
+    type InsertItem = (&'a CrateVersion<'a>, Task<'a>);
+    type InsertResult = ();
+
+    fn tree(&self) -> &Tree {
+        self.inner
+    }
+
+    fn key(&self, (v, t): &Self::InsertItem) -> Vec<u8> {
+        // TODO: adjust trait to support passing buffers
+        let vk = v.key_bytes();
+        let tk = t.key_bytes();
+        let mut k = Vec::with_capacity(vk.len() + 1 + tk.len());
+        k.extend(vk.into_iter());
+        k.push(KEY_SEP);
+        k.extend(tk.into_iter());
+        k
+    }
+
+    fn map_insert_return_value(&self, v: IVec) -> Self::InsertResult {
+        unimplemented!()
+    }
+
+    fn merge(
+        &self,
+        new_item: &Self::InsertItem,
+        existing_item: Option<Self::StorageItem>,
+    ) -> Option<Self::StorageItem> {
+        unimplemented!()
     }
 }
 

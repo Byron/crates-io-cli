@@ -56,7 +56,7 @@ pub async fn run(
         let db = db.clone();
         let mut progress = progress.add_child("Process Crate Versions");
         async move {
-            let versions = db.open_crate_versions()?;
+            let versions = db.crate_versions()?;
             let mut ofs = 0;
             loop {
                 let chunk = {
