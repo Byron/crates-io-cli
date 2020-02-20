@@ -60,39 +60,38 @@ impl Db {
 const KEY_SEP: u8 = b':';
 
 pub trait Keyed {
-    fn key_bytes(&self) -> Vec<u8>;
+    fn key_bytes_buf(&self, buf: &mut Vec<u8>);
+    fn key_bytes(&self) -> Vec<u8> {
+        let mut buf = Vec::with_capacity(16);
+        self.key_bytes_buf(&mut buf);
+        buf
+    }
     fn key_string(&self) -> Result<String> {
         String::from_utf8(self.key_bytes()).map_err(Into::into)
     }
 }
 
 impl<'a> Keyed for Task<'a> {
-    fn key_bytes(&self) -> Vec<u8> {
-        let mut id = Vec::with_capacity(self.process.len() + 1 + self.version.len());
-        id.extend_from_slice(&self.process.as_bytes());
-        id.push(KEY_SEP);
-        id.extend_from_slice(&self.version.as_bytes());
-        id
+    fn key_bytes_buf(&self, buf: &mut Vec<u8>) {
+        buf.extend_from_slice(&self.process.as_bytes());
+        buf.push(KEY_SEP);
+        buf.extend_from_slice(&self.version.as_bytes());
     }
 }
 
 impl Keyed for crates_index_diff::CrateVersion {
-    fn key_bytes(&self) -> Vec<u8> {
-        let mut id = Vec::with_capacity(self.name.len() + self.version.len() + 1);
-        id.extend_from_slice(&self.name.as_bytes());
-        id.push(KEY_SEP);
-        id.extend_from_slice(&self.version.as_bytes());
-        id
+    fn key_bytes_buf(&self, buf: &mut Vec<u8>) {
+        buf.extend_from_slice(&self.name.as_bytes());
+        buf.push(KEY_SEP);
+        buf.extend_from_slice(&self.version.as_bytes());
     }
 }
 
 impl<'a> Keyed for CrateVersion<'a> {
-    fn key_bytes(&self) -> Vec<u8> {
-        let mut id = Vec::with_capacity(self.name.len() + self.version.len() + 1);
-        id.extend_from_slice(&self.name.as_bytes());
-        id.push(KEY_SEP);
-        id.extend_from_slice(&self.version.as_bytes());
-        id
+    fn key_bytes_buf(&self, buf: &mut Vec<u8>) {
+        buf.extend_from_slice(&self.name.as_bytes());
+        buf.push(KEY_SEP);
+        buf.extend_from_slice(&self.version.as_bytes());
     }
 }
 
@@ -124,7 +123,11 @@ pub trait TreeAccess {
                         f(&mut v);
                         v.into()
                     }
-                    None => Self::StorageItem::default().into(),
+                    None => {
+                        let mut v = Self::StorageItem::default();
+                        f(&mut v);
+                        v.into()
+                    }
                 })
             })?
             .map(From::from)
@@ -156,33 +159,32 @@ pub struct TasksTree<'a> {
 impl<'a> TreeAccess for TasksTree<'a> {
     type StorageItem = Task<'a>;
     type InsertItem = (&'a CrateVersion<'a>, Task<'a>);
-    type InsertResult = ();
+    type InsertResult = Task<'a>;
 
     fn tree(&self) -> &Tree {
         self.inner
     }
 
     fn key(&self, (v, t): &Self::InsertItem) -> Vec<u8> {
-        // TODO: adjust trait to support passing buffers
-        let vk = v.key_bytes();
-        let tk = t.key_bytes();
-        let mut k = Vec::with_capacity(vk.len() + 1 + tk.len());
-        k.extend(vk.into_iter());
-        k.push(KEY_SEP);
-        k.extend(tk.into_iter());
-        k
+        let mut buf = Vec::with_capacity(32);
+        v.key_bytes_buf(&mut buf);
+        buf.push(KEY_SEP);
+        t.key_bytes_buf(&mut buf);
+        buf
     }
 
     fn map_insert_return_value(&self, v: IVec) -> Self::InsertResult {
-        unimplemented!()
+        v.into()
     }
 
     fn merge(
         &self,
-        new_item: &Self::InsertItem,
-        existing_item: Option<Self::StorageItem>,
+        (_v, t): &Self::InsertItem,
+        _existing_item: Option<Self::StorageItem>,
     ) -> Option<Self::StorageItem> {
-        unimplemented!()
+        let mut t = t.clone();
+        t.stored_at = SystemTime::now();
+        Some(t)
     }
 }
 

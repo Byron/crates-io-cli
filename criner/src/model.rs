@@ -125,33 +125,40 @@ pub struct CrateVersion<'a> {
     pub dependencies: Vec<Dependency<'a>>,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, Copy)]
-pub enum TaskState {
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub enum TaskState<'a> {
     /// The task was never started
     NotStarted,
-    /// The task tried to run, but failed N times
-    AttemptsWithFailure(u16),
+    /// The task tried to run, but failed N time with errors
+    AttemptsWithFailure(Vec<Cow<'a, str>>),
     /// The task completed successfully
     Complete,
     /// The task was suspended and is only partially complete
     Incomplete,
 }
 
-impl Default for TaskState {
+impl<'a> Default for TaskState<'a> {
     fn default() -> Self {
         TaskState::NotStarted
     }
 }
 
 /// Information about a task
-#[derive(Debug, Serialize, Deserialize, Default, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Task<'a> {
-    pub last_run_at: Option<SystemTime>,
+    /// This is set automatically, and can be roughly equivalent to the time a task was finished running (no matter if successfully or failed
+    pub stored_at: SystemTime,
     /// Information about the process that we used to run
     pub process: Cow<'a, str>,
     /// Information about the process version
     pub version: Cow<'a, str>,
-    pub state: TaskState,
+    pub state: TaskState<'a>,
+}
+
+impl<'a> Default for Task<'a> {
+    fn default() -> Self {
+        unimplemented!()
+    }
 }
 
 /// Append-variant-only data structure, otherwise migrations are needed
