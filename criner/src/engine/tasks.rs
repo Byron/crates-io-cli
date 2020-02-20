@@ -11,7 +11,7 @@ pub async fn process(
     mut progress: prodash::tree::Item,
     tx: async_std::sync::Sender<worker::DownloadTask>,
 ) -> Result<()> {
-    let versions = db.crate_versions()?;
+    let versions = db.crate_versions();
     let mut ofs = 0;
     loop {
         let chunk = {

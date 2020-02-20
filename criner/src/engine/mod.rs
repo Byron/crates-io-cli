@@ -41,10 +41,14 @@ pub async fn run(
     let mut downloaders = progress.add_child("Downloads");
     let (tx, rx) = async_std::sync::channel(1);
     for idx in 0..10 {
-        pool.spawn(worker::download(
-            downloaders.add_child(format!("DL {} - idle", idx + 1)),
-            rx.clone(),
-        ))?;
+        pool.spawn(
+            worker::download(
+                db.clone(),
+                downloaders.add_child(format!("DL {} - idle", idx + 1)),
+                rx.clone(),
+            )
+            .map(|_| ()),
+        )?;
     }
 
     pool.spawn(

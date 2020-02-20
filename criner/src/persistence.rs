@@ -36,20 +36,20 @@ impl Db {
         })
     }
 
-    pub fn crate_versions(&self) -> Result<CrateVersionsTree> {
-        Ok(CrateVersionsTree {
+    pub fn crate_versions(&self) -> CrateVersionsTree {
+        CrateVersionsTree {
             inner: &self.versions,
-        })
+        }
     }
 
-    pub fn crates(&self) -> Result<CratesTree> {
-        Ok(CratesTree {
+    pub fn crates(&self) -> CratesTree {
+        CratesTree {
             inner: &self.crates,
-        })
+        }
     }
 
-    pub fn tasks(&self) -> Result<TasksTree> {
-        Ok(TasksTree { inner: &self.tasks })
+    pub fn tasks(&self) -> TasksTree {
+        TasksTree { inner: &self.tasks }
     }
 
     pub fn context(&self) -> ContextTree {
@@ -71,27 +71,35 @@ pub trait Keyed {
     }
 }
 
+impl<'a> Task<'a> {
+    pub fn key_from(process: &str, buf: &mut Vec<u8>) {
+        buf.extend_from_slice(&process.as_bytes());
+    }
+}
+
 impl<'a> Keyed for Task<'a> {
     fn key_bytes_buf(&self, buf: &mut Vec<u8>) {
-        buf.extend_from_slice(&self.process.as_bytes());
-        buf.push(KEY_SEP);
-        buf.extend_from_slice(&self.version.as_bytes());
+        Task::key_from(&self.process, buf)
     }
 }
 
 impl Keyed for crates_index_diff::CrateVersion {
     fn key_bytes_buf(&self, buf: &mut Vec<u8>) {
-        buf.extend_from_slice(&self.name.as_bytes());
-        buf.push(KEY_SEP);
-        buf.extend_from_slice(&self.version.as_bytes());
+        CrateVersion::key_from(&self.name, &self.version, buf)
     }
 }
 
 impl<'a> Keyed for CrateVersion<'a> {
     fn key_bytes_buf(&self, buf: &mut Vec<u8>) {
-        buf.extend_from_slice(&self.name.as_bytes());
+        CrateVersion::key_from(&self.name, &self.version, buf)
+    }
+}
+
+impl<'a> CrateVersion<'a> {
+    pub fn key_from(name: &str, version: &str, buf: &mut Vec<u8>) {
+        buf.extend_from_slice(&name.as_bytes());
         buf.push(KEY_SEP);
-        buf.extend_from_slice(&self.version.as_bytes());
+        buf.extend_from_slice(&version.as_bytes());
     }
 }
 
@@ -108,6 +116,13 @@ pub trait TreeAccess {
         new_item: &Self::InsertItem,
         existing_item: Option<Self::StorageItem>,
     ) -> Option<Self::StorageItem>;
+
+    fn get(&self, key: impl AsRef<[u8]>) -> Result<Option<Self::StorageItem>> {
+        self.tree()
+            .get(key)
+            .map_err(Into::into)
+            .map(|r| r.map(Into::into))
+    }
 
     /// Update an existing item, or create it as default, returning the stored item
     fn update(
@@ -158,16 +173,16 @@ pub struct TasksTree<'a> {
 
 impl<'a> TreeAccess for TasksTree<'a> {
     type StorageItem = Task<'a>;
-    type InsertItem = (&'a CrateVersion<'a>, Task<'a>);
+    type InsertItem = (&'a str, &'a str, Task<'a>);
     type InsertResult = Task<'a>;
 
     fn tree(&self) -> &Tree {
         self.inner
     }
 
-    fn key(&self, (v, t): &Self::InsertItem) -> Vec<u8> {
+    fn key(&self, (name, version, t): &Self::InsertItem) -> Vec<u8> {
         let mut buf = Vec::with_capacity(32);
-        v.key_bytes_buf(&mut buf);
+        CrateVersion::key_from(name, version, &mut buf);
         buf.push(KEY_SEP);
         t.key_bytes_buf(&mut buf);
         buf
@@ -179,7 +194,7 @@ impl<'a> TreeAccess for TasksTree<'a> {
 
     fn merge(
         &self,
-        (_v, t): &Self::InsertItem,
+        (_n, _v, t): &Self::InsertItem,
         existing_item: Option<Self::StorageItem>,
     ) -> Option<Self::StorageItem> {
         let mut t = t.clone();

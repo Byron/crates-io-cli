@@ -160,7 +160,8 @@ impl Default for TaskState {
 /// Information about a task
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Task<'a> {
-    /// This is set automatically, and can be roughly equivalent to the time a task was finished running (no matter if successfully or failed
+    /// This is set automatically, and can be roughly equivalent to the time a task was finished running (no matter if successfully or failed,
+    /// but is generally equivalent to the last time the task was saved
     pub stored_at: SystemTime,
     /// Information about the process that we used to run
     pub process: Cow<'a, str>,
