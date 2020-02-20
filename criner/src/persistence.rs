@@ -17,7 +17,7 @@ pub struct Db {
 
 impl Db {
     pub fn open(path: impl AsRef<Path>) -> Result<Db> {
-        // NOTE: Default compression achieves cutting disk space in half, but halfs the processing speed
+        // NOTE: Default compression achieves cutting disk space in half, but the processing speed is cut in half
         // for our binary data as well.
         // TODO: re-evaluate that for textual data - it might enable us to store all files, and when we
         // have more read-based workloads. Maybe it's worth it to turn on.
@@ -109,7 +109,12 @@ pub trait TreeAccess {
     type InsertResult;
 
     fn tree(&self) -> &sled::Tree;
-    fn key(item: &Self::InsertItem) -> Vec<u8>;
+    fn key(item: &Self::InsertItem) -> Vec<u8> {
+        let mut buf = Vec::with_capacity(16);
+        Self::key_to_buf(item, &mut buf);
+        buf
+    }
+    fn key_to_buf(item: &Self::InsertItem, buf: &mut Vec<u8>);
     fn map_insert_return_value(&self, v: IVec) -> Self::InsertResult;
     fn merge(
         &self,
@@ -180,12 +185,10 @@ impl<'a> TreeAccess for TasksTree<'a> {
         self.inner
     }
 
-    fn key((name, version, t): &Self::InsertItem) -> Vec<u8> {
-        let mut buf = Vec::with_capacity(32);
-        CrateVersion::key_from(name, version, &mut buf);
+    fn key_to_buf((name, version, t): &Self::InsertItem, buf: &mut Vec<u8>) {
+        CrateVersion::key_from(name, version, buf);
         buf.push(KEY_SEP);
-        t.key_bytes_buf(&mut buf);
-        buf
+        t.key_bytes_buf(buf);
     }
 
     fn map_insert_return_value(&self, v: IVec) -> Self::InsertResult {
@@ -223,15 +226,17 @@ impl<'a> TreeAccess for ContextTree<'a> {
         self.inner
     }
 
-    fn key(_item: &Self::InsertItem) -> Vec<u8> {
-        format!(
-            "context/{}",
-            humantime::format_rfc3339(SystemTime::now())
-                .to_string()
-                .get(..10)
-                .expect("YYYY-MM-DD - 10 bytes")
-        )
-        .into()
+    fn key_to_buf(_item: &Self::InsertItem, buf: &mut Vec<u8>) {
+        buf.extend_from_slice(
+            format!(
+                "context/{}",
+                humantime::format_rfc3339(SystemTime::now())
+                    .to_string()
+                    .get(..10)
+                    .expect("YYYY-MM-DD - 10 bytes")
+            )
+            .as_bytes(),
+        );
     }
 
     fn map_insert_return_value(&self, _v: IVec) -> Self::InsertResult {
@@ -278,8 +283,8 @@ impl<'a> TreeAccess for CratesTree<'a> {
         self.inner
     }
 
-    fn key(item: &crates_index_diff::CrateVersion) -> Vec<u8> {
-        item.name.clone().into_bytes()
+    fn key_to_buf(item: &crates_index_diff::CrateVersion, buf: &mut Vec<u8>) {
+        buf.extend_from_slice(item.name.as_bytes());
     }
 
     fn map_insert_return_value(&self, v: IVec) -> Self::InsertResult {
@@ -324,8 +329,8 @@ impl<'a> TreeAccess for CrateVersionsTree<'a> {
         self.inner
     }
 
-    fn key(v: &crates_index_diff::CrateVersion) -> Vec<u8> {
-        v.key_bytes()
+    fn key_to_buf(v: &crates_index_diff::CrateVersion, buf: &mut Vec<u8>) {
+        v.key_bytes_buf(buf);
     }
 
     fn map_insert_return_value(&self, _v: IVec) -> Self::InsertResult {

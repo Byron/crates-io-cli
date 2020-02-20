@@ -1,9 +1,10 @@
 use crate::error::Result;
 use crate::model;
-use crate::persistence::{Db, TreeAccess};
+use crate::model::Task;
+use crate::persistence::{Db, TasksTree, TreeAccess};
 use async_std::sync::Receiver;
 use futures_timer::Delay;
-use std::time::Duration;
+use std::time::{Duration, SystemTime};
 
 pub enum Scheduling {
     //   /// Considers work done if everything was done. Will block to assure that
@@ -52,16 +53,24 @@ pub async fn download(
 ) -> Result<()> {
     progress.init(None, Some("Kb"));
     const TASK_NAME: &str = "download";
-    const _TASK_VERSION: &str = "1.0.0";
+    const TASK_VERSION: &str = "1.0.0";
+    let mut dummy = Task {
+        stored_at: SystemTime::now(),
+        process: TASK_NAME.into(),
+        version: TASK_VERSION.into(),
+        state: Default::default(),
+    };
 
     let mut key = Vec::with_capacity(32);
     let tasks = db.tasks();
+
     while let Some(DownloadTask { name, semver, .. }) = r.recv().await {
         progress.set_name(format!("↓ {}:{}", name, semver));
-
+        let mut kt = (name.as_str(), semver.as_str(), dummy);
         key.clear();
-        model::CrateVersion::key_from(&name, &semver, &mut key);
-        model::Task::key_from(TASK_NAME, &mut key);
+
+        TasksTree::key_to_buf(&kt, &mut key);
+        dummy = kt.2;
 
         let mut task = tasks.update(&key, |_| ())?;
         task.process = "download".into();
@@ -70,7 +79,8 @@ pub async fn download(
             Delay::new(Duration::from_secs(1)).await;
             progress.set(it)
         }
-        tasks.upsert(&(name.as_ref(), semver.as_ref(), task))?;
+        kt.2 = task;
+        tasks.upsert(&kt)?;
     }
     Ok(())
 }
