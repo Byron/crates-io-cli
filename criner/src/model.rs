@@ -141,7 +141,8 @@ impl TaskState {
     pub fn merged(&self, other: &TaskState) -> TaskState {
         match (self, other) {
             (TaskState::AttemptsWithFailure(existing), TaskState::AttemptsWithFailure(new)) => {
-                let mut merged = existing.clone();
+                let mut merged = Vec::with_capacity(existing.len() + new.len());
+                merged.extend(existing.iter().map(|e| e.clone()));
                 merged.extend(new.iter().map(|e| e.clone()));
                 TaskState::AttemptsWithFailure(merged)
             }
