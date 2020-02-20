@@ -88,13 +88,7 @@ fn launch_ambient_gui(
     let handle = pool
         .spawn_with_handle(render_fut)
         .expect("GUI to be spawned");
-    Ok((
-        async move {
-            handle.await.ok();
-            ()
-        },
-        abort_handle,
-    ))
+    Ok((handle.map(|_| ()), abort_handle))
 }
 
 async fn work_item(mut progress: Item, speed: f32) -> () {
