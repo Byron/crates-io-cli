@@ -69,6 +69,12 @@ pub enum SubCommands {
         #[structopt(short = "r", long, name = "REPO")]
         /// Path to the possibly existing crates.io repository clone. If unset, it will be cloned to a temporary spot.
         repository: Option<PathBuf>,
+        #[structopt(short = "d", long, name = "DOWNLOADS")]
+        /// If set, all downloads will also be stored in this directory. It will be created if needed.
+        ///
+        /// For now, it's a mere backup and to make work more visible. All downloads are also stored in the database,
+        /// which is the source of truth.
+        downloads_directory: Option<PathBuf>,
         /// The amount of time we can take for the computation. Specified in humantime, like 10s, 5min, or 2h, or '3h 2min 2s'
         #[structopt(long, short = "t")]
         time_limit: Option<humantime::Duration>,

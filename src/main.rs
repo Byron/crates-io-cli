@@ -61,6 +61,7 @@ fn main() {
             time_limit,
             concurrent_downloads,
             no_gui,
+            downloads_directory,
         }) => ok_or_exit(criner::run_blocking(
             db_path,
             repository
@@ -73,6 +74,7 @@ fn main() {
             },
             fps,
             concurrent_downloads,
+            downloads_directory,
         )),
         None =>
         {

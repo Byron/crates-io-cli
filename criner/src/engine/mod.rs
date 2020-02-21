@@ -34,6 +34,7 @@ pub async fn run(
     deadline: Option<SystemTime>,
     progress: prodash::Tree,
     num_workers: u32,
+    downloads_dir: Option<PathBuf>,
     pool: impl Spawn + Clone,
     tokio: tokio::runtime::Handle,
 ) -> Result<()> {
@@ -49,6 +50,7 @@ pub async fn run(
                 db.clone(),
                 downloaders.add_child(format!("DL {} - idle", idx + 1)),
                 rx.clone(),
+                downloads_dir.clone(),
             )
             .map(|_| ()),
         );
@@ -109,6 +111,7 @@ pub fn run_blocking(
     interface: UserInterface,
     fps: f32,
     num_workers: u32,
+    downloads_dir: Option<PathBuf>,
 ) -> Result<()> {
     // required for request
     let tokio_rt = tokio::runtime::Builder::new()
@@ -127,7 +130,9 @@ pub fn run_blocking(
         .pool_size(pool_size)
         .create()?;
     let db = Db::open(db)?;
-    std::fs::create_dir("assets").ok();
+    if let Some(path) = downloads_dir.as_ref() {
+        std::fs::create_dir_all(path)?;
+    }
 
     let root = prodash::Tree::new();
 
@@ -138,6 +143,7 @@ pub fn run_blocking(
         deadline,
         root.clone(),
         num_workers,
+        downloads_dir,
         task_pool.clone(),
         tokio_rt.handle().clone(),
     ))?;

@@ -3,7 +3,7 @@ use crate::model;
 use crate::model::{Task, TaskResult, TaskState};
 use crate::persistence::{Db, TaskResultTree, TasksTree, TreeAccess};
 use async_std::sync::Receiver;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 
 pub enum Scheduling {
@@ -70,6 +70,7 @@ pub async fn download(
     db: Db,
     mut progress: prodash::tree::Item,
     r: Receiver<DownloadTask>,
+    download_dir: Option<PathBuf>,
 ) -> Result<()> {
     let mut dummy = default_download_task();
 
@@ -133,7 +134,13 @@ pub async fn download(
                         },
                     );
                     TaskResultTree::key_to_buf(&insert_item, &mut key);
-                    store_data(db.results(), &key, insert_item).await?;
+                    store_data(
+                        db.results(),
+                        &key,
+                        insert_item,
+                        download_dir.as_ref().map(|p| p.as_path()),
+                    )
+                    .await?;
                 }
                 Ok(())
             }
@@ -169,14 +176,18 @@ async fn store_data(
     tree: TaskResultTree<'_>,
     key: &[u8],
     res: (&str, &str, &Task<'_>, TaskResult<'_>),
+    download_dir: Option<&Path>,
 ) -> Result<()> {
     tree.insert(&res)?;
     let key_str = String::from_utf8(key.to_owned())?;
     // For now, we store a backup and to make manual inspection easier…
-    Ok(match res.3 {
-        TaskResult::Download {
-            data: Some(data), ..
-        } => tokio::fs::write(PathBuf::from("./assets").join(&key_str), data).await?,
+    Ok(match (res.3, download_dir) {
+        (
+            TaskResult::Download {
+                data: Some(data), ..
+            },
+            Some(path),
+        ) => tokio::fs::write(path.join(&key_str), data).await?,
         _ => (),
     })
 }
