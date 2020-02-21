@@ -18,8 +18,10 @@ By default, a TUI is provided to visualize all state. Have a look at [the exampl
 
 # Logging
 
-If the optional feature `log-renderer` is set, most calls to `progress` will also be logged.
+If the feature `log-renderer` is enabled (default), most calls to `progress` will also be logged.
 That way, even without a terminal user interface, there will be progress messages.
+Please note that logging to stdout should not be performed with this feature enabled and a terminal user interface, as this will
+seriously interfere with the TUI.
 
 # A demo application
 
@@ -45,3 +47,24 @@ pub use tree::Root as Tree;
 
 #[cfg(feature = "tui-renderer")]
 pub mod tui;
+
+#[cfg(feature = "log-renderer")]
+pub use log::info;
+#[cfg(feature = "log-renderer")]
+pub use log::warn;
+
+#[cfg(not(feature = "log-renderer"))]
+mod log {
+    /// Stub
+    #[macro_export(local_inner_macros)]
+    macro_rules! warn {
+        (target: $target:expr, $($arg:tt)+) => {};
+        ($($arg:tt)+) => {};
+    }
+    /// Stub
+    #[macro_export(local_inner_macros)]
+    macro_rules! info {
+        (target: $target:expr, $($arg:tt)+) => {};
+        ($($arg:tt)+) => {};
+    }
+}

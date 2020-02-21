@@ -19,8 +19,16 @@ async fn work_forever(pool: impl Spawn + Clone + Send + 'static, args: arg::Opti
     .create();
     // Now we should handle signals to be able to cleanup properly
     let speed = args.speed_multitplier;
-    let (gui_handle, abort_gui) = launch_ambient_gui(&pool, progress.clone(), args).unwrap();
-    let mut gui_handle = Some(gui_handle.boxed());
+
+    let (mut gui_handle, abort_gui) = if args.no_tui {
+        let (never_ending, abort_handle) =
+            futures::future::abortable(futures::future::pending::<()>());
+        (Some(never_ending.map(|_| ()).boxed()), abort_handle)
+    } else {
+        let (gui_handle, abort_handle) = launch_ambient_gui(&pool, progress.clone(), args).unwrap();
+        let gui_handle = Some(gui_handle.boxed());
+        (gui_handle, abort_handle)
+    };
 
     loop {
         let local_work = new_chunk_of_work(
@@ -285,6 +293,10 @@ mod arg {
     #[derive(FromArgs)]
     /// Reach new heights.
     pub struct Options {
+        /// if set, there will only be logging. Use 'RUST_LOG=info cargo run --example dashboard to see the messages
+        #[argh(switch, short = 'a')]
+        pub no_tui: bool,
+
         /// if set, the terminal window will be animated to assure resizing works as expected.
         #[argh(switch, short = 'a')]
         pub animate_terminal_size: bool,

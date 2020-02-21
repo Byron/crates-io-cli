@@ -253,10 +253,23 @@ impl Item {
     pub fn message(&mut self, level: MessageLevel, message: impl AsRef<str>) {
         self.messages.lock().push_overwrite(
             level,
-            self.tree
-                .get(&self.key)
-                .map(|v| v.name.to_owned())
-                .unwrap_or_default(),
+            {
+                let name = self
+                    .tree
+                    .get(&self.key)
+                    .map(|v| v.name.to_owned())
+                    .unwrap_or_default();
+
+                #[cfg(feature = "log-renderer")]
+                match level {
+                    MessageLevel::Failure => crate::warn!("{} → {}", name, message.as_ref()),
+                    MessageLevel::Info | MessageLevel::Success => {
+                        crate::info!("{} → {}", name, message.as_ref())
+                    }
+                };
+
+                name
+            },
             message.as_ref(),
         )
     }
@@ -300,7 +313,7 @@ impl Key {
             Key((a, b, None, None)) => (a, b, Some(child_id), None),
             Key((a, b, c, None)) => (a, b, c, Some(child_id)),
             Key((a, b, c, _d)) => {
-                log::warn!("Maximum nesting level reached. Adding tasks to current parent");
+                crate::warn!("Maximum nesting level reached. Adding tasks to current parent");
                 (a, b, c, Some(child_id))
             }
         })

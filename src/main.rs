@@ -19,6 +19,8 @@ mod structs;
 
 #[cfg(feature = "mine")]
 use criner;
+#[cfg(feature = "mine")]
+use criner::UserInterface;
 use error::ok_or_exit;
 #[cfg(feature = "search")]
 use scmds::handle_interactive_search;
@@ -29,7 +31,6 @@ use scmds::{by_user, handle_list};
 use structopt::StructOpt;
 
 use crate::args::Parsed;
-use criner::UserInterface;
 use std::ops::Add;
 
 fn main() {
