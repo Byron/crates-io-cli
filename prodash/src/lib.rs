@@ -16,6 +16,11 @@ The **terminal user interface** seems to be the least transparent part, but can 
 
 By default, a TUI is provided to visualize all state. Have a look at [the example provided in the tui module](./tui/index.html).
 
+# Logging
+
+If the optional feature `log-renderer` is set, most calls to `progress` will also be logged.
+That way, even without a terminal user interface, there will be progress messages.
+
 # A demo application
 
 Please have a look at the [dashboard demo](https://github.com/Byron/crates-io-cli-rs/blob/master/prodash/examples/dashboard.rs).
@@ -23,6 +28,13 @@ Please have a look at the [dashboard demo](https://github.com/Byron/crates-io-cl
 [![asciicast](https://asciinema.org/a/301838.svg)](https://asciinema.org/a/301838)
 
 Run it with `cargo run --example dashboard` and see what else it can do by checking out `cargo run --example dashboard -- --help`.
+
+# Changelog
+
+## v1.1.0
+
+* fix toggles - previously prodash, withoug tui, would always build humantime and unicode width
+* add support for logging as user interface
 
 */
 mod config;
