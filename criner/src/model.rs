@@ -188,6 +188,8 @@ pub enum TaskResult<'a> {
     None,
     /// A download with meta data and the downloaded blob itself
     Download {
+        kind: Cow<'a, str>,
+        url: Cow<'a, str>,
         content_length: u32,
         content_type: Option<Cow<'a, str>>,
         data: Option<Cow<'a, [u8]>>,

@@ -35,6 +35,12 @@ pub async fn schedule_tasks(
         .send(DownloadTask {
             name: version.name.to_owned().into(),
             semver: version.version.to_owned().into(),
+            kind: "crate",
+            url: format!(
+                "https://crates.io/api/v1/crates/{name}/{version}/download",
+                name = version.name,
+                version = version.version
+            ),
         })
         .await;
     Ok(AsyncResult::Done)
@@ -43,6 +49,8 @@ pub async fn schedule_tasks(
 pub struct DownloadTask {
     name: String,
     semver: String,
+    kind: &'static str,
+    url: String,
 }
 
 pub async fn download(
@@ -63,7 +71,13 @@ pub async fn download(
     let tasks = db.tasks();
     let mut body_buf = Vec::new();
 
-    while let Some(DownloadTask { name, semver, .. }) = r.recv().await {
+    while let Some(DownloadTask {
+        name,
+        semver,
+        kind,
+        url,
+    }) = r.recv().await
+    {
         progress.set_name(format!("↓ {}:{}", name, semver));
         progress.init(None, None);
         let mut kt = (name.as_str(), semver.as_str(), dummy);
@@ -77,29 +91,20 @@ pub async fn download(
         task.version = TASK_VERSION.into();
 
         progress.blocked(None);
-        let download_url = format!(
-            "https://crates.io/api/v1/crates/{name}/{version}/download",
-            name = name,
-            version = semver
-        );
         let res = {
-            let mut res = reqwest::get(&download_url).await?;
+            let mut res = reqwest::get(&url).await?;
             let size: u32 =
                 res.content_length()
                     .ok_or(Error::InvalidHeader("expected content-length"))? as u32;
             progress.init(Some(size / 1024), Some("Kb"));
             progress.blocked(None);
-            progress.done(format!("HEAD:{}: content-size = {}", download_url, size));
+            progress.done(format!("HEAD:{}: content-size = {}", url, size));
             body_buf.clear();
             while let Some(chunk) = res.chunk().await? {
                 body_buf.extend(chunk);
                 progress.set((body_buf.len() / 1024) as u32);
             }
-            progress.done(format!(
-                "GET:{}: body-size = {}",
-                download_url,
-                body_buf.len()
-            ));
+            progress.done(format!("GET:{}: body-size = {}", url, body_buf.len()));
 
             {
                 key.clear();
@@ -108,6 +113,8 @@ pub async fn download(
                     semver.as_str(),
                     &task,
                     TaskResult::Download {
+                        kind: kind.into(),
+                        url: url.as_str().into(),
                         content_length: size,
                         content_type: res
                             .headers()
@@ -124,7 +131,7 @@ pub async fn download(
         }
         .map_err(|e: crate::error::Error| {
             let e = e.to_string();
-            progress.fail(format!("Failed to download '{}': {}", download_url, e));
+            progress.fail(format!("Failed to download '{}': {}", url, e));
             e
         });
 

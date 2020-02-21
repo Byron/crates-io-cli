@@ -222,6 +222,15 @@ pub struct TaskResultTree<'a> {
     inner: &'a sled::Tree,
 }
 
+impl<'a> Keyed for TaskResult<'a> {
+    fn key_bytes_buf(&self, buf: &mut Vec<u8>) {
+        match self {
+            TaskResult::Download { kind, .. } => buf.extend_from_slice(kind.as_bytes()),
+            TaskResult::None => {}
+        }
+    }
+}
+
 impl<'a> TreeAccess for TaskResultTree<'a> {
     type StorageItem = TaskResult<'a>;
     type InsertItem = (&'a str, &'a str, &'a Task<'a>, TaskResult<'a>);
@@ -235,6 +244,8 @@ impl<'a> TreeAccess for TaskResultTree<'a> {
         TasksTree::key_to_buf(&(v.0, v.1, v.2.clone()), buf);
         buf.push(KEY_SEP);
         buf.extend_from_slice(v.2.version.as_bytes());
+        buf.push(KEY_SEP);
+        v.3.key_bytes_buf(buf);
     }
 
     fn map_insert_return_value(&self, _v: IVec) -> Self::InsertResult {
