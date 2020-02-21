@@ -58,6 +58,9 @@ pub enum SubCommands {
     #[cfg(feature = "mine")]
     #[structopt(display_order = 2)]
     Mine {
+        #[structopt(long)]
+        no_gui: bool,
+
         #[structopt(short = "r", long, name = "REPO")]
         /// Path to the possibly existing crates.io repository clone. If unset, it will be cloned to a temporary spot.
         repository: Option<PathBuf>,

@@ -90,6 +90,7 @@ pub fn run_blocking(
     db: impl AsRef<Path>,
     crates_io_path: impl AsRef<Path>,
     deadline: Option<SystemTime>,
+    interface: UserInterface,
 ) -> Result<()> {
     // required for request
     let tokio_rt = tokio::runtime::Builder::new()
@@ -110,40 +111,53 @@ pub fn run_blocking(
     let db = Db::open(db)?;
 
     let root = prodash::Tree::new();
-    let (gui, abort_handle) = futures::future::abortable(prodash::tui::render_with_input(
-        root.clone(),
-        prodash::tui::TuiOptions {
-            title: "Criner".into(),
-            ..prodash::tui::TuiOptions::default()
-        },
-        context_stream(&db, start_of_computation),
-    )?);
 
     // dropping the work handle will stop (non-blocking) futures
     let work_handle = task_pool.spawn_with_handle(run(
         db.clone(),
         crates_io_path.as_ref().into(),
         deadline,
-        root,
+        root.clone(),
         task_pool.clone(),
         tokio_rt.handle().clone(),
     ))?;
 
-    let either =
-        futures::executor::block_on(futures::future::select(work_handle, gui.boxed_local()));
-    match either {
-        Either::Left((work_result, gui)) => {
-            abort_handle.abort();
-            futures::executor::block_on(gui).ok();
+    match interface {
+        UserInterface::TUI => {
+            let (gui, abort_handle) = futures::future::abortable(prodash::tui::render_with_input(
+                root,
+                prodash::tui::TuiOptions {
+                    title: "Criner".into(),
+                    ..prodash::tui::TuiOptions::default()
+                },
+                context_stream(&db, start_of_computation),
+            )?);
+
+            let either = futures::executor::block_on(futures::future::select(
+                work_handle,
+                gui.boxed_local(),
+            ));
+            match either {
+                Either::Left((work_result, gui)) => {
+                    abort_handle.abort();
+                    futures::executor::block_on(gui).ok();
+                    if let Err(e) = work_result {
+                        warn!("{}", e);
+                    }
+                }
+                Either::Right((_, work_handle)) => work_handle.forget(),
+            }
+
+            // Make sure the terminal can reset when the gui is done.
+            std::io::stdout().flush()?;
+        }
+        UserInterface::Log => {
+            let work_result = futures::executor::block_on(work_handle);
             if let Err(e) = work_result {
                 warn!("{}", e);
             }
         }
-        Either::Right((_, work_handle)) => work_handle.forget(),
-    }
-
-    // Make sure the terminal can reset when the gui is done.
-    std::io::stdout().flush()?;
+    };
 
     // at this point, we forget all currently running computation, and since it's in the local thread, it's all
     // destroyed/dropped properly.
@@ -183,4 +197,11 @@ fn context_stream(db: &Db, start_of_computation: SystemTime) -> impl futures::St
                 .unwrap_or(Event::Tick)
         }
     })
+}
+
+pub enum UserInterface {
+    /// Bring up a fully fledged terminal user interface
+    TUI,
+    /// Display logs line by line
+    Log,
 }

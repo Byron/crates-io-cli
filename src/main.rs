@@ -29,6 +29,7 @@ use scmds::{by_user, handle_list};
 use structopt::StructOpt;
 
 use crate::args::Parsed;
+use criner::UserInterface;
 use std::ops::Add;
 
 fn main() {
@@ -56,11 +57,17 @@ fn main() {
             repository,
             db_path,
             time_limit,
+            no_gui,
         }) => ok_or_exit(criner::run_blocking(
             db_path,
             repository
                 .unwrap_or_else(|| std::env::temp_dir().join("criner-crates-io-bare-index.git")),
             time_limit.map(|d| std::time::SystemTime::now().add(*d)),
+            if no_gui {
+                UserInterface::Log
+            } else {
+                UserInterface::TUI
+            },
         )),
         None =>
         {
