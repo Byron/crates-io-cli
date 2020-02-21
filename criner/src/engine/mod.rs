@@ -107,6 +107,7 @@ pub fn run_blocking(
     crates_io_path: impl AsRef<Path>,
     deadline: Option<SystemTime>,
     interface: UserInterface,
+    fps: f32,
     num_workers: u32,
 ) -> Result<()> {
     // required for request
@@ -147,6 +148,7 @@ pub fn run_blocking(
                 root,
                 prodash::tui::TuiOptions {
                     title: "Criner".into(),
+                    frames_per_second: fps,
                     ..prodash::tui::TuiOptions::default()
                 },
                 context_stream(&db, start_of_computation),

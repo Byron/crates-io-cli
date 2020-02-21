@@ -57,6 +57,7 @@ fn main() {
         Some(Mine {
             repository,
             db_path,
+            fps,
             time_limit,
             concurrent_downloads,
             no_gui,
@@ -70,6 +71,7 @@ fn main() {
             } else {
                 UserInterface::TUI
             },
+            fps,
             concurrent_downloads,
         )),
         None =>

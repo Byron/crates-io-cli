@@ -60,6 +60,9 @@ pub enum SubCommands {
     Mine {
         #[structopt(long)]
         no_gui: bool,
+        #[structopt(long, name = "frames-per-second", default_value = "3.0")]
+        /// The amount of frames to show per second
+        fps: f32,
         #[structopt(short = "d", long, name = "COUNT", default_value = "10")]
         /// The amount of downloads to run concurrently
         concurrent_downloads: u32,
