@@ -1,6 +1,5 @@
 use crate::{error::Result, model, persistence::Db, utils::*};
 use futures::{
-    executor::{block_on, ThreadPool},
     future::Either,
     future::FutureExt,
     stream::StreamExt,
@@ -35,13 +34,16 @@ pub async fn run(
     deadline: Option<SystemTime>,
     progress: prodash::Tree,
     pool: impl Spawn + Clone,
+    tokio: tokio::runtime::Handle,
 ) -> Result<()> {
     check(deadline)?;
 
     let mut downloaders = progress.add_child("Downloads");
     let (tx, rx) = async_std::sync::channel(1);
     for idx in 0..10 {
-        tokio::runtime::Handle::current().spawn(
+        // Can only use the pool if the downloader uses a futures-compatible runtime
+        // Tokio is its very own thing, and futures requiring it need to run there.
+        tokio.spawn(
             worker::download(
                 db.clone(),
                 downloaders.add_child(format!("DL {} - idle", idx + 1)),
@@ -102,7 +104,9 @@ pub fn run_blocking(
     // The main thread is expected to pool non-blocking tasks.
     // I admit I don't fully understand why multi-pool setups aren't making progress… . So just one pool for now.
     let pool_size = 1 + 1;
-    let task_pool = ThreadPool::builder().pool_size(pool_size).create()?;
+    let task_pool = futures::executor::ThreadPool::builder()
+        .pool_size(pool_size)
+        .create()?;
     let db = Db::open(db)?;
 
     let root = prodash::Tree::new();
@@ -116,24 +120,26 @@ pub fn run_blocking(
     )?);
 
     // dropping the work handle will stop (non-blocking) futures
-    let work_handle = tokio_rt.spawn(run(
+    let work_handle = task_pool.spawn_with_handle(run(
         db.clone(),
         crates_io_path.as_ref().into(),
         deadline,
         root,
         task_pool.clone(),
-    ));
+        tokio_rt.handle().clone(),
+    ))?;
 
-    let either = block_on(futures::future::select(work_handle, gui.boxed_local()));
+    let either =
+        futures::executor::block_on(futures::future::select(work_handle, gui.boxed_local()));
     match either {
         Either::Left((work_result, gui)) => {
             abort_handle.abort();
-            block_on(gui).ok();
+            futures::executor::block_on(gui).ok();
             if let Err(e) = work_result {
                 warn!("{}", e);
             }
         }
-        Either::Right((_, work_handle)) => drop(work_handle),
+        Either::Right((_, work_handle)) => work_handle.forget(),
     }
 
     // Make sure the terminal can reset when the gui is done.
