@@ -82,15 +82,18 @@ pub async fn download(
             version = semver
         );
         let res = {
-            let res = reqwest::get(&download_url).await?;
+            let mut res = reqwest::get(&download_url).await?;
             let size: u32 =
                 res.content_length()
                     .ok_or(Error::InvalidHeader("expected content-length"))? as u32;
             progress.init(Some(size / 1024), Some("Kb"));
             progress.blocked(None);
             progress.done(format!("HEAD:{}: content-size = {}", download_url, size));
-            let body = res.bytes().await?;
-            progress.set(body.len() as u32);
+            let mut body = Vec::new();
+            while let Some(chunk) = res.chunk().await? {
+                body.extend(chunk);
+                progress.set((body.len() / 1024) as u32);
+            }
             progress.done(format!("GET:{}: body-size = {}", download_url, body.len()));
             Ok(())
         }
