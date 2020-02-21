@@ -184,12 +184,20 @@ impl<'a> Default for Task<'a> {
 /// Append-variant-only data structure, otherwise migrations are needed
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum TaskResult<'a> {
+    /// A dummy value just so that we can have a default value
+    None,
     /// A download with meta data and the downloaded blob itself
     Download {
         content_length: u32,
-        content_type: Cow<'a, str>,
-        data: Option<Result<Cow<'a, [u8]>, Cow<'a, str>>>,
+        content_type: Option<Cow<'a, str>>,
+        data: Option<Cow<'a, [u8]>>,
     },
+}
+
+impl<'a> Default for TaskResult<'a> {
+    fn default() -> Self {
+        TaskResult::None
+    }
 }
 
 impl<'a> From<&crates_index_diff::CrateVersion> for CrateVersion<'a> {

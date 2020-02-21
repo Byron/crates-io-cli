@@ -1,7 +1,7 @@
 use crate::error::{Error, Result};
 use crate::model;
-use crate::model::{Task, TaskState};
-use crate::persistence::{Db, TasksTree, TreeAccess};
+use crate::model::{Task, TaskResult, TaskState};
+use crate::persistence::{Db, TaskResultTree, TasksTree, TreeAccess};
 use async_std::sync::Receiver;
 use std::path::PathBuf;
 use std::time::SystemTime;
@@ -45,7 +45,6 @@ pub struct DownloadTask {
     semver: String,
 }
 
-/// "https://crates.io/api/v1/crates/#{name}/#{version}/download"
 pub async fn download(
     db: Db,
     mut progress: prodash::tree::Item,
@@ -101,7 +100,26 @@ pub async fn download(
                 download_url,
                 body_buf.len()
             ));
-            store_data(&key, &body_buf).await?;
+
+            {
+                key.clear();
+                let insert_item = (
+                    name.as_str(),
+                    semver.as_str(),
+                    &task,
+                    TaskResult::Download {
+                        content_length: size,
+                        content_type: res
+                            .headers()
+                            .get(http::header::CONTENT_TYPE)
+                            .and_then(|t| t.to_str().ok())
+                            .map(Into::into),
+                        data: Some(body_buf.as_slice().into()),
+                    },
+                );
+                TaskResultTree::key_to_buf(&insert_item, &mut key);
+                store_data(db.results(), &key, insert_item).await?;
+            }
             Ok(())
         }
         .map_err(|e: crate::error::Error| {
@@ -120,9 +138,20 @@ pub async fn download(
     Ok(())
 }
 
-async fn store_data(key: &[u8], data: &[u8]) -> Result<()> {
+async fn store_data(
+    tree: TaskResultTree<'_>,
+    key: &[u8],
+    res: (&str, &str, &Task<'_>, TaskResult<'_>),
+) -> Result<()> {
+    tree.insert(&res)?;
     let key_str = String::from_utf8(key.to_owned())?;
-    tokio::fs::write(PathBuf::from("./criner.db/assets").join(&key_str), data)
-        .await
-        .map_err(crate::error::Error::from)
+    // For now, we store a backup and to make manual inspection easier…
+    match res.3 {
+        TaskResult::Download {
+            data: Some(data), ..
+        } => tokio::fs::write(PathBuf::from("./criner.db/assets").join(&key_str), data)
+            .await
+            .map_err(crate::error::Error::from),
+        _ => Ok(()),
+    }
 }

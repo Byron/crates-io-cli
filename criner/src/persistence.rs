@@ -13,6 +13,7 @@ pub struct Db {
     versions: sled::Tree,
     crates: sled::Tree,
     tasks: sled::Tree,
+    results: sled::Tree,
 }
 
 impl Db {
@@ -27,12 +28,14 @@ impl Db {
         let versions = inner.open_tree("crate_versions")?;
         let crates = inner.open_tree("crates")?;
         let tasks = inner.open_tree("tasks")?;
+        let results = inner.open_tree("results")?;
         Ok(Db {
             inner,
             meta,
             versions,
             crates,
             tasks,
+            results,
         })
     }
 
@@ -41,17 +44,19 @@ impl Db {
             inner: &self.versions,
         }
     }
-
     pub fn crates(&self) -> CratesTree {
         CratesTree {
             inner: &self.crates,
         }
     }
-
     pub fn tasks(&self) -> TasksTree {
         TasksTree { inner: &self.tasks }
     }
-
+    pub fn results(&self) -> TaskResultTree {
+        TaskResultTree {
+            inner: &self.results,
+        }
+    }
     pub fn context(&self) -> ContextTree {
         ContextTree { inner: &self.meta }
     }
@@ -210,6 +215,38 @@ impl<'a> TreeAccess for TasksTree<'a> {
             }
             None => t,
         })
+    }
+}
+
+pub struct TaskResultTree<'a> {
+    inner: &'a sled::Tree,
+}
+
+impl<'a> TreeAccess for TaskResultTree<'a> {
+    type StorageItem = TaskResult<'a>;
+    type InsertItem = (&'a str, &'a str, &'a Task<'a>, TaskResult<'a>);
+    type InsertResult = ();
+
+    fn tree(&self) -> &Tree {
+        self.inner
+    }
+
+    fn key_to_buf(v: &(&str, &str, &Task, TaskResult<'a>), buf: &mut Vec<u8>) {
+        TasksTree::key_to_buf(&(v.0, v.1, v.2.clone()), buf);
+        buf.push(KEY_SEP);
+        buf.extend_from_slice(v.2.version.as_bytes());
+    }
+
+    fn map_insert_return_value(&self, _v: IVec) -> Self::InsertResult {
+        ()
+    }
+
+    fn merge(
+        &self,
+        new_item: &Self::InsertItem,
+        _existing_item: Option<TaskResult>,
+    ) -> Option<Self::StorageItem> {
+        Some(new_item.3.clone().into())
     }
 }
 
