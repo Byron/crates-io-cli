@@ -33,6 +33,7 @@ pub async fn run(
     crates_io_path: PathBuf,
     deadline: Option<SystemTime>,
     progress: prodash::Tree,
+    num_workers: u32,
     pool: impl Spawn + Clone,
     tokio: tokio::runtime::Handle,
 ) -> Result<()> {
@@ -40,7 +41,7 @@ pub async fn run(
 
     let mut downloaders = progress.add_child("Downloads");
     let (tx, rx) = async_std::sync::channel(1);
-    for idx in 0..10 {
+    for idx in 0..num_workers {
         // Can only use the pool if the downloader uses a futures-compatible runtime
         // Tokio is its very own thing, and futures requiring it need to run there.
         tokio.spawn(
@@ -91,6 +92,7 @@ pub fn run_blocking(
     crates_io_path: impl AsRef<Path>,
     deadline: Option<SystemTime>,
     interface: UserInterface,
+    num_workers: u32,
 ) -> Result<()> {
     // required for request
     let tokio_rt = tokio::runtime::Builder::new()
@@ -118,6 +120,7 @@ pub fn run_blocking(
         crates_io_path.as_ref().into(),
         deadline,
         root.clone(),
+        num_workers,
         task_pool.clone(),
         tokio_rt.handle().clone(),
     ))?;

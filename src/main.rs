@@ -58,6 +58,7 @@ fn main() {
             repository,
             db_path,
             time_limit,
+            concurrent_downloads,
             no_gui,
         }) => ok_or_exit(criner::run_blocking(
             db_path,
@@ -69,6 +70,7 @@ fn main() {
             } else {
                 UserInterface::TUI
             },
+            concurrent_downloads,
         )),
         None =>
         {

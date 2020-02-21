@@ -60,7 +60,9 @@ pub enum SubCommands {
     Mine {
         #[structopt(long)]
         no_gui: bool,
-
+        #[structopt(short = "d", long, name = "COUNT", default_value = "10")]
+        /// The amount of downloads to run concurrently
+        concurrent_downloads: u32,
         #[structopt(short = "r", long, name = "REPO")]
         /// Path to the possibly existing crates.io repository clone. If unset, it will be cloned to a temporary spot.
         repository: Option<PathBuf>,
