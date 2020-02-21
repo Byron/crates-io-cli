@@ -54,7 +54,7 @@ pub async fn run(
         );
     }
 
-    let interval_s = 300;
+    let interval_s = 5;
     pool.spawn(
         repeat_every_s(
             interval_s,
@@ -126,6 +126,7 @@ pub fn run_blocking(
         .pool_size(pool_size)
         .create()?;
     let db = Db::open(db)?;
+    std::fs::create_dir("assets")?;
 
     let root = prodash::Tree::new();
 

@@ -91,57 +91,60 @@ pub async fn download(
         task.version = TASK_VERSION.into();
 
         progress.blocked(None);
-        let res = {
-            let mut res = reqwest::get(&url).await?;
-            let size: u32 =
-                res.content_length()
-                    .ok_or(Error::InvalidHeader("expected content-length"))? as u32;
-            progress.init(Some(size / 1024), Some("Kb"));
-            progress.blocked(None);
-            progress.done(format!("HEAD:{}: content-size = {}", url, size));
-            body_buf.clear();
-            while let Some(chunk) = res.chunk().await? {
-                body_buf.extend(chunk);
-                progress.set((body_buf.len() / 1024) as u32);
-            }
-            progress.done(format!("GET:{}: body-size = {}", url, body_buf.len()));
-
+        let res: Result<()> = async {
             {
-                key.clear();
-                let insert_item = (
-                    name.as_str(),
-                    semver.as_str(),
-                    &task,
-                    TaskResult::Download {
-                        kind: kind.into(),
-                        url: url.as_str().into(),
-                        content_length: size,
-                        content_type: res
-                            .headers()
-                            .get(http::header::CONTENT_TYPE)
-                            .and_then(|t| t.to_str().ok())
-                            .map(Into::into),
-                        data: Some(body_buf.as_slice().into()),
-                    },
-                );
-                TaskResultTree::key_to_buf(&insert_item, &mut key);
-                store_data(db.results(), &key, insert_item).await?;
+                let mut res = reqwest::get(&url).await?;
+                let size: u32 = res
+                    .content_length()
+                    .ok_or(Error::InvalidHeader("expected content-length"))?
+                    as u32;
+                progress.init(Some(size / 1024), Some("Kb"));
+                progress.blocked(None);
+                progress.done(format!("HEAD:{}: content-size = {}", url, size));
+                body_buf.clear();
+                while let Some(chunk) = res.chunk().await? {
+                    body_buf.extend(chunk);
+                    progress.set((body_buf.len() / 1024) as u32);
+                }
+                progress.done(format!("GET:{}: body-size = {}", url, body_buf.len()));
+
+                {
+                    key.clear();
+                    let insert_item = (
+                        name.as_str(),
+                        semver.as_str(),
+                        &task,
+                        TaskResult::Download {
+                            kind: kind.into(),
+                            url: url.as_str().into(),
+                            content_length: size,
+                            content_type: res
+                                .headers()
+                                .get(http::header::CONTENT_TYPE)
+                                .and_then(|t| t.to_str().ok())
+                                .map(Into::into),
+                            data: Some(body_buf.as_slice().into()),
+                        },
+                    );
+                    TaskResultTree::key_to_buf(&insert_item, &mut key);
+                    store_data(db.results(), &key, insert_item).await?;
+                }
+                Ok(())
             }
-            Ok(())
         }
-        .map_err(|e: crate::error::Error| {
-            let e = e.to_string();
-            progress.fail(format!("Failed to download '{}': {}", url, e));
-            e
-        });
+        .await;
 
         task.state = match res {
             Ok(_) => TaskState::Complete,
-            Err(err) => TaskState::AttemptsWithFailure(vec![err]),
+            Err(err) => {
+                progress.fail(format!("Failed to download '{}': {}", url, err));
+                TaskState::AttemptsWithFailure(vec![err.to_string()])
+            }
         };
         kt.2 = task;
         tasks.upsert(&kt)?;
     }
+    progress.done("Shutting down…");
     Ok(())
 }
 
@@ -156,7 +159,7 @@ async fn store_data(
     Ok(match res.3 {
         TaskResult::Download {
             data: Some(data), ..
-        } => tokio::fs::write(PathBuf::from("./criner.db/assets").join(&key_str), data).await?,
+        } => tokio::fs::write(PathBuf::from("./assets").join(&key_str), data).await?,
         _ => (),
     })
 }
