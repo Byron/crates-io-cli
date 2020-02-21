@@ -20,8 +20,7 @@ pub async fn process(
         };
         progress.init(Some((ofs + chunk.len()) as u32), Some("crate version"));
         if chunk.is_empty() {
-            ofs = 0;
-            continue;
+            return Ok(());
         }
         let chunk_len = chunk.len();
         for (idx, res) in chunk.into_iter().enumerate() {

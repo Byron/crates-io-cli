@@ -54,16 +54,31 @@ pub async fn run(
         );
     }
 
+    let interval_s = 300;
     pool.spawn(
-        tasks::process(
-            db.clone(),
-            progress.add_child("Process Crate Versions"),
-            tx.clone(),
+        repeat_every_s(
+            interval_s,
+            {
+                let p = progress.clone();
+                move || p.add_child("Processing Timer")
+            },
+            deadline,
+            {
+                let progress = progress.clone();
+                let db = db.clone();
+                move || {
+                    tasks::process(
+                        db.clone(),
+                        progress.add_child("Process Crate Versions"),
+                        tx.clone(),
+                    )
+                }
+            },
         )
         .map(|_| ()),
     )?;
 
-    let interval_s = 5;
+    let interval_s = 60;
     repeat_every_s(
         interval_s,
         {

@@ -153,12 +153,10 @@ async fn store_data(
     tree.insert(&res)?;
     let key_str = String::from_utf8(key.to_owned())?;
     // For now, we store a backup and to make manual inspection easier…
-    match res.3 {
+    Ok(match res.3 {
         TaskResult::Download {
             data: Some(data), ..
-        } => tokio::fs::write(PathBuf::from("./criner.db/assets").join(&key_str), data)
-            .await
-            .map_err(crate::error::Error::from),
-        _ => Ok(()),
-    }
+        } => tokio::fs::write(PathBuf::from("./criner.db/assets").join(&key_str), data).await?,
+        _ => (),
+    })
 }
