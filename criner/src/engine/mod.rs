@@ -41,14 +41,14 @@ pub async fn run(
     let mut downloaders = progress.add_child("Downloads");
     let (tx, rx) = async_std::sync::channel(1);
     for idx in 0..10 {
-        pool.spawn(
+        tokio::runtime::Handle::current().spawn(
             worker::download(
                 db.clone(),
                 downloaders.add_child(format!("DL {} - idle", idx + 1)),
                 rx.clone(),
             )
             .map(|_| ()),
-        )?;
+        );
     }
 
     pool.spawn(
@@ -89,6 +89,8 @@ pub fn run_blocking(
     crates_io_path: impl AsRef<Path>,
     deadline: Option<SystemTime>,
 ) -> Result<()> {
+    // required for request
+    let mut _tokio_rt = tokio::runtime::Runtime::new()?;
     let start_of_computation = SystemTime::now();
     // NOTE: pool should be big enough to hold all possible blocking tasks running in parallel, +1 for
     // additional non-blocking tasks.
@@ -109,13 +111,13 @@ pub fn run_blocking(
     )?);
 
     // dropping the work handle will stop (non-blocking) futures
-    let work_handle = task_pool.spawn_with_handle(run(
+    let work_handle = _tokio_rt.spawn(run(
         db.clone(),
         crates_io_path.as_ref().into(),
         deadline,
         root,
         task_pool.clone(),
-    ))?;
+    ));
 
     let either = block_on(futures::future::select(work_handle, gui.boxed_local()));
     match either {
@@ -126,7 +128,7 @@ pub fn run_blocking(
                 warn!("{}", e);
             }
         }
-        Either::Right((_, work_handle)) => work_handle.forget(),
+        Either::Right((_, work_handle)) => drop(work_handle),
     }
 
     // Make sure the terminal can reset when the gui is done.

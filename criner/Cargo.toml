@@ -28,3 +28,4 @@ log = "0.4.8"
 async-std = { version = "1.5.0", default-features = false, features = ["unstable"] }
 reqwest = "0.10.1"
 http = "0.2.0"
+tokio = { version = "0.2", features = ["full"] }
