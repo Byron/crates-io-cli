@@ -23,26 +23,39 @@ pub enum AsyncResult {
 }
 
 pub async fn schedule_tasks(
+    tasks: TasksTree<'_>,
     version: &model::CrateVersion<'_>,
     mut progress: prodash::tree::Item,
     _mode: Scheduling,
     download: &async_std::sync::Sender<DownloadTask>,
 ) -> Result<AsyncResult> {
-    progress.init(Some(1), Some("task"));
-    progress.set(1);
-    progress.blocked(None);
-    download
-        .send(DownloadTask {
-            name: version.name.to_owned().into(),
-            semver: version.version.to_owned().into(),
-            kind: "crate",
-            url: format!(
-                "https://crates.io/api/v1/crates/{name}/{version}/download",
-                name = version.name,
-                version = version.version
-            ),
-        })
-        .await;
+    let key = (
+        version.name.as_ref().into(),
+        version.version.as_ref().into(),
+        default_download_task(),
+    );
+    let task = tasks.get(TasksTree::key(&key))?.map_or(key.2, |v| v);
+    match task.state {
+        TaskState::NotStarted => {
+            progress.init(Some(1), Some("task"));
+            progress.set(1);
+            progress.blocked(None);
+            download
+                .send(DownloadTask {
+                    name: version.name.as_ref().into(),
+                    semver: version.version.as_ref().into(),
+                    kind: "crate",
+                    url: format!(
+                        "https://crates.io/api/v1/crates/{name}/{version}/download",
+                        name = version.name,
+                        version = version.version
+                    ),
+                })
+                .await;
+        }
+        TaskState::AttemptsWithFailure(_) => {}
+        TaskState::Complete => {}
+    };
     Ok(AsyncResult::Done)
 }
 
@@ -58,14 +71,7 @@ pub async fn download(
     mut progress: prodash::tree::Item,
     r: Receiver<DownloadTask>,
 ) -> Result<()> {
-    const TASK_NAME: &str = "download";
-    const TASK_VERSION: &str = "1.0.0";
-    let mut dummy = Task {
-        stored_at: SystemTime::now(),
-        process: TASK_NAME.into(),
-        version: TASK_VERSION.into(),
-        state: Default::default(),
-    };
+    let mut dummy = default_download_task();
 
     let mut key = Vec::with_capacity(32);
     let tasks = db.tasks();
@@ -87,8 +93,8 @@ pub async fn download(
         dummy = kt.2;
 
         let mut task = tasks.update(&key, |_| ())?;
-        task.process = TASK_NAME.into();
-        task.version = TASK_VERSION.into();
+        task.process = dummy.process.clone();
+        task.version = dummy.version.clone();
 
         progress.blocked(None);
         let res: Result<()> = async {
@@ -146,6 +152,17 @@ pub async fn download(
     }
     progress.done("Shutting down…");
     Ok(())
+}
+
+fn default_download_task() -> Task<'static> {
+    const TASK_NAME: &str = "download";
+    const TASK_VERSION: &str = "1.0.0";
+    Task {
+        stored_at: SystemTime::now(),
+        process: TASK_NAME.into(),
+        version: TASK_VERSION.into(),
+        state: Default::default(),
+    }
 }
 
 async fn store_data(

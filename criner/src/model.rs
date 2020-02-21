@@ -133,8 +133,6 @@ pub enum TaskState {
     AttemptsWithFailure(Vec<String>),
     /// The task completed successfully
     Complete,
-    /// The task was suspended and is only partially complete
-    Incomplete,
 }
 
 impl TaskState {

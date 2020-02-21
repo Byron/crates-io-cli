@@ -30,6 +30,7 @@ pub async fn process(
 
             progress.blocked(None);
             worker::schedule_tasks(
+                db.tasks(),
                 &version,
                 progress.add_child(format!("schedule {}", version.key_string()?)),
                 worker::Scheduling::AtLeastOne,

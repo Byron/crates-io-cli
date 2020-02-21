@@ -126,7 +126,7 @@ pub fn run_blocking(
         .pool_size(pool_size)
         .create()?;
     let db = Db::open(db)?;
-    std::fs::create_dir("assets")?;
+    std::fs::create_dir("assets").ok();
 
     let root = prodash::Tree::new();
 
