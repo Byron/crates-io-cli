@@ -3,6 +3,7 @@ use crate::model;
 use crate::model::{Task, TaskState};
 use crate::persistence::{Db, TasksTree, TreeAccess};
 use async_std::sync::Receiver;
+use std::path::PathBuf;
 use std::time::SystemTime;
 
 pub enum Scheduling {
@@ -61,6 +62,7 @@ pub async fn download(
 
     let mut key = Vec::with_capacity(32);
     let tasks = db.tasks();
+    let mut body_buf = Vec::new();
 
     while let Some(DownloadTask { name, semver, .. }) = r.recv().await {
         progress.set_name(format!("↓ {}:{}", name, semver));
@@ -89,12 +91,17 @@ pub async fn download(
             progress.init(Some(size / 1024), Some("Kb"));
             progress.blocked(None);
             progress.done(format!("HEAD:{}: content-size = {}", download_url, size));
-            let mut body = Vec::new();
+            body_buf.clear();
             while let Some(chunk) = res.chunk().await? {
-                body.extend(chunk);
-                progress.set((body.len() / 1024) as u32);
+                body_buf.extend(chunk);
+                progress.set((body_buf.len() / 1024) as u32);
             }
-            progress.done(format!("GET:{}: body-size = {}", download_url, body.len()));
+            progress.done(format!(
+                "GET:{}: body-size = {}",
+                download_url,
+                body_buf.len()
+            ));
+            store_data(&key, &body_buf).await?;
             Ok(())
         }
         .map_err(|e: crate::error::Error| {
@@ -111,4 +118,11 @@ pub async fn download(
         tasks.upsert(&kt)?;
     }
     Ok(())
+}
+
+async fn store_data(key: &[u8], data: &[u8]) -> Result<()> {
+    let key_str = String::from_utf8(key.to_owned())?;
+    tokio::fs::write(PathBuf::from("./criner.db/assets").join(&key_str), data)
+        .await
+        .map_err(crate::error::Error::from)
 }
