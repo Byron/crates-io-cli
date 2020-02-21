@@ -90,7 +90,12 @@ pub fn run_blocking(
     deadline: Option<SystemTime>,
 ) -> Result<()> {
     // required for request
-    let mut _tokio_rt = tokio::runtime::Runtime::new()?;
+    let tokio_rt = tokio::runtime::Builder::new()
+        .enable_all()
+        .core_threads(1)
+        .max_threads(2) // needs to be two or nothing happens
+        .threaded_scheduler()
+        .build()?;
     let start_of_computation = SystemTime::now();
     // NOTE: pool should be big enough to hold all possible blocking tasks running in parallel, +1 for
     // additional non-blocking tasks.
@@ -111,7 +116,7 @@ pub fn run_blocking(
     )?);
 
     // dropping the work handle will stop (non-blocking) futures
-    let work_handle = _tokio_rt.spawn(run(
+    let work_handle = tokio_rt.spawn(run(
         db.clone(),
         crates_io_path.as_ref().into(),
         deadline,
