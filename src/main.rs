@@ -17,10 +17,6 @@ mod http_utils;
 mod scmds;
 mod structs;
 
-#[cfg(feature = "mine")]
-use criner;
-#[cfg(feature = "mine")]
-use criner::UserInterface;
 use error::ok_or_exit;
 #[cfg(feature = "search")]
 use scmds::handle_interactive_search;
@@ -62,19 +58,28 @@ fn main() {
             concurrent_downloads,
             no_gui,
             downloads_directory,
+            progress_message_scrollback_buffer_size,
         }) => ok_or_exit(criner::run_blocking(
             db_path,
             repository
                 .unwrap_or_else(|| std::env::temp_dir().join("criner-crates-io-bare-index.git")),
             time_limit.map(|d| std::time::SystemTime::now().add(*d)),
-            if no_gui {
-                UserInterface::Log
-            } else {
-                UserInterface::TUI
-            },
-            fps,
             concurrent_downloads,
             downloads_directory,
+            criner::prodash::TreeOptions {
+                message_buffer_capacity: progress_message_scrollback_buffer_size,
+                ..criner::prodash::TreeOptions::default()
+            }
+            .create(),
+            if no_gui {
+                None
+            } else {
+                Some(criner::prodash::tui::TuiOptions {
+                    title: "Criner".into(),
+                    frames_per_second: fps,
+                    ..criner::prodash::tui::TuiOptions::default()
+                })
+            },
         )),
         None =>
         {

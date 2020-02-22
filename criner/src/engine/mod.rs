@@ -108,10 +108,10 @@ pub fn run_blocking(
     db: impl AsRef<Path>,
     crates_io_path: impl AsRef<Path>,
     deadline: Option<SystemTime>,
-    interface: UserInterface,
-    fps: f32,
     num_workers: u32,
     downloads_dir: Option<PathBuf>,
+    root: prodash::Tree,
+    gui: Option<prodash::tui::TuiOptions>,
 ) -> Result<()> {
     // required for request
     let tokio_rt = tokio::runtime::Builder::new()
@@ -134,8 +134,6 @@ pub fn run_blocking(
         std::fs::create_dir_all(path)?;
     }
 
-    let root = prodash::Tree::new();
-
     // dropping the work handle will stop (non-blocking) futures
     let work_handle = task_pool.spawn_with_handle(run(
         db.clone(),
@@ -148,15 +146,11 @@ pub fn run_blocking(
         tokio_rt.handle().clone(),
     ))?;
 
-    match interface {
-        UserInterface::TUI => {
+    match gui {
+        Some(gui_options) => {
             let (gui, abort_handle) = futures::future::abortable(prodash::tui::render_with_input(
                 root,
-                prodash::tui::TuiOptions {
-                    title: "Criner".into(),
-                    frames_per_second: fps,
-                    ..prodash::tui::TuiOptions::default()
-                },
+                gui_options,
                 context_stream(&db, start_of_computation),
             )?);
 
@@ -178,7 +172,7 @@ pub fn run_blocking(
             // Make sure the terminal can reset when the gui is done.
             std::io::stdout().flush()?;
         }
-        UserInterface::Log => {
+        None => {
             let work_result = futures::executor::block_on(work_handle);
             if let Err(e) = work_result {
                 warn!("{}", e);
@@ -224,11 +218,4 @@ fn context_stream(db: &Db, start_of_computation: SystemTime) -> impl futures::St
                 .unwrap_or(Event::Tick)
         }
     })
-}
-
-pub enum UserInterface {
-    /// Bring up a fully fledged terminal user interface
-    TUI,
-    /// Display logs line by line
-    Log,
 }
