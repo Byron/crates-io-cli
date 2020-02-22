@@ -36,7 +36,7 @@ serde = "1.0.104"
 serde_derive = "1.0.104"
 
 # criner
-criner = { version = "0.1.0", optional = true, path = "criner" }
+criner = { version = "0.1.0", optional = true, git = "https://github.com/crates-io/criner" }
 humantime = { version = "2.0.0", optional = true }
 
 
@@ -69,6 +69,3 @@ panic = "abort"
 opt-level = 3
 codegen-units = 1
 overflow-checks = true
-
-[workspace]
-members = ["criner"]

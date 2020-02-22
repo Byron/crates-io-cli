@@ -287,6 +287,7 @@ dependencies = [
 [[package]]
 name = "criner"
 version = "0.1.0"
+source = "git+https://github.com/crates-io/criner#4d5a2354b90ea9f243cae8a248f2ca8fcc36dc44"
 dependencies = [
  "async-std",
  "crates-index-diff",
