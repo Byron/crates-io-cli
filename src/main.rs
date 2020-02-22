@@ -49,9 +49,7 @@ fn main() {
         #[cfg(feature = "search")]
         Some(Search) => ok_or_exit(handle_interactive_search()),
         #[cfg(feature = "mine")]
-        Some(Criner(sub)) => ok_or_exit(criner_cli::run_blocking(criner_cli::Parsed {
-            sub: Some(sub),
-        })),
+        Some(Criner(args)) => ok_or_exit(criner_cli::run_blocking(args)),
         None =>
         {
             #[cfg(feature = "search")]

@@ -59,8 +59,7 @@ pub enum SubCommands {
     /// Invoke a hackable miner for crates.io
     #[cfg(feature = "mine")]
     #[structopt(display_order = 4)]
-    // #[structopt(flatten)]
-    Criner(criner_cli::SubCommands),
+    Criner(criner_cli::Parsed),
 }
 
 #[derive(StructOpt, Debug)]
