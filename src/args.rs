@@ -56,10 +56,11 @@ pub enum SubCommands {
         /// The type of output to produce
         output_format: OutputKind,
     },
-    /// Mine crates.io in an incorruptible and resumable fashion
+    /// Invoke a hackable miner for crates.io
     #[cfg(feature = "mine")]
-    #[structopt(flatten)]
-    Mine(criner_cli::SubCommands),
+    #[structopt(display_order = 4)]
+    // #[structopt(flatten)]
+    Criner(criner_cli::SubCommands),
 }
 
 #[derive(StructOpt, Debug)]
