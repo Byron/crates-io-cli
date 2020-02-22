@@ -71,4 +71,4 @@ codegen-units = 1
 overflow-checks = true
 
 [workspace]
-members = ["criner", "prodash"]
+members = ["criner"]
