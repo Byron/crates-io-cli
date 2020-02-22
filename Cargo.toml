@@ -17,7 +17,7 @@ path = "src/main.rs"
 doctest = false
 
 [features]
-default = ["mine"]
+default = ["mine", "utility"]
 mine = ["criner", "humantime"]
 utility = ["list", "recent-changes", "search"]
 recent-changes = ["crates-index-diff", "parking_lot"]
@@ -27,9 +27,9 @@ search = ["curl", "futures", "tokio-core", "tokio-curl", "urlencoding", "open"]
 
 [dependencies]
 clap = {version = "2", features = ["color"]}
+structopt = "0.3.9"
 prettytable-rs = { version = "0.8.0", features = ["win_crlf"], default-features = false }
 quick-error = "1.2.3"
-structopt = "0.3.9"
 
 serde_json = "1.0.45"
 serde = "1.0.104"

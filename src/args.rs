@@ -10,6 +10,7 @@ arg_enum! {
     pub enum OutputKind {
         human,
         json
+
     }
 }
 
