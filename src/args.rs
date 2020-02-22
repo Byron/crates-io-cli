@@ -77,8 +77,8 @@ pub enum SubCommands {
         /// Path to the possibly existing crates.io repository clone. If unset, it will be cloned to a temporary spot.
         #[structopt(short = "r", long, name = "REPO")]
         repository: Option<PathBuf>,
-        #[structopt(short = "d", long, name = "DOWNLOADS")]
 
+        #[structopt(long, name = "DOWNLOADS")]
         /// If set, all downloads will also be stored in this directory. It will be created if needed.
         ///
         /// For now, it's a mere backup and to make work more visible. All downloads are also stored in the database,
