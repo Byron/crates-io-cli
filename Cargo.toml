@@ -18,7 +18,7 @@ doctest = false
 
 [features]
 default = ["mine", "utility"]
-mine = ["criner", "humantime"]
+mine = ["criner-cli"]
 utility = ["list", "recent-changes", "search"]
 recent-changes = ["crates-index-diff", "parking_lot"]
 list =   ["curl", "futures", "tokio-core", "tokio-curl", "urlencoding"]
@@ -36,8 +36,7 @@ serde = "1.0.104"
 serde_derive = "1.0.104"
 
 # criner
-criner = { version = "0.1.0", optional = true, git = "https://github.com/crates-io/criner" }
-humantime = { version = "2.0.0", optional = true }
+criner-cli = { version = "0.1.0", optional = true, git = "https://github.com/crates-io/criner" }
 
 
 # recent-changes

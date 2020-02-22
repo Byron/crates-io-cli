@@ -27,7 +27,6 @@ use scmds::{by_user, handle_list};
 use structopt::StructOpt;
 
 use crate::args::Parsed;
-use std::ops::Add;
 
 fn main() {
     env_logger::init();
@@ -50,37 +49,9 @@ fn main() {
         #[cfg(feature = "search")]
         Some(Search) => ok_or_exit(handle_interactive_search()),
         #[cfg(feature = "mine")]
-        Some(Mine {
-            repository,
-            db_path,
-            fps,
-            time_limit,
-            concurrent_downloads,
-            no_gui,
-            downloads_directory,
-            progress_message_scrollback_buffer_size,
-        }) => ok_or_exit(criner::run_blocking(
-            db_path,
-            repository
-                .unwrap_or_else(|| std::env::temp_dir().join("criner-crates-io-bare-index.git")),
-            time_limit.map(|d| std::time::SystemTime::now().add(*d)),
-            concurrent_downloads,
-            downloads_directory,
-            criner::prodash::TreeOptions {
-                message_buffer_capacity: progress_message_scrollback_buffer_size,
-                ..criner::prodash::TreeOptions::default()
-            }
-            .create(),
-            if no_gui {
-                None
-            } else {
-                Some(criner::prodash::tui::TuiOptions {
-                    title: "Criner".into(),
-                    frames_per_second: fps,
-                    ..criner::prodash::tui::TuiOptions::default()
-                })
-            },
-        )),
+        Some(Mine(sub)) => ok_or_exit(criner_cli::run_blocking(criner_cli::Parsed {
+            sub: Some(sub),
+        })),
         None =>
         {
             #[cfg(feature = "search")]

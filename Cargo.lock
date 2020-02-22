@@ -256,11 +256,10 @@ version = "3.1.0"
 dependencies = [
  "clap",
  "crates-index-diff",
- "criner",
+ "criner-cli",
  "curl",
  "env_logger",
  "futures 0.1.29",
- "humantime 2.0.0",
  "open",
  "parking_lot 0.10.0",
  "prettytable-rs",
@@ -287,7 +286,7 @@ dependencies = [
 [[package]]
 name = "criner"
 version = "0.1.0"
-source = "git+https://github.com/crates-io/criner#4d5a2354b90ea9f243cae8a248f2ca8fcc36dc44"
+source = "git+https://github.com/crates-io/criner#cfb6eb53c80cc31a5664bb640314b42eac547315"
 dependencies = [
  "async-std",
  "crates-index-diff",
@@ -304,6 +303,18 @@ dependencies = [
  "serde_derive",
  "sled",
  "tokio 0.2.11",
+]
+
+[[package]]
+name = "criner-cli"
+version = "0.1.0"
+source = "git+https://github.com/crates-io/criner#cfb6eb53c80cc31a5664bb640314b42eac547315"
+dependencies = [
+ "clap",
+ "criner",
+ "env_logger",
+ "humantime 2.0.0",
+ "structopt",
 ]
 
 [[package]]
@@ -383,9 +394,9 @@ dependencies = [
 
 [[package]]
 name = "dashmap"
-version = "3.4.4"
+version = "3.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "117f63186e3d45ad197788bfde634b7bba7c0298a1d3648ea5a735e62cb20c32"
+checksum = "4bc4f1f769b62ee7d6a9ee7c04b37a3e409ed2a02e1a774c2e744c17ebbecc89"
 dependencies = [
  "ahash",
  "cfg-if",
@@ -830,9 +841,9 @@ checksum = "e2abad23fbc42b3700f2f279844dc832adb2b2eb069b2df918f455c4e18cc646"
 
 [[package]]
 name = "libc"
-version = "0.2.66"
+version = "0.2.67"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d515b1f41455adea1313a4a2ac8a8a477634fbae63cc6100e3aebb207ce61558"
+checksum = "eb147597cdf94ed43ab7a9038716637d2d1bf2bc571da995d0028dec06bd3018"
 
 [[package]]
 name = "libgit2-sys"
@@ -906,9 +917,9 @@ checksum = "60302e4db3a61da70c0cb7991976248362f30319e88850c487b9b95bbf059e00"
 
 [[package]]
 name = "memchr"
-version = "2.3.2"
+version = "2.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "53445de381a1f436797497c61d851644d0e8e88e6140f22872ad33a704933978"
+checksum = "3728d817d99e5ac407411fa471ff9800a778d88a24685968b36824eaf4bee400"
 
 [[package]]
 name = "memoffset"
@@ -1366,9 +1377,9 @@ dependencies = [
 
 [[package]]
 name = "reqwest"
-version = "0.10.1"
+version = "0.10.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c0e798e19e258bf6c30a304622e3e9ac820e483b06a1857a026e1f109b113fe4"
+checksum = "bae3fc32eacd4a5200c6b34bd6c057b07fb64f5a1e55bb67d624cc1393354621"
 dependencies = [
  "base64",
  "bytes 0.5.4",
@@ -1643,9 +1654,9 @@ dependencies = [
 
 [[package]]
 name = "syn"
-version = "1.0.14"
+version = "1.0.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "af6f3550d8dff9ef7dc34d384ac6f107e5d31c8f57d9f28e0081503f547ac8f5"
+checksum = "7a0294dc449adc58bb6592fff1a23d3e5e6e235afc6a0ffca2657d19e7bbffe5"
 dependencies = [
  "proc-macro2",
  "quote",
