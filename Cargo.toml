@@ -1,14 +1,13 @@
 [package]
 authors = ["Sebastian Thiel <byronimo@gmail.com>"]
 description = "Interact with crates.io from the command-line"
-keywords = ["crates", "index", "search", "diff", "cli", "mine"]
+keywords = ["crates", "search", "diff", "cli", "mine"]
 name = "crates-io-cli"
 include = ["src/**/*", "Cargo.*"]
 license = "MIT"
 repository = "https://github.com/crates-io/cli"
 readme = "README.md"
 edition = "2018"
-publish = false
 version = "3.1.1"
 
 [[bin]]
