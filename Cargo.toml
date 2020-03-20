@@ -9,7 +9,7 @@ repository = "https://github.com/crates-io/cli"
 readme = "README.md"
 edition = "2018"
 publish = false
-version = "3.1.0"
+version = "3.1.1"
 
 [[bin]]
 name = "crates"
@@ -36,12 +36,12 @@ serde = "1.0.104"
 serde_derive = "1.0.104"
 
 # criner
-criner-cli = { version = "0.1.0", optional = true, git = "https://github.com/crates-io/criner" }
+criner-cli = { version = "0.1.0", optional = true, path = "../criner" }
 
 
 # recent-changes
 parking_lot = { version = "0.10.0", optional = true }
-crates-index-diff = { version = "5.0.4", optional = true }
+crates-index-diff = { version = "6.0.0", optional = true }
 
 # search
 open = { version = "1.3.3", optional = true }
