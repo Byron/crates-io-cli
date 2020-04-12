@@ -1,3 +1,4 @@
+![Rust](https://github.com/Byron/crates-io-cli/workflows/Rust/badge.svg)
 [![crates.io version](https://img.shields.io/crates/v/crates-io-cli.svg)](https://crates.io/crates/crates-io-cli)
 
 A command-line interface to interact with [crates.io](https://crates.io/)
