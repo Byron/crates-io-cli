@@ -1,3 +1,9 @@
+<a name="v3.2.0"></a>
+### v3.2.0 (2020-04-12)
+
+* update and upgrade all dependencies
+* add an early version of 'criner', which is run with `crates criner mine`
+
 <a name="v2.1.1"></a>
 ### v2.1.1 (2017-12-13)
 
