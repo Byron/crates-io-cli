@@ -337,6 +337,8 @@ dependencies = [
 [[package]]
 name = "criner"
 version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dbbed1d91d7c4d317dff52e9fb411f075715c42ab8376cc4cfaa3113b35f69e2"
 dependencies = [
  "async-std",
  "async-trait",
@@ -370,6 +372,8 @@ dependencies = [
 [[package]]
 name = "criner-cli"
 version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cdb1e0ffcba2ec37520716ea765ac0a2c4b61d148a139ed6288f304fd94f9fcd"
 dependencies = [
  "clap",
  "criner",
