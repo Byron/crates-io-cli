@@ -7,7 +7,7 @@ license = "MIT"
 repository = "https://github.com/Byron/crates-io-cli"
 readme = "README.md"
 edition = "2018"
-version = "3.2.0"
+version = "3.3.0"
 include = ["src/**/*", "LICENSE.md", "README.md", "changelog.md"]
 
 [[bin]]
@@ -35,7 +35,7 @@ serde = "1.0.104"
 serde_derive = "1.0.104"
 
 # criner
-criner-cli = { version = "0.1.2", optional = true }
+criner-cli = { version = "0.2.0", optional = true }
 
 
 # recent-changes
