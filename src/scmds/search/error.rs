@@ -11,37 +11,37 @@ quick_error! {
         }
         ReactorInit(err: io::Error) {
             description("Could not initialize tokio event loop in worker thread")
-            source(err)
+            cause(err)
         }
         Easy(err: RemoteCallError) {
             description("A remote call could not be performed")
             from()
-            source(err)
+            cause(err)
         }
         Timeout(err: io::Error) {
             description("A timeout could not be created or failed while being invoked")
-            source(err)
+            cause(err)
         }
         DecodeJson(err: serde_json::Error) {
             description("Json from the server could not be decoded")
-            source(err)
+            cause(err)
             from()
         }
         SendCommand(err: mpsc::SendError<Command>) {
             description("A command could not be transmitted to the worker thread")
-            source(err)
+            cause(err)
         }
         KeySequence(err: io::Error) {
             description("A keysequence on stdin could not be interpreted")
-            source(err)
+            cause(err)
         }
         FirstIo(err: io::Error) {
             description("The first write to the output channel failed")
-            source(err)
+            cause(err)
         }
         MissingRawTerminal (err: io::Error) {
             description("Standard output could not be put into raw mode")
-            source(err)
+            cause(err)
             from()
         }
     }

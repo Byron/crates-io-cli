@@ -28,7 +28,7 @@ search = ["curl", "futures", "tokio-core", "tokio-curl", "urlencoding", "open"]
 clap = {version = "2", features = ["color"]}
 structopt = "0.3.9"
 prettytable-rs = { version = "0.8.0", features = ["win_crlf"], default-features = false }
-quick-error = "2.0.0"
+quick-error = "1.2.3"
 
 serde_json = "1.0.45"
 serde = "1.0.104"

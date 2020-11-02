@@ -6,17 +6,17 @@ quick_error! {
     pub enum Error {
         DecodeJson(err: serde_json::Error) {
             description("Json from the server could not be decoded")
-            source(err)
+            cause(err)
             from()
         }
         Easy(err: RemoteCallError) {
             description("A remote call could not be performed")
             from()
-            source(err)
+            cause(err)
         }
         ReactorInit(err: io::Error) {
             description("Could not initialize tokio event loop in worker thread")
-            source(err)
+            cause(err)
         }
     }
 }

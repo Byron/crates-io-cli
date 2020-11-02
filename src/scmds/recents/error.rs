@@ -7,21 +7,21 @@ quick_error! {
     pub enum Error {
         ThreadingError(err: io::Error) {
             description("Could not initialize tokio event loop in worker thread")
-            source(err)
+            cause(err)
         }
         EncodeError(err: serde_json::Error) {
-            source(err)
+            cause(err)
             from()
         }
         RepositoryDirectory(err: io::Error, path: PathBuf) {
             display("Could not create directory to contain crates.io repository at '{}'",
                      path.display())
-            source(err)
+            cause(err)
         }
         Git2(err: git2::Error) {
             description("A git operation failed")
             from()
-            source(err)
+            cause(err)
         }
     }
 }
