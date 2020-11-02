@@ -35,7 +35,7 @@ serde = "1.0.104"
 serde_derive = "1.0.104"
 
 # criner
-criner-cli = { version = "0.2.0", optional = true }
+criner-cli = { version = "0.3.0", optional = true }
 
 
 # recent-changes
