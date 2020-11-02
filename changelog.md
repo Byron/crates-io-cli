@@ -1,3 +1,9 @@
+<a name="v4.0.0"></a>
+### v4.0.0 (2020-11-02)
+
+* update and upgrade all dependencies
+* use latest criner and prodash
+
 <a name="v3.2.0"></a>
 ### v3.2.0 (2020-04-12)
 
