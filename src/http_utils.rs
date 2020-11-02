@@ -93,17 +93,17 @@ quick_error! {
         Easy(err: curl::Error) {
             description("Easy curl could not be configured")
             from()
-            cause(err)
+            source(err)
         }
         Curl(err: PerformError) {
             description("A curl request failed")
             from()
-            cause(err)
+            source(err)
         }
         Any(err: Box<dyn Error + Send + 'static>) {
             description("An error occurred")
             from()
-            cause(&**err)
+            source(&**err)
         }
     }
 }
