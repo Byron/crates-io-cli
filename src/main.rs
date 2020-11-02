@@ -1,7 +1,5 @@
 #![deny(unsafe_code)]
 
-#[macro_use]
-extern crate clap;
 #[cfg_attr(any(feature = "recent-changes", feature = "list"), macro_use)]
 extern crate prettytable;
 #[cfg_attr(
@@ -24,14 +22,14 @@ use scmds::handle_interactive_search;
 use scmds::handle_recent_changes;
 #[cfg(feature = "list")]
 use scmds::{by_user, handle_list};
-use structopt::StructOpt;
 
 use crate::args::Parsed;
 
 fn main() {
     env_logger::init();
     use args::SubCommands::*;
-    let args: Parsed = args::Parsed::from_args();
+    use clap::Clap;
+    let args: Parsed = args::Parsed::parse();
 
     match args.sub {
         #[cfg(feature = "recent-changes")]
