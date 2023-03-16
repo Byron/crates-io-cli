@@ -71,7 +71,7 @@ where
     let fut = do_work(session.clone())
         .into_future()
         .and_then(|crates: Vec<Crate>| match output_format {
-            OutputKind::human => {
+            OutputKind::Human => {
                 if crates.is_empty() {
                     return Ok(());
                 }
@@ -96,10 +96,10 @@ where
                     )
                 };
                 table.set_titles(titles);
-                table.print_tty(false);
+                table.print_tty(false)?;
                 Ok(())
             }
-            OutputKind::json => {
+            OutputKind::Json => {
                 serde_json::to_writer_pretty(io::stdout(), &crates).map_err(Into::into)
             }
         });

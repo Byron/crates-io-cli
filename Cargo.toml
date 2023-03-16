@@ -25,35 +25,35 @@ search = ["curl", "futures", "tokio-core", "tokio-curl", "urlencoding", "open"]
 
 
 [dependencies]
-clap = {version = "3.0.0-beta.2"}
-prettytable-rs = { version = "0.8.0", features = ["win_crlf"], default-features = false }
-quick-error = "1.2.3"
+clap = { version = "4.1.8", features = ["derive"] }
+prettytable-rs = { version = "0.10.0", features = ["win_crlf"], default-features = false }
+thiserror = "1.0.39"
 
 serde_json = "1.0.45"
 serde = "1.0.104"
 serde_derive = "1.0.104"
 
 # criner
-criner-cli = { version = "0.3.0", optional = true }
+criner-cli = { version = "0.3.1", optional = true }
 
 
 # recent-changes
-parking_lot = { version = "0.10.0", optional = true }
-crates-index-diff = { version = "7.0.0", optional = true }
+parking_lot = { version = "0.12.1", optional = true }
+crates-index-diff = { version = "16.0.1", optional = true }
 
 # search
-open = { version = "1.3.3", optional = true }
+open = { version = "4.0.0", optional = true }
 
 # search + list
 curl = { version = "0.4.25", optional = true }
 futures = { version = "0.1.7", optional = true }
 tokio-core = { version = "0.1.2", optional = true }
 tokio-curl = { version = "0.1.7", optional = true }
-urlencoding = { version = "1.0.0", optional = true }
-env_logger = { version = "0.7.1", default-features = false, features = ["termcolor", "atty", "humantime"] }
+urlencoding = { version = "2.1.2", optional = true }
+env_logger = { version = "0.10.0", default-features = false, features = ["humantime", "auto-color"] }
 
 [target."cfg(unix)".dependencies]
-termion = "1.1.4"
+termion = "2.0.1"
 
 # Turn on when needed to have faster debug builds
 [profile.dev.package."*"]

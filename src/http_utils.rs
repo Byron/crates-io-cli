@@ -87,25 +87,14 @@ fn request_new() -> Easy {
     easy
 }
 
-quick_error! {
-    #[derive(Debug)]
-    pub enum RemoteCallError {
-        Easy(err: curl::Error) {
-            description("Easy curl could not be configured")
-            from()
-            cause(err)
-        }
-        Curl(err: PerformError) {
-            description("A curl request failed")
-            from()
-            cause(err)
-        }
-        Any(err: Box<dyn Error + Send + 'static>) {
-            description("An error occurred")
-            from()
-            cause(&**err)
-        }
-    }
+#[derive(Debug, thiserror::Error)]
+pub enum RemoteCallError {
+    #[error("Easy curl could not be configured")]
+    Easy(#[from] curl::Error),
+    #[error("A curl request failed")]
+    Curl(#[from] PerformError),
+    #[error("An error occurred")]
+    Any(#[from] Box<dyn Error + Send + 'static>),
 }
 
 #[derive(Default)]

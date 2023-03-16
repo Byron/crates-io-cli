@@ -13,29 +13,33 @@ use parking_lot::{Condvar, Mutex};
 use prettytable::{format, Table};
 
 fn show_changes(repo_path: PathBuf, output_kind: OutputKind) -> Result<(), Error> {
-    std::fs::create_dir_all(&repo_path)
-        .map_err(|e| Error::RepositoryDirectory(e, repo_path.clone().into()))?;
+    std::fs::create_dir_all(&repo_path).map_err(|e| Error::RepositoryDirectory {
+        source: e,
+        path: repo_path.clone().into(),
+    })?;
     let index = Index::from_path_or_cloned(repo_path)?;
     let changes = index.fetch_changes()?;
 
     match output_kind {
-        OutputKind::human => {
+        OutputKind::Human => {
             if !changes.is_empty() {
                 let table = {
                     let mut t = Table::new();
                     t.set_titles(row![b -> "Name", b -> "Version", b -> "Kind"]);
                     t.set_format(*format::consts::FORMAT_NO_LINESEP_WITH_TITLE);
                     changes.iter().fold(t, |mut t, c| {
-                        t.add_row(row![c.name, c.version, c.kind]);
+                        let v = &c.versions()[0];
+                        t.add_row(row![v.name, v.version, c.to_string()]);
                         t
                     })
                 };
-                table.print_tty(false);
+                table.print_tty(false)?;
             }
             Ok(())
         }
-        OutputKind::json => {
-            serde_json::to_writer_pretty(io::stdout(), &changes).map_err(Into::into)
+        OutputKind::Json => {
+            let versions: Vec<_> = changes.iter().map(|c| &c.versions()[0]).collect();
+            serde_json::to_writer_pretty(io::stdout(), &versions).map_err(Into::into)
         }
     }
 }

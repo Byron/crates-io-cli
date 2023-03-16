@@ -1,44 +1,24 @@
 #[cfg(feature = "mine")]
 use criner_cli;
 
+use clap::Parser;
 #[cfg(any(feature = "mine", feature = "recent-changes"))]
 use std::path::PathBuf;
-use clap::Clap;
-use std::str::FromStr;
 
-#[allow(non_camel_case_types)]
-#[derive(Debug)]
+#[derive(Debug, Clone, clap::ValueEnum)]
 pub enum OutputKind {
-    human,
-    json
+    Human,
+    Json,
 }
 
-impl FromStr for OutputKind {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(match s {
-            "human"|"Human" => OutputKind::human,
-            "json"|"Json" => OutputKind::json,
-            _ => return Err(format!("unknown output kind: {:?}", s))
-        })
-    }
-}
-
-impl OutputKind {
-    pub const VARIANTS: &'static [&'static str] = &["human", "json"];
-}
-
-#[derive(Debug, Clap)]
+#[derive(Debug, Parser)]
 #[clap(about = "Interact with crates.io from the command-line")]
-#[clap(setting = clap::AppSettings::ColoredHelp)]
-#[clap(setting = clap::AppSettings::ColorAuto)]
 pub struct Parsed {
     #[clap(subcommand)]
     pub sub: Option<SubCommands>,
 }
 
-#[derive(Debug, Clap)]
+#[derive(Debug, Parser)]
 pub enum SubCommands {
     /// show all recently changed crates
     ///
@@ -53,7 +33,7 @@ pub enum SubCommands {
         #[clap(short = 'r', long, name = "REPO")]
         /// Path to the possibly existing crates.io repository clone. If unset, it will be cloned to a temporary spot.
         repository: Option<PathBuf>,
-        #[clap(long = "output", short = 'o', possible_values = &OutputKind::VARIANTS, default_value = "human")]
+        #[clap(long = "output", short = 'o', value_enum, default_value_t = OutputKind::Human)]
         /// The type of output to produce
         output_format: OutputKind,
     },
@@ -67,7 +47,7 @@ pub enum SubCommands {
     List {
         #[clap(subcommand)]
         cmd: ListCmd,
-        #[clap(long = "output", short = 'o', possible_values = &OutputKind::VARIANTS, default_value = "human")]
+        #[clap(long = "output", short = 'o', value_enum, default_value_t = OutputKind::Human)]
         /// The type of output to produce
         output_format: OutputKind,
     },
@@ -77,7 +57,7 @@ pub enum SubCommands {
     Criner(criner_cli::Args),
 }
 
-#[derive(Clap, Debug)]
+#[derive(Parser, Debug)]
 pub enum ListCmd {
     /// crates for the given user id
     ByUser {

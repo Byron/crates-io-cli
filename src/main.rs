@@ -6,8 +6,6 @@ extern crate prettytable;
     any(feature = "list", feature = "recent-changes", feature = "search"),
     macro_use
 )]
-extern crate quick_error;
-
 mod args;
 mod error;
 #[cfg(any(feature = "list", feature = "search"))]
@@ -28,7 +26,7 @@ use crate::args::Parsed;
 fn main() {
     env_logger::init();
     use args::SubCommands::*;
-    use clap::Clap;
+    use clap::Parser;
     let args: Parsed = args::Parsed::parse();
 
     match args.sub {
