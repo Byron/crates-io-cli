@@ -1,6 +1,6 @@
 <a name="v4.0.0"></a>
 
-### Unreleased
+### 4.0.1 (2023-03-16)
 
 Upgrade dependencies and make it compile once again.
 
@@ -8,7 +8,7 @@ Upgrade dependencies and make it compile once again.
 
 <csr-read-only-do-not-edit/>
 
- - 2 commits contributed to the release over the course of 735 calendar days.
+ - 3 commits contributed to the release over the course of 735 calendar days.
  - 864 days passed between releases.
  - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
@@ -20,6 +20,7 @@ Upgrade dependencies and make it compile once again.
 <details><summary>view details</summary>
 
  * **Uncategorized**
+    - Prepare changelog prior to release ([`232e233`](https://github.com/Byron/crates-io-cli-rs/commit/232e233e914f39484a325ee554db23c7d0b58b0f))
     - Upgrade dependencies and generally make things compile again ([`013c29a`](https://github.com/Byron/crates-io-cli-rs/commit/013c29a2e224315f11b2947eef60f6de94e31d3b))
     - Dependency update ([`6b2e9d8`](https://github.com/Byron/crates-io-cli-rs/commit/6b2e9d83005e286bd8249a234408edb01a4c4504))
 </details>
@@ -111,6 +112,9 @@ Upgrade dependencies and make it compile once again.
 </details>
 
 ### v3.1.1 (2020-03-20)
+
+<csr-id-5e821817191d428d193063907bd96c4334558d79/>
+<csr-id-34e11e4a0948ce776728448984c8bd525b6024a0/>
 
 #### Other
 
@@ -629,6 +633,8 @@ Fix all deprecation warnings.
 
 ### v2.1.0 (2017-12-13)
 
+<csr-id-8c9a671647366a4249b4989e2cc956dd93cdb2e8/>
+
 Add aggregated amount of downloads to 'list by-human <id>'.
 
 <a name="v2.0.1"></a>
@@ -672,6 +678,8 @@ Add aggregated amount of downloads to 'list by-human <id>'.
 
 ### v2.0.1 (2017-02-07)
 
+<csr-id-5c9e2c1b9bf636b593ed37688d7aa6d68f96df54/>
+
 <a name="v2.0.0"></a>
 
 #### Chore
@@ -699,6 +707,19 @@ Add aggregated amount of downloads to 'list by-human <id>'.
 </details>
 
 ### v2.0.0 (2017-01-26)
+
+<csr-id-5408ae092cad3916d5d8d477c00d06f699b3310f/>
+<csr-id-271fcf561ac98e8438643bea84a59ace83e2dc59/>
+<csr-id-0e8b0e930fa4cecf5f7fe4236973431fb6cf16ac/>
+<csr-id-9d4827964fafac6a8ac3b57445ea268c9ba12a93/>
+<csr-id-c802a198c6bf22300ef2533efba7db2d8c25aac0/>
+<csr-id-a278a55b556b2f01ab34ded394f0bc3ac27f83f8/>
+<csr-id-32b017824f1a928fd559c933940cf6667e2a7e8c/>
+<csr-id-d358c18b8b5cca6ac5ccd9baf83ea311b2829a38/>
+<csr-id-84404912744c8fdecad5c1b62af5dfdfe1a73c8e/>
+<csr-id-8fdb54ca82400e6e8b07ee636757c589ebf0af1e/>
+<csr-id-36cc73917430cc971f18ccd8f54419e07fab8963/>
+<csr-id-2b56cd1f5f87f0c15387f54235408d8a5439bb0f/>
 
 This release comes with vastly improved responsiveness for `crates search`, as well as the first
 implementation of the `list` subcommand.
@@ -796,6 +817,23 @@ implementation of the `list` subcommand.
 </details>
 
 ### v1.3.2 (2017-01-13)
+
+<csr-id-85d49a745e45894efb18ac44c93fd293f05d1cca/>
+<csr-id-d72cc2759a6eee744fb38f5d3574c61fb16b38c3/>
+<csr-id-d349d978ee617b929f60a99d8dc50a4863c06f7d/>
+<csr-id-c4dbef29d4a1f1a341f869e4d3424f5341b23ff3/>
+<csr-id-9e4aff7293cac609035627d82629e601f1eaf73e/>
+<csr-id-4f8f3d6fcc82e9cc8339d2d17019ddbbe686ed82/>
+<csr-id-8d11e2b51a33cbe2d6c8e479c9d68d69c7efe3d2/>
+<csr-id-2f115a84dc481fccd9945aca532e419a245dcef3/>
+<csr-id-1b00f362827b69319703fa64b79a34e2c7d6d5b9/>
+<csr-id-8d013f82dbf85d5895eca72f94674b6a403cfb29/>
+<csr-id-fee77ec2d3142f7be29a3c0d1b72209941d81d32/>
+<csr-id-329c54b9fc88c8e3f995e09cab6dee78f1a82d61/>
+<csr-id-b025eab4ebffa7dbba8fc0c59d93d7312eb0a0ff/>
+<csr-id-7d1f8933b51718c17b382fd9ae5ce5b84846694b/>
+<csr-id-6ba9d0527d11efa935f3c01f604b06f0fd728ff3/>
+<csr-id-1675c1e0ea304d25eb66b9b2550f6f8dc371eb85/>
 
 #### Bug Fixes
 
@@ -897,6 +935,21 @@ implementation of the `list` subcommand.
 
 ### v1.3.1 (2017-01-01)
 
+<csr-id-dbd55820571bedbf7708a54ceb299f059cef9cba/>
+<csr-id-b76c9aad3a5e0fb9b8002c284864748e55fe53ff/>
+<csr-id-3874e03a4831868bb169cf65644259401b28bcce/>
+<csr-id-4a28121cf9a1a39297659f8d315150f2a5f0274a/>
+<csr-id-d238844e621183f2508b9d46c00a75dc63fee265/>
+<csr-id-c26d4d741fde091dbf57e87f1259825bee4c9bf6/>
+<csr-id-57f7bcb97f408b370ad99e3ac053f7d13b88b6c1/>
+<csr-id-71d816a7d836649b3a115e80c381c7055ccf0beb/>
+<csr-id-e05e37da6f0310164226121576e0340236a9f9f8/>
+<csr-id-798acf3449d97ec7c68d7630e0895ad96b2580de/>
+<csr-id-f0e96258b4707e9df7f161f884adf5d023655a66/>
+<csr-id-65888661f1f1516f5fa6f8549d0d65b047a18330/>
+<csr-id-1f195cc7a8de5850c0cc5344d1fe6079a95e0fd6/>
+<csr-id-31b2858481293377b77881a2548aab14eaefa8c6/>
+
 #### Improvements
 
 * **search:**
@@ -990,9 +1043,20 @@ implementation of the `list` subcommand.
 </details>
 
 <csr-unknown>
-<a name="v1.3.0"></a><csr-unknown/>
+show better info if no search was made (https://github.com/Byron/crates-io-cli-rs/commit/a6f8be20b4c5b25667eb26566c10146cfee574e9a6f8be20)<csr-unknown/>
 
 ### v1.3.0 (2016-12-30)
+
+<csr-id-1839d7a235f092137ec4793bfac0fbfabe77825f/>
+<csr-id-dba238296868ee3fa18da196ac995a9e0839f8fe/>
+<csr-id-0e8837808812ac9807005aa96e6683fbd7081592/>
+<csr-id-256aa62521781de59bd4a115f294e61fc0e8b620/>
+<csr-id-602b937a854ccfbc658bfb2a4f2fc267816ed50b/>
+<csr-id-4e788bc2c496ccf6bb10e2b6a8cd8b257d1c2720/>
+<csr-id-b87386397f4b5a8a005c72310841e6b17e59c48f/>
+<csr-id-9a04731720d90e313828ec92ab2fd29afd17545b/>
+<csr-id-ac926039b87c03ebab7c28d27bdfe9c0b29fa96d/>
+<csr-id-c945bb31627e6d270ddcb887c767f838924dc58e/>
 
 #### Improvements
 
@@ -1074,6 +1138,40 @@ implementation of the `list` subcommand.
 
 ### v1.2.0 (2016-12-30)
 
+<csr-id-3629c64d1703d20fff8a25c8646df255f10f715a/>
+<csr-id-b9e764ef5b3be735a05f2aafe1b96b8ea31cab9f/>
+<csr-id-9d352672cca9b96e1cb6195bc63526cb13690034/>
+<csr-id-88ae68c54287e0565079f0e423a5f0b257c7ea77/>
+<csr-id-40a39f767bef00c6f11ec351906c1542ad929486/>
+<csr-id-99488daa85b86022243df19edad36492b216f3ec/>
+<csr-id-ebe329adea98a3ad29c6ac73576597ce3bd100c5/>
+<csr-id-53ac3ec6a6d6a063abfd195469cef3d45051c047/>
+<csr-id-b64a2dd8edc4e11900e10d5d6d9d62dfca6faab6/>
+<csr-id-f8c0dd5b00a224fd86d8d6eb96a3907e0b6c2c38/>
+<csr-id-89b718893bed5349866932940849293ed11c0167/>
+<csr-id-4f698a6fb931cd9b7679cbdcef72dcb063b3edad/>
+<csr-id-48ac66eec6b3d1677a1ee8fdb44b3dc4a687f976/>
+<csr-id-3f48d91677583af663be842f302ab6e6d96f88c0/>
+<csr-id-8f3606dbb15bd8043b1a8debe37120d5a8d38df7/>
+<csr-id-86512487c58f053d5242875c885b5f8a20f34b23/>
+<csr-id-e98897c190579a96d558ad9a96936a6bd3055c52/>
+<csr-id-4cd2f3de2652f93e5c4ebf964cd476036e505faa/>
+<csr-id-ca792c0bc6dd86758d3d905a6ffca5f60fd59c68/>
+<csr-id-0dcef290de1633aa0a0904792b3ee9e41ecde8f5/>
+<csr-id-d7f32855a0afb749bebb50d593a50e7a799141f7/>
+<csr-id-77d824039759e3f03d4ecf9ca2bf93b71d8c08cc/>
+<csr-id-8a2837b9c829811201d6a15a5f11b3ba973cb735/>
+<csr-id-d44f874fd0d413afd2e45d3f1682be5711078f7f/>
+<csr-id-a6d4e8e8f8bd83ece10d8506bcd85d88514af160/>
+<csr-id-f60e6c9161b7aa6ab06d3b5eeb31ef3041cfa927/>
+<csr-id-49a139a7ea84da77895e329f32fb0ff9ddc134f4/>
+<csr-id-ecb0d70601155f3eb8b22175e98cd87c4dc64006/>
+<csr-id-e1e526264db5f695b517abc4d34896933d83a6ae/>
+<csr-id-ecdb07f666e501ab4212957ffc68013e998246ae/>
+<csr-id-cbbf89865f9b2a3fa90784fa7889a928780d91b9/>
+<csr-id-0571ea0caf14156f41d3eeaeb215919d391e6910/>
+<csr-id-7cee7869f6f7b5a65eddf4490cec4203248693af/>
+
 #### Features
 
 * **search:**
@@ -1154,8 +1252,8 @@ implementation of the `list` subcommand.
  - <csr-id-56447d6f8a45bbcf360e25898b4a616c438b6507/> first usable version
    Notably missing:
    * properly use vertical space
-   * nice table alignment
-   * jump to crates.io
+* nice table alignment
+* jump to crates.io
 
 #### Documentation
 
@@ -1257,6 +1355,9 @@ implementation of the `list` subcommand.
 
 ### v1.1.0 (2016-12-28)
 
+<csr-id-185ee003cc7f1f8bc742f5f121d468318a0de10e/>
+<csr-id-47748a6616d0589aa0326e21be479b308a15f4c8/>
+
 #### Improvements
 
 * **cli:**  try to implement timeout with futures ([185ee003](https://github.com/Byron/crates-io-cli-rs/commit/185ee003cc7f1f8bc742f5f121d468318a0de10e))
@@ -1316,6 +1417,9 @@ implementation of the `list` subcommand.
 
 ### v1.0.1 (2016-12-26)
 
+<csr-id-508e9589933e10d9c9e5fc33fb08390f3ab93e55/>
+<csr-id-b7a39ad8ef68adb81b2d8a7e552cb0a2a73f7d5b/>
+
 #### Other
 
  - <csr-id-508e9589933e10d9c9e5fc33fb08390f3ab93e55/> add version badge
@@ -1351,6 +1455,15 @@ implementation of the `list` subcommand.
 </details>
 
 ### v1.0.0 (2016-12-26)
+
+<csr-id-88753b7f24a779d76853aea4cd5af1be1e43825c/>
+<csr-id-6032bf7d286872518f00938b7156a52ef017179f/>
+<csr-id-30b779fbd4e7c804434314259719e1e0a9290c36/>
+<csr-id-9597811afa5f37aa3ca3642ce35b14454167bc51/>
+<csr-id-b0a6468477ca43e748cb39fd5efad764897e78d8/>
+<csr-id-76ea4378719ef394af5577cec3f67eb58f9c29db/>
+<csr-id-52072b1f567de5dfc4937447286255c7964b36aa/>
+<csr-id-b498107f30c7670b3d4f4dc456ceee2206329994/>
 
 #### Chore
 
