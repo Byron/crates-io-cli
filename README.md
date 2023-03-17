@@ -21,6 +21,12 @@ If you have Rust on your system:
 cargo install crates-io-cli
 ```
 
+If you are on NetBSD, a native package is available.
+To install it, simply run:
+```bash
+pkgin install crates-io-cli
+```
+
 ... and if you have to install from scratch, the following will install Rust and
 the CLI at once:
 ```bash
