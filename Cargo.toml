@@ -39,7 +39,7 @@ criner-cli = { version = "0.3.1", optional = true }
 
 # recent-changes
 parking_lot = { version = "0.12.1", optional = true }
-crates-index-diff = { version = "16.0.1", optional = true }
+crates-index-diff = { version = "21.0.0", optional = true }
 
 # search
 open = { version = "5.0.0", optional = true }
