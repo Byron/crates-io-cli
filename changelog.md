@@ -1,6 +1,6 @@
 <a name="v4.0.0"></a>
 
-### Unreleased
+### 4.0.2 (2023-10-22)
 
 Update all dependencies and upgrade most dependencies to the latest version.
 Most notably, this brings the `git2` dependency to the v0.16, from v0.14.
@@ -9,7 +9,7 @@ Most notably, this brings the `git2` dependency to the v0.16, from v0.14.
 
 <csr-read-only-do-not-edit/>
 
- - 4 commits contributed to the release over the course of 217 calendar days.
+ - 5 commits contributed to the release over the course of 217 calendar days.
  - 219 days passed between releases.
  - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
@@ -21,6 +21,7 @@ Most notably, this brings the `git2` dependency to the v0.16, from v0.14.
 <details><summary>view details</summary>
 
  * **Uncategorized**
+    - Update changelog prior to release ([`2fa9dfe`](https://github.com/Byron/crates-io-cli-rs/commit/2fa9dfecd05b7eae748516a55c509e360334b031))
     - Upgrade `crates-index-diff` ([`de90257`](https://github.com/Byron/crates-io-cli-rs/commit/de90257e2fe9527712554dbbf7e3e7cf52a1ff6c))
     - Upgrade `open` ([`69881d7`](https://github.com/Byron/crates-io-cli-rs/commit/69881d750b0fba771327022e0dd8e220a3dcaade))
     - Update all dependencies ([`ad2cdc6`](https://github.com/Byron/crates-io-cli-rs/commit/ad2cdc68b2b1278419f323f98a299eda6549817b))
