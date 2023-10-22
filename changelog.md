@@ -1,5 +1,32 @@
 <a name="v4.0.0"></a>
 
+### Unreleased
+
+Update all dependencies and upgrade most dependencies to the latest version.
+Most notably, this brings the `git2` dependency to the v0.16, from v0.14.
+
+#### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 4 commits contributed to the release over the course of 217 calendar days.
+ - 219 days passed between releases.
+ - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 0 issues like '(#ID)' were seen in commit messages
+
+#### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **Uncategorized**
+    - Upgrade `crates-index-diff` ([`de90257`](https://github.com/Byron/crates-io-cli-rs/commit/de90257e2fe9527712554dbbf7e3e7cf52a1ff6c))
+    - Upgrade `open` ([`69881d7`](https://github.com/Byron/crates-io-cli-rs/commit/69881d750b0fba771327022e0dd8e220a3dcaade))
+    - Update all dependencies ([`ad2cdc6`](https://github.com/Byron/crates-io-cli-rs/commit/ad2cdc68b2b1278419f323f98a299eda6549817b))
+    - Add NetBSD instructions ([`262c3e3`](https://github.com/Byron/crates-io-cli-rs/commit/262c3e3d551dd440e6111d7b239651947e249255))
+</details>
+
 ### 4.0.1 (2023-03-16)
 
 Upgrade dependencies and make it compile once again.
@@ -8,7 +35,7 @@ Upgrade dependencies and make it compile once again.
 
 <csr-read-only-do-not-edit/>
 
- - 3 commits contributed to the release over the course of 735 calendar days.
+ - 4 commits contributed to the release over the course of 735 calendar days.
  - 864 days passed between releases.
  - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
@@ -20,6 +47,7 @@ Upgrade dependencies and make it compile once again.
 <details><summary>view details</summary>
 
  * **Uncategorized**
+    - Release crates-io-cli v4.0.1 ([`fe83292`](https://github.com/Byron/crates-io-cli-rs/commit/fe83292693188c015ab40458e006a40b10ecd0ce))
     - Prepare changelog prior to release ([`232e233`](https://github.com/Byron/crates-io-cli-rs/commit/232e233e914f39484a325ee554db23c7d0b58b0f))
     - Upgrade dependencies and generally make things compile again ([`013c29a`](https://github.com/Byron/crates-io-cli-rs/commit/013c29a2e224315f11b2947eef60f6de94e31d3b))
     - Dependency update ([`6b2e9d8`](https://github.com/Byron/crates-io-cli-rs/commit/6b2e9d83005e286bd8249a234408edb01a4c4504))
