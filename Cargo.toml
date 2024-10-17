@@ -34,12 +34,12 @@ serde = "1.0.104"
 serde_derive = "1.0.104"
 
 # criner
-criner-cli = { version = "0.3.1", optional = true }
+criner-cli = { version = "0.4.0", optional = true }
 
 
 # recent-changes
 parking_lot = { version = "0.12.1", optional = true }
-crates-index-diff = { version = "21.0.0", optional = true }
+crates-index-diff = { version = "25.0.0", optional = true }
 
 # search
 open = { version = "5.0.0", optional = true }
