@@ -1,16 +1,15 @@
 <a name="v4.0.0"></a>
 
-### 4.0.2 (2023-10-22)
+### Unreleased
 
-Update all dependencies and upgrade most dependencies to the latest version.
-Most notably, this brings the `git2` dependency to the v0.16, from v0.14.
+A maintenance release with updated dependencies.
 
 #### Commit Statistics
 
 <csr-read-only-do-not-edit/>
 
- - 5 commits contributed to the release over the course of 217 calendar days.
- - 219 days passed between releases.
+ - 1 commit contributed to the release.
+ - 360 days passed between releases.
  - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
 
@@ -21,6 +20,30 @@ Most notably, this brings the `git2` dependency to the v0.16, from v0.14.
 <details><summary>view details</summary>
 
  * **Uncategorized**
+    - Update depedencies ([`e191c72`](https://github.com/Byron/crates-io-cli-rs/commit/e191c72aa78ae1a93394aefa929a9d4f533c92dd))
+</details>
+
+### 4.0.2 (2023-10-22)
+
+Update all dependencies and upgrade most dependencies to the latest version.
+Most notably, this brings the `git2` dependency to the v0.16, from v0.14.
+
+#### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 6 commits contributed to the release.
+ - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 0 issues like '(#ID)' were seen in commit messages
+
+#### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **Uncategorized**
+    - Release crates-io-cli v4.0.2 ([`a5c02f3`](https://github.com/Byron/crates-io-cli-rs/commit/a5c02f3e983943a337859d0e46773e532332bc96))
     - Update changelog prior to release ([`2fa9dfe`](https://github.com/Byron/crates-io-cli-rs/commit/2fa9dfecd05b7eae748516a55c509e360334b031))
     - Upgrade `crates-index-diff` ([`de90257`](https://github.com/Byron/crates-io-cli-rs/commit/de90257e2fe9527712554dbbf7e3e7cf52a1ff6c))
     - Upgrade `open` ([`69881d7`](https://github.com/Byron/crates-io-cli-rs/commit/69881d750b0fba771327022e0dd8e220a3dcaade))
@@ -36,8 +59,7 @@ Upgrade dependencies and make it compile once again.
 
 <csr-read-only-do-not-edit/>
 
- - 4 commits contributed to the release over the course of 735 calendar days.
- - 864 days passed between releases.
+ - 4 commits contributed to the release.
  - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
 
@@ -589,8 +611,7 @@ Upgrade dependencies and make it compile once again.
 
 <csr-read-only-do-not-edit/>
 
- - 5 commits contributed to the release over the course of 272 calendar days.
- - 272 days passed between releases.
+ - 5 commits contributed to the release.
  - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
 
@@ -614,8 +635,7 @@ Upgrade dependencies and make it compile once again.
 
 <csr-read-only-do-not-edit/>
 
- - 5 commits contributed to the release over the course of 295 calendar days.
- - 295 days passed between releases.
+ - 5 commits contributed to the release.
  - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
 
@@ -684,7 +704,7 @@ Add aggregated amount of downloads to 'list by-human <id>'.
 
 <csr-read-only-do-not-edit/>
 
- - 7 commits contributed to the release over the course of 173 calendar days.
+ - 7 commits contributed to the release.
  - 308 days passed between releases.
  - 3 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
