@@ -7,7 +7,7 @@ license = "MIT"
 repository = "https://github.com/Byron/crates-io-cli"
 readme = "README.md"
 edition = "2018"
-version = "4.0.2"
+version = "4.0.3"
 include = ["src/**/*", "LICENSE.md", "README.md", "changelog.md"]
 
 [[bin]]

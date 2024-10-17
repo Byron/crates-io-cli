@@ -1,6 +1,6 @@
 <a name="v4.0.0"></a>
 
-### Unreleased
+### 4.0.3 (2024-10-17)
 
 A maintenance release with updated dependencies.
 
@@ -8,7 +8,7 @@ A maintenance release with updated dependencies.
 
 <csr-read-only-do-not-edit/>
 
- - 1 commit contributed to the release.
+ - 2 commits contributed to the release.
  - 360 days passed between releases.
  - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
@@ -20,6 +20,7 @@ A maintenance release with updated dependencies.
 <details><summary>view details</summary>
 
  * **Uncategorized**
+    - Update chagnelog prior to release ([`9720b01`](https://github.com/Byron/crates-io-cli-rs/commit/9720b01a823812659d1d195f54d5afb3b6e07523))
     - Update depedencies ([`e191c72`](https://github.com/Byron/crates-io-cli-rs/commit/e191c72aa78ae1a93394aefa929a9d4f533c92dd))
 </details>
 
