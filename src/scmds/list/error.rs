@@ -7,6 +7,6 @@ pub enum Error {
     DecodeJson(#[from] serde_json::Error),
     #[error("A remote call could not be performed")]
     Easy(#[from] RemoteCallError),
-    #[error("Could not initialize tokio event loop in worker thread")]
-    ReactorInit(#[from] io::Error),
+    #[error("Output could not be written")]
+    Io(#[from] io::Error),
 }

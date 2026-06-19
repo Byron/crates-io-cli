@@ -1,25 +1,18 @@
 use super::error::Error;
 use super::structs::{Command, Dimension, Indexed, SearchResult, State};
-use futures::{self, sync::mpsc, Future, Sink, Stream};
 use open;
 use std::{
-    cell::RefCell,
     cmp::max,
     fmt::Display,
     io::{self, Write},
-    rc::Rc,
-    sync::atomic::{AtomicUsize, Ordering},
-    sync::{Arc, Mutex},
+    sync::mpsc,
     thread,
-    time::Duration,
 };
 use termion::{clear, cursor, event::Key, input::TermRead, raw::IntoRawMode};
-use tokio_core::reactor::{Core, Handle, Timeout};
-use tokio_curl::Session;
 use urlencoding;
 
 use crate::http_utils::{
-    paged_crates_io_remote_call, CallMetaData, CallResult, DropOutdated, DroppedOrError,
+    CallMetaData, CallResult, CancelFlag, new_cancel_flag, paged_crates_io_remote_call,
 };
 
 const INFO_LINE: cursor::Goto = cursor::Goto(1, 2);
@@ -59,19 +52,6 @@ fn extract(c: CallResult) -> Result<(CallMetaData, SearchResult), Error> {
     })
 }
 
-impl<A> DropOutdated<A>
-where
-    A: Future,
-{
-    pub fn with_version(f: A, version: Arc<AtomicUsize>) -> DropOutdated<A> {
-        DropOutdated {
-            inner: Some(f),
-            version: version.load(Ordering::Relaxed),
-            current_version: version,
-        }
-    }
-}
-
 fn dimension() -> Dimension {
     Dimension::default().loose_heigth(NON_CONTENT_LINES)
 }
@@ -80,7 +60,6 @@ use super::structs::Command::*;
 use super::structs::Mode::*;
 
 enum ReducerDo {
-    Nothing,
     Clear,
     ShowLast,
     Show(SearchResult),
@@ -88,80 +67,29 @@ enum ReducerDo {
     Open { force: bool, number: usize },
 }
 
-fn setup_future(
-    cmd: Command,
-    session: Arc<Mutex<Session>>,
-    handle: &Handle,
-    version: &Arc<AtomicUsize>,
-) -> Box<dyn Future<Item = ReducerDo, Error = Error> + Send> {
+fn handle_command(cmd: Command, cancel: Option<CancelFlag>) -> Result<ReducerDo, Error> {
     match cmd {
-        Clear => Box::new(futures::finished(ReducerDo::Clear)),
-        Open { force, number } => Box::new(futures::finished(ReducerDo::Open {
+        Clear => Ok(ReducerDo::Clear),
+        Open { force, number } => Ok(ReducerDo::Open {
             force: force,
             number: number,
-        })),
-        DrawIndices => Box::new(futures::finished(ReducerDo::DrawIndices)),
-        ShowLast => Box::new(futures::finished(ReducerDo::ShowLast)),
+        }),
+        DrawIndices => Ok(ReducerDo::DrawIndices),
+        ShowLast => Ok(ReducerDo::ShowLast),
         Search(term) => {
-            let version = {
-                version.fetch_add(1, Ordering::SeqCst);
-                version.clone()
-            };
-
             let dim = dimension();
             let url = format!(
                 "https://crates.io/api/v1/crates?page=1&per_page={}&q={}&sort=",
                 max(100, dim.height),
                 urlencoding::encode(&term)
             );
-            let req = paged_crates_io_remote_call(
-                &url,
-                Some(dim.height as u32),
-                session.clone(),
-                merge,
-                extract,
-            );
-            info(&"searching ...");
-            let default_timeout: Duration = Duration::from_millis(15000);
-            let timeout = Timeout::new(default_timeout.clone(), handle)
-                .map(|f| Box::new(f) as Box<dyn Future<Item = _, Error = _> + Send>)
-                .unwrap_or_else(|_| Box::new(futures::empty()))
-                .map_err(Error::Timeout)
-                .map(move |_| {
-                    info(&format!(
-                        "Timeout occurred after {:?} - request dropped. Keep typing \
-                         to try again.",
-                        default_timeout
-                    ));
-                    ReducerDo::Nothing
-                });
-            let req = req
-                .map_err(move |e| {
-                    info(&format!("Request to {} failed with error: '{}'", url, e));
-                    e.into()
-                })
-                .map(move |mut result| {
-                    result.meta.term = Some(term);
-                    ReducerDo::Show(result)
-                });
-
-            let req = Box::new(req.select(timeout).then(|res| {
-                Ok(match res {
-                    Ok((do_nothing @ ReducerDo::Nothing, pending_request)) => {
-                        drop(pending_request);
-                        do_nothing
-                    }
-                    Ok((result, _timeout)) => result,
-                    Err(_) => ReducerDo::Nothing,
-                })
-            }));
-
-            Box::new(
-                DropOutdated::with_version(req, version.clone()).or_else(|e| match e {
-                    DroppedOrError::Dropped => Ok(ReducerDo::Nothing),
-                    DroppedOrError::Err(e) => Err(e),
-                }),
-            )
+            let req =
+                paged_crates_io_remote_call(&url, Some(dim.height as u32), merge, extract, cancel);
+            req.map(|mut result| {
+                result.meta.term = Some(term);
+                ReducerDo::Show(result)
+            })
+            .map_err(Into::into)
         }
     }
 }
@@ -173,7 +101,6 @@ fn handle_future_result(
     use self::ReducerDo::*;
     let mut res = None;
     match (cmd, current_result) {
-        (Nothing, _) => {}
         (DrawIndices, None) => {
             info(&"There is nothing to open - conduct a search first.");
         }
@@ -267,9 +194,49 @@ enum LoopControl {
     ShouldKeepGoing,
 }
 
+enum WorkerEvent {
+    Command(Command),
+    SearchFinished {
+        version: usize,
+        result: Result<ReducerDo, Error>,
+    },
+    Shutdown,
+}
+
+fn apply_worker_result(
+    result: Result<ReducerDo, Error>,
+    current_result: &mut Option<SearchResult>,
+) {
+    match result {
+        Ok(result) => {
+            let res = handle_future_result(result, current_result.as_ref());
+            if let Some(next_result) = res {
+                *current_result = next_result;
+            }
+        }
+        Err(e) => {
+            info(&e);
+        }
+    }
+}
+
+fn spawn_search(
+    term: String,
+    version: usize,
+    sender: mpsc::Sender<WorkerEvent>,
+    cancel: CancelFlag,
+) {
+    thread::spawn(move || {
+        let result = handle_command(Search(term), Some(cancel));
+        sender
+            .send(WorkerEvent::SearchFinished { version, result })
+            .ok();
+    });
+}
+
 fn handle_key(
     k: Key,
-    sender: mpsc::Sender<Command>,
+    sender: &mpsc::Sender<WorkerEvent>,
     state: &mut State,
 ) -> Result<LoopControl, Error> {
     let (mut force_open, mut show_last_search) = (false, false);
@@ -345,8 +312,10 @@ fn handle_key(
         },
         Opening => DrawIndices,
     };
-    sender.send(cmd).wait().map_err(Error::SendCommand)?;
-    return Ok(LoopControl::ShouldKeepGoing);
+    sender
+        .send(WorkerEvent::Command(cmd))
+        .map_err(|_| Error::SendCommand)?;
+    Ok(LoopControl::ShouldKeepGoing)
 }
 
 pub fn handle_interactive_search() -> Result<(), Error> {
@@ -358,51 +327,60 @@ pub fn handle_interactive_search() -> Result<(), Error> {
     promptf(&state);
     usage();
 
-    let (sender, receiver) = mpsc::channel(10);
-    let t = thread::spawn(|| {
-        let mut reactor = match Core::new() {
-            Err(e) => return Err(Error::ReactorInit(e)),
-            Ok(r) => r,
-        };
-        let session = Arc::new(Mutex::new(Session::new(reactor.handle())));
-        let handle = reactor.handle();
-        let version = Arc::new(AtomicUsize::new(0));
-        let current_result = Rc::new(RefCell::new(None));
+    let (sender, receiver) = mpsc::channel();
+    let worker_sender = sender.clone();
+    let t = thread::spawn(move || {
+        let mut current_result = None;
+        let mut search_version = 0;
+        let mut current_search_cancel: Option<CancelFlag> = None;
 
-        let commands = receiver
-            .and_then(|cmd: Command| {
-                let cr = current_result.clone();
-                let spawnable = setup_future(cmd, session.clone(), &handle, &version)
-                    .then(|r| {
-                        match r {
-                            Ok(r) => Ok(r),
-                            Err(Error::DecodeJson(_)) => Err(()), /*abort stream on decode error*/
-                            Err(_) => Ok(ReducerDo::Nothing),     /*ignore other errors*/
-                        }
-                    })
-                    .and_then(move |result| {
-                        let res = handle_future_result(result, cr.borrow().as_ref());
-                        if let Some(next_result) = res {
-                            *cr.borrow_mut() = next_result;
-                        }
-                        Ok(())
-                    });
-                handle.spawn(spawnable);
-                Ok(())
-            })
-            .for_each(|_| Ok(()));
-        reactor.run(commands).ok();
+        while let Ok(event) = receiver.recv() {
+            match event {
+                WorkerEvent::Command(Search(term)) => {
+                    search_version += 1;
+                    if let Some(cancel) = current_search_cancel.take() {
+                        cancel.store(true, std::sync::atomic::Ordering::Relaxed);
+                    }
+                    let cancel = new_cancel_flag();
+                    current_search_cancel = Some(cancel.clone());
+                    info(&"searching ...");
+                    spawn_search(term, search_version, worker_sender.clone(), cancel);
+                }
+                WorkerEvent::Command(Clear) => {
+                    search_version += 1;
+                    if let Some(cancel) = current_search_cancel.take() {
+                        cancel.store(true, std::sync::atomic::Ordering::Relaxed);
+                    }
+                    apply_worker_result(handle_command(Clear, None), &mut current_result);
+                }
+                WorkerEvent::Command(cmd) => {
+                    apply_worker_result(handle_command(cmd, None), &mut current_result);
+                }
+                WorkerEvent::SearchFinished { version, result } => {
+                    if version == search_version {
+                        current_search_cancel = None;
+                        apply_worker_result(result, &mut current_result);
+                    }
+                }
+                WorkerEvent::Shutdown => {
+                    if let Some(cancel) = current_search_cancel.take() {
+                        cancel.store(true, std::sync::atomic::Ordering::Relaxed);
+                    }
+                    break;
+                }
+            }
+        }
+
         Ok(())
     });
 
     for k in stdin.keys() {
-        if let LoopControl::ShouldBreak =
-            handle_key(k.map_err(Error::KeySequence)?, sender.clone(), &mut state)?
-        {
-            break;
+        match handle_key(k.map_err(Error::KeySequence)?, &sender, &mut state)? {
+            LoopControl::ShouldBreak => break,
+            LoopControl::ShouldKeepGoing => {}
         }
     }
-    drop(sender);
+    sender.send(WorkerEvent::Shutdown).ok();
     let res = t.join().map_err(|_| Error::ThreadPanic).and_then(|r| r);
     reset_terminal();
     res

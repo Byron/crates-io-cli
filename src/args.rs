@@ -2,7 +2,7 @@
 use criner_cli;
 
 use clap::Parser;
-#[cfg(any(feature = "mine", feature = "recent-changes"))]
+#[cfg(feature = "recent-changes")]
 use std::path::PathBuf;
 
 #[derive(Debug, Clone, clap::ValueEnum)]

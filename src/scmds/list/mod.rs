@@ -7,4 +7,4 @@
 mod cmd;
 mod error;
 
-pub use self::{cmd::*, error::Error};
+pub use self::cmd::*;

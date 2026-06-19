@@ -39,7 +39,7 @@ fn main() {
         Some(List { cmd, output_format }) => {
             use args::ListCmd::*;
             ok_or_exit(match cmd {
-                ByUser { id } => handle_list(output_format, move |session| by_user(id, session)),
+                ByUser { id } => handle_list(output_format, move || by_user(id)),
             })
         }
         #[cfg(feature = "search")]

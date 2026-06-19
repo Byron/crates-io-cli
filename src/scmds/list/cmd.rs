@@ -1,17 +1,11 @@
 use super::error::Error;
 use crate::{
     args::OutputKind,
-    http_utils::{paged_crates_io_remote_call, CallMetaData, CallResult},
+    http_utils::{CallMetaData, CallResult, paged_crates_io_remote_call},
     structs::{Crate, Crates, Meta},
 };
-use futures::{Future, IntoFuture};
-use prettytable::{format, Table};
-use std::{
-    io,
-    sync::{Arc, Mutex},
-};
-use tokio_core::reactor;
-use tokio_curl::Session;
+use prettytable::{Table, format};
+use std::io;
 use urlencoding;
 
 fn crates_from_callresult_buf(buf: &[u8]) -> Result<(Vec<Crate>, Meta), Error> {
@@ -42,68 +36,57 @@ fn crates_extract(c: CallResult) -> Result<(CallMetaData, Vec<Crate>), Error> {
     })
 }
 
-pub fn by_user(
-    id: u32,
-    session: Arc<Mutex<Session>>,
-) -> Box<dyn Future<Item = Vec<Crate>, Error = Error> + Send> {
-    Box::new(
-        paged_crates_io_remote_call(
-            &format!(
-                "https://crates.io/api/v1/crates?user_id={}",
-                urlencoding::encode(&format!("{}", id))
-            ),
-            None,
-            session.clone(),
-            crates_merge,
-            crates_extract,
-        )
-        .map_err(Into::into),
+pub fn by_user(id: u32) -> Result<Vec<Crate>, Error> {
+    paged_crates_io_remote_call(
+        &format!(
+            "https://crates.io/api/v1/crates?user_id={}",
+            urlencoding::encode(&format!("{}", id))
+        ),
+        None,
+        crates_merge,
+        crates_extract,
+        None,
     )
+    .map_err(Into::into)
 }
 
 pub fn handle_list<F, R>(output_format: OutputKind, do_work: F) -> Result<(), Error>
 where
-    F: FnOnce(Arc<Mutex<Session>>) -> R,
-    R: IntoFuture<Item = Vec<Crate>, Error = Error>,
+    F: FnOnce() -> R,
+    R: Into<Result<Vec<Crate>, Error>>,
 {
-    let mut reactor = reactor::Core::new().map_err(Error::ReactorInit)?;
-    let session = Arc::new(Mutex::new(Session::new(reactor.handle())));
-    let fut = do_work(session.clone())
-        .into_future()
-        .and_then(|crates: Vec<Crate>| match output_format {
-            OutputKind::Human => {
-                if crates.is_empty() {
-                    return Ok(());
-                }
-                let (mut table, titles) = {
-                    let mut t = Table::new();
-                    t.set_format(*format::consts::FORMAT_NO_LINESEP_WITH_TITLE);
-                    let mut total = 0;
-                    let t = crates.into_iter().fold(t, |mut t, c| {
-                        total += c.downloads;
-                        t.add_row(row![
-                            c.name,
-                            c.description.unwrap_or_default(),
-                            c.downloads,
-                            c.max_version
-                        ]);
-                        t
-                    });
-                    (
-                        t,
-                        row![b -> "Name", b -> "Description", b ->
-                            format!("Downloads (total={})" , total), b -> "MaxVersion"],
-                    )
-                };
-                table.set_titles(titles);
-                table.print_tty(false)?;
-                Ok(())
+    let crates = do_work().into()?;
+    match output_format {
+        OutputKind::Human => {
+            if crates.is_empty() {
+                return Ok(());
             }
-            OutputKind::Json => {
-                serde_json::to_writer_pretty(io::stdout(), &crates).map_err(Into::into)
-            }
-        });
-    reactor.run(fut)
+            let (mut table, titles) = {
+                let mut t = Table::new();
+                t.set_format(*format::consts::FORMAT_NO_LINESEP_WITH_TITLE);
+                let mut total = 0;
+                let t = crates.into_iter().fold(t, |mut t, c| {
+                    total += c.downloads;
+                    t.add_row(row![
+                        c.name,
+                        c.description.unwrap_or_default(),
+                        c.downloads,
+                        c.max_version
+                    ]);
+                    t
+                });
+                (
+                    t,
+                    row![b -> "Name", b -> "Description", b ->
+                        format!("Downloads (total={})" , total), b -> "MaxVersion"],
+                )
+            };
+            table.set_titles(titles);
+            table.print_tty(false)?;
+            Ok(())
+        }
+        OutputKind::Json => serde_json::to_writer_pretty(io::stdout(), &crates).map_err(Into::into),
+    }
 }
 
 #[test]
