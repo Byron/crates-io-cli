@@ -10,7 +10,7 @@ use std::{
 
 use crates_index_diff::Index;
 use parking_lot::{Condvar, Mutex};
-use prettytable::{format, Table};
+use prettytable::{Table, format};
 
 fn show_changes(repo_path: PathBuf, output_kind: OutputKind) -> Result<(), Error> {
     std::fs::create_dir_all(&repo_path).map_err(|e| Error::RepositoryDirectory {
